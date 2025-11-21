@@ -1,0 +1,7 @@
+
+
+navigate.qlg: Three robots navigating through rooms avoiding each other.
+
+graphPath.qlg: support code for path finding.
+
+rooms.py: Simulator for robots.

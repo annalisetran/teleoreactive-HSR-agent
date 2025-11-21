@@ -1,0 +1,967 @@
+
+%% Copyright (C) 2014 Keith Clark, Peter Robinson
+%% Email: klc@doc.ic.ac.uk, pjr@itee.uq.edu.au
+%%
+%% This library is free software; you can redistribute it and/or modify
+%% it under the terms of the GNU General Public License as published by
+%% the Free Software Foundation; either version 2 of the License, or
+%% (at your option) any later version.
+%%
+%% This library is distributed in the hope that it will be useful,
+%% but WITHOUT ANY WARRANTY; without even the implied warranty of
+%% MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+%% GNU General Public License for more details.
+%%
+%% You should have received a copy of the GNU General Public License
+%% along with this program; if not, write to the Free Software
+%% Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
+
+% A % to end-of-line is a comment
+% Declarations and definitions can be given in any order but with the proviso
+% that the rules of a definition must be contiguous.
+% A terminating .<newline> is optional but each rule and clause must 
+% start at left end of  a new line and a continuation over several lines
+% must  indent all but the first line in from left end by at least 
+% one space or tab.  An idea borrowed from Python. 
+
+% Best to load this file into emacs (with the qlg mode enabled) or use quled
+% to get syntax highlighting and auto-intentation on TAB
+
+% Data base style relations and finite sets of atomic values as types
+%*********************************************************************
+% For these types sub-type relation is subset relation.
+
+
+% disjunction of atoms - enumerated type
+def gender ::=  male | female 
+% gender is a sub-type of atom, atomic and term
+
+% ranges of integers - range types
+def age_val ::= 0 .. 110           
+def digit ::= 0 .. 9           
+% digit  is a sub-type of age_val, a sub-type of int, hence num, hence term
+
+%% This example shows how to use union types to get the effect of overlapping
+%% enumeration types - so range1 is effectively 0..20 and range2 is 
+%% effectively -10..9 without breaking the constraints on enumerated types
+%% (each number in these ranges have a unique minimal type)
+
+def range12 ::= 10..20
+def range21 ::= -10..-1
+def range1 == digit || range12
+def range2 == range21 || digit
+
+
+% simple relations with type declarations. If none given type term is 
+% assumed for every argument. 
+
+def man ::= roger | tom | bill | alan | graham | keith | sam | fred
+"The allowed man names in the application"
+def woman ::= june | mary | rose | penny | sue | helen | veronica
+"The allowed woman names in the application"
+
+% implicitly also facts man(roger) .... woman(june)...
+% restricts allowed names that can be used for men and women
+
+% disjunction of types - union type
+def human == man || woman
+% man and woman are both sub-types of human, which is a 
+% sub-type of atomic and of term 
+
+
+%%% try:  isa(H,human).
+
+dyn age_is(H : human, A : age_val)
+"H is a human, A is an age number"
+age_is(roger,110)
+age_is(fred,55)
+age_is(tom,26)
+age_is(june,23)
+age_is(bill,43)
+age_is(mary,40)
+age_is(rose,21)
+age_is(penny,1)
+% type check effectively checks for spelling errors in names and invalid age values
+
+%%% sample queries
+
+%%% P :: age_is(P,A) & A>39.
+%%% 2 of P :: age_is(P,A) & A>39.
+%%% exists A age_is(P,A) & A>39.
+
+
+% defined person relation
+rel person(?human,?gender,?age_val)     
+% all args can be given or not given in a call
+person(H,male,A) <= isa(H,man) & age_is(H,A)
+person(H,female,A) <= isa(H,woman) & age_is(H,A)
+
+% <= is like :- in Prolog
+% & is  conjunction
+
+rel father_of(?man, ?human)
+father_of(F, C) <= isa(F, man) & child_of(C,F)
+
+% child facts
+dyn child_of(human,human)
+child_of(tom,fred) 
+child_of(june,fred) 
+child_of(rose,mary)
+child_of(rose,bill)
+child_of(penny,rose)
+
+rel descendant_is(!human,?human)       
+% first arg (an ancestor) must be given 
+descendant_is(P,C) <= child_of(C,P)
+descendant_is(A,D) <= child_of(C,A) & descendant_is(C,D)
+
+rel ancestor_is(!human, ?human)     
+% first arg (a descendant) must be given 
+ancestor_is(C,P) <= child_of(C,P)
+ancestor_is(D,A) <= child_of(D,P) & descendant_is(P,A)
+
+% in above we have different order of body conds for different uses. 
+
+    
+rel only_has_adult_children(?human)
+only_has_adult_children(H) <=  
+    child_of(_,H) & 
+    % This will generate the names of humans who have a least one 
+    % child or check that a given human has at least one child
+    forall C, A ( 
+            child_of(C,H) & age_is(C,A) => 
+                        A >= 18) 
+
+rel has_a_child(?human)
+has_a_child(P) <=
+    isa(P,human) &
+    % for calls to find such a P generate in turn names of humans
+    % if the mode was has_a_child(!human) then we would only be
+    % checking and so the above call would not be needed
+    once(child_of(_,P))
+% Then check, once only, if they have a child
+
+fun age(human) -> age_val
+age(H) :: age_is(H,A) -> A
+age(_) -> 0
+% 0 is used as the default age if none is recorded
+    
+rel only_has_adult_children2(?human)
+"Alternative def using not exists and age function
+plus has_a_child instead of child_of"
+only_has_adult_children2(P) <=  
+    has_a_child(P)  &
+    not exists C (child_of(C,P) & age(C)<18) 
+
+rel childless(?human)
+childless(H) <=
+    isa(H, human) &
+    not exists C child_of(C,H) 
+ 
+rel childless2(?human)
+childless2(H) <=
+    isa(H, human) &
+    not child_of(_,H)
+% In above the _ var is implicitly existentially quantified
+
+rel has_no_siblings(?human)
+has_no_siblings(H) <=
+    isa(H, human) &
+    not exists Parent, Child 
+               (child_of(H, Parent) & 
+                child_of(Child, Parent) &
+                H \= Child)
+
+rel children_are(?human,?set((age_val,human)))
+children_are(P, Cs) <= 
+    isa(P,human) & Cs = {(A,C) :: child_of(C,P) & age_is(C,A)}
+% :: is read as "such that"
+
+fun num_children(human) -> nat      
+num_children(P) ->  #{C :: child_of(C,P)}
+
+
+% In example below first arg is a list any terms (the most inclusive type) 
+% and to make the program type correct we need to restrict the second clause 
+% to only be used when N is of type num. 
+% Note that if the test between the :: and <= succeeds then we 
+% commit to that clause
+% so Head :: Test <= Body   is like   Head :- Test, !, Body    in Prolog
+% cut, disjunction, if-then-else not supported in QuLog
+
+% !list(term) is list of any terms that must be given as ground value
+
+rel add_nums_of_list_of_any_term(!list(term), ?num)
+add_nums_of_list_of_any_term([],0)
+add_nums_of_list_of_any_term([N | Rest], Total)  :: type(N,num) <=
+        add_nums_of_list_of_any_term(Rest, RTotal) &
+        Total = RTotal+N
+add_nums_of_list_of_any_term([ _Any | Rest], Total) <=
+    add_nums_of_list_of_any_term(Rest, Total)
+% we must have the type test in 2nd clause else type error raised 
+% at  RTotal+N
+
+
+def record(T) ::= rec(atom, T)     % A simple parameterised constructor type
+
+
+% A constuctor type - all alternatives must be 'structs'
+% T a type variable so type is polymorphic and recursive
+
+def tree(T) ::= empty() | tr(tree(T),T,tree(T))
+
+% int_tree is a type macro
+def int_tree == tree(int)  % can specialise poly type 
+
+
+% The !tree(T) means the tree of any element type T must be given 
+% as a ground value
+
+rel on_tree(?T,!tree(T))    % a polymorphic relation
+on_tree(E,tr(_,E,_))                
+on_tree(E,tr(Left,_,_)) <=
+    on_tree(E,Left)
+on_tree(E,tr(_,_,Right)) <= 
+    on_tree(E,Right)
+
+%% An alternative tree that contain values at nodes (of type N)
+%% as well as values in leaves (of type L)
+def tree2(N,L) ::=  
+        leaf(L) | none() | node(tree2(N,L), N, tree2(N,L))
+
+def tree_val(N, L) ::= lf(L) | nd(N)
+rel on_tree2(?tree_val(N, L), !tree2(N, L))
+on_tree2(lf(V), leaf(V))
+on_tree2(nd(V), node(_, V, _))
+on_tree2(V, node(Left, _, _)) <= on_tree2(V, Left)
+on_tree2(V, node(_, _, Right)) <= on_tree2(V, Right)
+
+
+rel tree_to_tree2(!tree(T), ?tree2(T, T)),  
+    tree_to_tree2(?tree(T), !tree2(T, T))
+tree_to_tree2(empty(), none())
+tree_to_tree2(tr(empty(), V, empty()), leaf(V)) :: true
+%%using :: true to stop backtracking to next rule
+tree_to_tree2(tr(L, V, R), node(L2, V, R2)) <=
+    tree_to_tree2(L, L2) &
+    tree_to_tree2(R, R2)
+
+
+%% Lists and sets are primitive parameterised types. 
+%% This is a user defined version of append.
+%% In this type declaration we explicitly give the internal
+%% modes - compare this declaration with that of append using stypes append
+%% Here, for example, we write ?list(?T) with an explicit internal mode of ?
+%% The default, when the internal mode is not given, is that it is the same
+%% as the immediate outer mode - e.g. ?list(?T) is the same as ?list(T).
+%% Also note that all inner modes have to be at least as permissive as
+%% outer modes e.g. ?list(!T) is not allowed.
+rel app(!list(!T), !list(!T), ?list(?T)),
+    app(?list(?T), ?list(?T), !list(!T)),
+    app(!list(??T), !list(??T), ?list(??T)),
+    app(?list(??T), ?list(??T), !list(??T)),
+    app(??list(??T), ??list(??T), ??list(??T))
+
+app([],L2,L2)
+app([U|L1], L2, [U|L3]) <= app(L1,L2,L3)
+
+% app([X,2],[6,8,..L1],[1,V,W,..L2]).
+
+
+% Simple function defs
+% ************************
+
+fun fact(N:nat) -> nat 
+"Returns the factorial of N"
+fact(0) -> 1
+fact(N) :: N1 = N-1 & type(N1,nat) -> N*fact(N1)
+% Cannot define as 
+% fact(N) :: N>0 -> N*fact(N-1) 
+% as type checker cannot infer that N-1 is a natural number
+% runtime type check type(N1,nat) ensures this is the case
+
+fun efact(N:int) -> int 
+"Alternative def of factorial with integers as its domain"
+efact(0) -> 1
+efact(N) :: type(N,nat) -> N*efact(N - 1)
+efact(_) -> 1
+
+fun order(list(T)) -> list(T)
+order(L) -> tolist(toset(L))
+% toset function converts the list to a set, 
+% tolist converts the set to an ordered list
+
+%%% EG  X = order([4,-7,8,2,3,-7]).
+
+fun tree2list(tree(T)) -> list(T)
+tree2list(empty()) -> []
+tree2list(tr(LT, V, RT)) -> tree2list(LT) <> [V] <> tree2list(RT)
+
+fun list2tree(list(int)) -> tree(int)
+list2tree([]) -> empty()
+list2tree([H|T]) -> add2tree(H, list2tree(T))
+
+fun add2tree(T, tree(T)) -> tree(T)
+add2tree(NewV, empty()) -> tr(empty(), NewV, empty())
+add2tree(NewV, tr(L, V, R)) :: NewV @< V -> 
+        tr(add2tree(NewV, L), V, R)    
+add2tree(NewV, tr(L, V, R)) -> tr(L, V, add2tree(NewV, R))  
+
+
+% <> a built in function for appending ground lists, can be used to split in a pattern
+
+fun last(list(T)) -> T
+last(L) :: L =? _ <>? [E] -> E
+
+% Recursive representation of data
+% **********************************
+% a different representation of a person as a nested data structure
+% containing all their descendants - not practical
+
+def personTree ::= 
+        malep(atom,age_val,list(personTree)) | femalep(atom,age_val,list(personTree))
+
+dyn a_person(personTree)
+a_person( malep( roger,60, [ malep(tom,26,[]), femalep(june,23,[]) ] ) )
+
+rel child_is(!personTree,?personTree)
+child_is(malep(_,_,Children), Child) <= Child in Children
+child_is(femalep(_,_,Children), Child ) <=  Child in Children
+
+%-----------
+
+% String and list processing examples
+%****************************************
+
+rel sepchar(?string) 
+"Word separator"
+sepchar(" ")
+sepchar(",")
+sepchar(";")
+
+rel endchar(C : ?string)  
+"C is a sentence terminator"
+endchar(".")
+endchar("?")
+endchar("!")
+
+rel symbolchar(?string)
+symbolchar(C) <= sepchar(C)
+symbolchar(C) <= endchar(C)
+%%% No disjunction in QuLog
+
+rel spaces(!string), wordchar(!string)    % test only defs
+
+spaces(S) <=
+    #S>0 & forall Ch (Ch in S => Ch=" ")
+
+wordchar(S) <=  #S = 1 & not symbolchar(S)
+
+rel word(!string), seps(!string)
+
+word(S) <=
+    #S>0 & forall Ch (Ch in S => wordchar(Ch))
+
+seps(Seps) <=
+    #Seps>0 & forall Ch (Ch in Seps => sepchar(Ch))
+
+rel words(!string,?list(string))
+words(Str,[W]) ::  Str =? W::word(W) ++? E::endchar(E)
+words(Str,[W|Words]) :: 
+    Str =?  W::word(W) ++? Seps::seps(Seps) ++? RStr::words(RStr,Words) 
+
+% Try:
+%%% Ws :: words("hello keith,     how are   you today?",Ws).
+%%%  Ws :: words("a jolly, fat     boy likes the sly, brown fox.",Ws).
+
+%% Vversion below uses the regular expressions 
+%% "\\w+", "[.?!]" and "([,;:]?\\s+)|(\\s+)"
+%% as part of the test on strings.
+%% Note that the above version uses backtracking to find matches and can 
+%% therefore potentially find more that one way to split up a list.
+%% REs only match once and so in this example no backtracking is used.
+rel words2(string, ?list(string))
+words2(Str,[WStr]) :: Str  =? WStr/"\\w+" ++? _End/"[.?!]"    
+words2(Str,[W|Words]) :: 
+    Str =? 
+        W/"\\w+" ++? 
+        _Seps/"[,;:]?\\s+" ++? 
+        RStr::words2(RStr,Words)  
+
+%%% Ws :: words2("hello keith;     how are   you today?",Ws).
+%%%  Ws :: words2("a jolly, fat     boy likes the sly, brown fox!",Ws).
+
+%% A problem with both of the definitions above is that the first rule of 
+%% each definition will fire and will consume a word and then check if
+%% the end of sentence is reached. If not then the second rule will fire
+%% and consume the same word as the first rule does leading to inefficiency.
+%% The following two definitions remove this problem.
+rel words3(string, ?list(string))
+rel words3_rest(string, ?list(string))
+words3(Str, [W|Words]) <= 
+    Str  =? W::word(W) ++? RStr::words3_rest(RStr,Words)
+words3_rest(Str, []) :: endchar(Str)
+words3_rest(Str, [W|Words]) ::
+    Str =? 
+        Seps::seps(Seps) ++? 
+        W::word(W) ++? 
+        RStr::words3_rest(RStr,Words)
+
+rel words4(string, ?list(string))
+rel words4_rest(string, ?list(string))
+words4(Str, [W|Words]) <= 
+    Str  =? W/"\\w+" ++? RStr::words4_rest(RStr,Words)
+words4_rest(Str,[]) :: endchar(Str)
+words4_rest(Str,[W|Words]) :: 
+    Str =? 
+        _Seps/"[,;:]?\\s+" ++?
+        W/"\\w+" ++? 
+        RStr::words4_rest(RStr,Words)  
+
+
+% Same sort of thing but with lists, use <>? on right hand side of =? spits lists
+
+rel splitsAroundElement(!list(T), !T, ?list(T), ?list(T))
+splitsAroundElement(L,E,OL1,OL2) <=
+    L =?  OL1 <>?  [E] <>?  OL2 
+
+rel split_on_ordered_pair(!list(num), ?list(num), ?num, ?num, ?list(num))
+split_on_ordered_pair(Lst, LeftLst, V1, V2, RightLst) <=
+    Lst =? LeftLst <>? [V1, V2] :: (V1 < V2) <>? RightLst
+
+
+%%%% Non-parameterised recursive types, parse tree type for simple statements
+
+def parse_tree ::= s(noun_phrase_tree,verb_phrase_tree) | parse_error()
+
+%% DCG Rule:  a_parse_tree(s(NPT,VP)) --> a_noun_phrase_tree(NPT), a_verb_phrase_tree(VPT). 
+
+def noun_phrase_tree::= np(article,noun_exp_tree) 
+
+%% DCG Rule: a_noun_phrase_tree(np(Art,NET)) --> a_article(A), a_noun_exp_tree(NET)
+
+def noun_exp_tree::= ne(adjective,noun_exp_tree) | n(noun)
+%% DCG Rules: a_noun_exp_tree(ne(Adj,NET)) --> an_adjective(Adj), a_noun_exp_tree(NET)
+%%                    a_noun_exp_tree(n(N)) --> a_noun(N)
+
+def verb_phrase_tree ::= 
+        vp(verb,noun_phrase_tree) | 
+        v(verb) | 
+        ndescr(complement,noun_phrase_tree) | 
+        adescr(complement,adjective)
+
+def noun::= "boy" | "fox" | "girl" | "ball" | "man" | "woman" | "lady"
+
+%% DCG Rules: a_noun(N) --> [N], type(N,noun).
+%% or               a_noun(N) --> [N], isa(N,noun).
+%% if we want to generate legal  sentences using the grammar. 
+
+def adjective ::= "fat" | "jolly" | "red" | "sly" | "brown" | "tall" | 
+        "female" | "male"
+
+def verb ::= "runs" | "jumps" | "kicks" | "likes" | "sings"
+
+def complement ::= "is" | "are" | "were" | "was"
+
+def article ::= "the" | "a" | "an" | "some" | "all" | "every"
+
+def dword == noun || adjective || verb || complement || article
+
+%%%% Intention %%%
+% Intention is to have two options for use of a type description of a parse tree
+% 1: a primitive  parse(!atom,?type,!list(term),?list(term)) where the atom 
+%    arg is the name of a parse tree type, such as noun_phrase_tree.  A call 
+%    parse(TypeName,Tree,[T1,..,Tn,T'1,...,T'k], R) will check if [T1,..,Tn]
+%    are the leaf terms on a parse tree of the type indicated by the atom 
+%    TypeName, and if so bind, Tree to this parse tree, and R to [T'1,...,T'k].
+%    It will do this by interpretively walking over the type definitions.
+% 2: Generate the DCG as indicated by the comments above and from this 
+%    generate the difference list clauses that are a compilation of what the 
+%    parse primitive does. These will be:
+
+rel a_parse_tree(?parse_tree, !list(string), ?list(string))
+a_parse_tree( s(NP,VP), A, C) <= 
+    a_noun_phrase_tree(NP, A, B) & a_verb_phrase_tree(VP, B, C)
+
+rel a_noun_phrase_tree(?noun_phrase_tree, !list(string), ?list(string))
+a_noun_phrase_tree(np(Ar,NE), A, C) <=
+    A = [Ar1,..B] &  type(Ar1,article) & Ar = Ar1 & a_noun_exp_tree(NE, B, C)
+
+rel a_noun_exp_tree(?noun_exp_tree, !list(string), ?list(string))
+a_noun_exp_tree(ne(Adj,NE), A, C) <=
+    A = [Adj1,..B] &  type(Adj1,adjective) &  Adj = Adj1 & 
+    a_noun_exp_tree(NE, B, C)
+a_noun_exp_tree(n(N), A, B) <=
+    A = [N1,..B] & type(N1,noun) & N = N1
+
+rel a_verb_phrase_tree(?verb_phrase_tree, !list(string), ?list(string))
+a_verb_phrase_tree(vp(V,NP), A, C) <=
+    A = [V1,..B] & type(V1,verb) &  V = V1 & a_noun_phrase_tree(NP, B, C)
+a_verb_phrase_tree(v(V), A, B) <=
+    A =  [V1,..B] & type(V1,verb) & V = V1
+a_verb_phrase_tree(ndescr(V,NP), A, C) <=
+    A = [V1,..B] & type(V1,complement) &  V = V1 & a_noun_phrase_tree(NP, B, C)
+a_verb_phrase_tree(adescr(V,Adj), A, C) <=
+    A = [V1,..B] & type(V1,complement) &  V = V1 & B = [Adj1,..C] & 
+    type(Adj1,adjective) & Adj = Adj1 
+
+% ****************************
+%%% parse function - no error reports
+
+fun parseS(string) -> parse_tree
+parseS(Str) :: words(Str,Ws) & a_parse_tree(PT,Ws,[])  -> PT
+parseS(_) -> parse_error()
+
+%%%% PT = parseS("a jolly, fat     boy likes the sly, brown fox.").
+%%%% PT = parseS("the fat lady sings!").
+
+% Higher order functions
+%**************************** 
+
+fun mapF((fun(T1) -> T2), list(T1)) -> list(T2)
+mapF(_F, []) -> []
+mapF(F, [H|T]) -> [F(H)|mapF(F, T)]
+
+% mapF(number_of_children,[roger,mary,bill]) gives [2,1,1] as value
+
+% ! ((!rel(!T1,T2)) says first arg is a relation over T1,T2 pairs and 
+% can be such that
+% its first arg must be given and this relation must be given in any call
+
+rel mapR(!rel(!T1,?T2), !list(T1), ?list(T2))
+mapR(_R,[], [])
+mapR(R,[H|T],[RH|RT]) <= R(H,RH) & mapR(R,T,RT)
+
+% So mapR(child_of,[amy,rose],Ps) binds Ps to different lists of 
+% parents  of amy and rose
+
+% list((T1) -> T2) is type of a list of functions all of type (T1)->T2
+
+fun mapFuns(list(fun(T1) -> T2), T1) -> list(T2)
+mapFuns([], _) -> []
+mapFuns([F|Tail], X) -> [F(X)|mapFuns(Tail, X)]
+
+fun setVals(rel(!T1,?T2)) -> fun(T1) -> set(T2)
+setVals(R)(X) -> {Y::R(X,Y)} 
+
+
+
+fun zip(A:list(T1), B:list(T2)) -> list((T1, T2))
+zip([], _) -> []
+zip(_, []) -> []
+zip([H1|T1], [H2|T2]) -> [(H1,H2)|zip(T1, T2)]
+
+
+fun foldr(fun(B) -> fun(A) -> A) -> fun(A) -> fun(list(B)) -> A
+foldr(_F)(Z)([]) -> Z
+foldr(F)(Z)([H|T]) -> F(H)(foldr(F)(Z)(T))
+
+fun foldl(fun(A) -> fun(B) -> A) -> fun(A) -> fun(list(B)) -> A
+foldl(_F)(Z)([]) -> Z
+foldl(F)(Z)([H|T]) -> foldl(F)(F(Z)(H))(T)
+
+% The above maps a list of functions over a value X produces a list of 
+% their values when applied to X
+
+% function that returns a function that will eventually add two ints
+
+fun add(int) -> (fun(int) -> int)
+add(N)(M) -> N+M
+
+fun curry(fun(T1,T2) -> T3) -> fun(T1) -> fun(T2) -> T3 
+"Curried form of F"
+curry(F)(X)(Y) -> F(X,Y)
+% So curry(+) is same as the add function above
+
+fun uncurry(fun(T1) -> fun(T2) -> T3) -> fun(T1,T2) -> T3
+uncurry(F)(X,Y) -> F(X)(Y)
+% so uncurry(add) is same as primitive function + 
+% It has type (int,int)->int 
+
+%%%% currying relations
+
+fun curryR(rel(T1,??T2)) -> fun(T1) -> rel(??T2),
+    curryR(rel(T1,?T2)) -> fun(T1) -> rel(?T2),
+    curryR(rel(T1,!T2)) -> fun(T1) -> rel(!T2) 
+
+
+curryR(Rel)(X)(Y) <= Rel(X,Y)
+
+% Example 
+% curryR(child_of) is a monadic relation true of parents of rose
+% it can be passed round as a higher order value as a monadic rel
+% over atoms.
+% curryR(child_of)(rose)(P) 
+% will bind P to a parent of rose. 
+
+fun uncurryR(fun(T1) -> rel(!T2)) -> rel(T1,!T2),
+    uncurryR(fun(T1) -> rel(?T2)) -> rel(T1,?T2),
+    uncurryR(fun(T1) -> rel(?T2)) -> rel(T1,?T2),
+    uncurryR(fun(T1) -> rel(??T2)) -> rel(T1,??T2)
+uncurryR(FR)(X,Y) <= FR(X)(Y)
+
+
+% Esoteric Church numerals for the FP gurus
+%***********************************************
+
+%% church is a type macro
+def church == fun(fun(T) -> T) -> fun(T) -> T
+
+fun zero(fun(T) -> T) -> fun(T) -> T
+zero(_F)(X) -> X
+
+fun one(fun(T) -> T) -> fun(T) -> T
+one(X)(Y) -> succ(zero)(X)(Y)
+% note that we don't have to supply args in this case - like a 'macro'
+
+fun succ(church) -> church
+succ(N)(F)(X) -> F(N(F)(X))
+
+fun plus(church) -> fun(church) -> church
+plus(A)(B)(F)(X) -> A(F)(B(F)(X))
+
+fun mult(church) -> fun(church) -> church
+mult(A)(B) -> A(plus(B))(zero)
+
+fun inc(nat) -> nat
+inc(N) -> N+1
+
+% X = mult(succ(succ(one)))(succ(one))(inc)(0).
+
+% ---------
+
+% Sets can be manipulated using union, diff and inter set operations
+% Or by being converted to lists and then converted back. 
+%*******************************************
+
+% set(T) is type for a set of T values. 
+% list(T) is type for a list of T values. 
+
+rel equal_sets(!set(T), !set(T))
+equal_sets(S1,S2) <= 
+    forall E1 (E1 in S1 => E1 in S2) & 
+    forall E2 (E2 in S2 => E2 in S1)
+
+fun unionDiff(set(T),set(T),set(T)) -> set(T)
+unionDiff(A, B, C) -> A union B diff C  % same as (A union B) diff C
+
+
+
+%%% Action rules  
+%*****************
+
+% An action rule can update a dynamic belief relation, 
+% send messages and fork query threads. 
+
+act new_child(!human, !human, !human)  
+new_child(C,  M, F) ~> 
+    remember([child_of(C,M), child_of(C,F), age_is(C,0)])
+% remembers three new facts, C, M and F must all be atoms of type human. 
+
+%%% Try:  new_child(helen,veronica,graham).
+%%% Then: show child_of.
+
+act remove_child(!human) 
+remove_child(C) ~> forall P {child_of(C,P) ~> forget([child_of(C,P)])}
+% ~> used in the forall as the consequent is an action
+
+act birthday(!human)
+birthday(P) :: age_is(P, A) & Z = A+1 & type(Z, age_val) ~> 
+        forget_remember([age_is(P, A)], [age_is(P, Z)])
+birthday(P) ~> write_list([P," would have an invalid age"])
+
+% Actions for giving run-time error messages 
+
+rel all_dict_words(!list(string))
+all_dict_words(Wrds) <= forall W (W in Wrds => type(W, dword))
+
+%%% do_parse action - error reports at each stage
+act do_parse(!string, ?parse_tree)  % default for actions is ground input mode
+do_parse(Str,PT) ~> 
+    to_words(Str,Wrds); write_list(["Word list: ",Wrds,nl_]); 
+    check_dict(Wrds); write_list(["All words in dictionary",nl_]);
+    to_parse_tree(Wrds,PT)
+
+act to_words(!string, ?list(string))
+to_words(Str,Wrds) :: words(Str,Wrds) ~> {}
+to_words(Str,[]) ~> write_list(["Cannot split into words: ",Str, nl_])
+
+act check_dict(!list(string))
+check_dict(Wrds) :: all_dict_words(Wrds) ~> {}
+check_dict(Wrds) ~> write_list(["Unknown words in: ",Wrds, nl_])
+
+act to_parse_tree(!list(string), ?parse_tree)
+to_parse_tree(Wrds,PT) :: a_parse_tree(PT,Wrds,[])  ~> {}
+to_parse_tree(Wrds,parse_error()) ~> 
+    write_list(["Cannot parse word list: ",Wrds,nl_])
+
+
+%% An exception variant of the above
+
+%% We declare some user exceptions
+
+def user_exception ::= cannot_tokenize() | unknown_words(list(string)) | 
+        cannot_parse(list(string))
+
+
+
+act do_parse2(!string, ?parse_tree)
+do_parse2(Str,PT) ~>
+    try {
+        to_words2(Str,Wrds); write_list(["Word list: ",Wrds,nl_]); 
+        check_dict2(Wrds); write_list(["All words in dictionary",nl_]);
+        to_parse_tree2(Wrds,PT)
+        } 
+    except {
+        cannot_tokenize() :: PT = parse_error() ~> 
+                write_list(["Cannot split into words: ",Str, nl_])
+        
+        unknown_words(Wrds) :: PT = parse_error() ~> 
+                write_list(["Unknown words in: ",Wrds, nl_])
+        
+        cannot_parse(Wrds) :: PT = parse_error() ~> 
+                write_list(["Cannot parse word list: ",Wrds,nl_])
+        }
+
+act to_words2(!string, ?list(string))
+to_words2(Str,Wrds) :: words(Str,Wrds) ~> {}
+to_words2(_, _) ~> raise(cannot_tokenize())
+
+act check_dict2(!list(string))
+check_dict2(Wrds) :: all_dict_words(Wrds) ~> {}
+check_dict2(Wrds) ~> raise(unknown_words(Wrds))
+
+act to_parse_tree2(!list(string), ?parse_tree)
+to_parse_tree2(Wrds,PT) :: a_parse_tree(PT,Wrds,[])  ~> {}
+to_parse_tree2(Wrds,_) ~> raise(cannot_parse(Wrds))
+    
+
+
+
+% Global values
+%****************
+
+% Global values can be used to store and update int or num values
+% and are declared as follows.
+
+int a:=0
+num b:=0.0
+
+% An example use - if a global value is to be modified it can only be
+% done in an action
+
+act inc_a(?int)
+"Increment the global value a and return the incremented value"
+inc_a(N) :: N = $a+1 ~> a +:= 1
+
+% $a evaluates to the value stored in a and a :=+ 1 replaces the
+% old value in a by its increment
+
+
+%% We can give type declarations that have alternatives for modes and/or types
+%% For example 
+
+fun my_abs(int) -> int, my_abs(num) -> num
+
+my_abs(X) -> abs(X)
+
+%% It's possible to access all of Qu-Prolog's builtin definitions by simply 
+%% giving type declarations.
+%% No checking is done so the user needs to be confident of the correctness
+%% of the declaration (and relation/action annotations need to be given)
+
+
+%% Example sorting programs
+
+rel smallest_and_rest(num, list(num), ?num, ?list(num))
+
+smallest_and_rest(X, [], X, []) :: true
+smallest_and_rest(X, [H,..T], Y, [H,..R]) :: X < H <= 
+        smallest_and_rest(X, T, Y, R)
+smallest_and_rest(X, [H,..T], Y, [X,..R]) <= 
+    smallest_and_rest(H, T, Y, R)
+
+fun ssort(list(num)) -> list(num)
+ssort([]) -> []
+ssort(L) :: L = [_] -> L
+ssort([H,..T]) :: smallest_and_rest(H, T, X, Rest) -> [X,..ssort(Rest)]
+
+
+fun partition(num, list(num)) -> (list(num), list(num))
+partition(_X, []) -> ([], [])
+partition(X, [H,..T]) :: 
+    H < X & 
+    partition(X, T) = (P1, P2) -> 
+        ([H,..P1], P2)
+partition(X, [H,..T]) :: partition(X, T) = (P1, P2) -> (P1, [H,..P2])
+
+fun qsort(list(num)) -> list(num)
+qsort([]) -> []
+qsort(L) :: L = [_] -> L
+qsort(L) :: L = [X, Y] & X < Y -> L
+qsort(L) :: L = [X, Y] -> [Y, X]
+qsort([P,..Rest]) :: partition(P, Rest) = (P1, P2) -> 
+        qsort(P1) <> [P,..qsort(P2)]
+
+
+fun msplit(list(num)) -> (list(num), list(num))
+msplit([]) -> ([], [])
+msplit(L) :: L = [_] -> (L, [])
+msplit([X1, X2,..L]) :: msplit(L) = (L1, L2) -> ([X1,..L1], [X2,..L2])
+
+%% merge and msort are used in QuProlog so we use different names
+
+fun merge1(list(num), list(num)) -> list(num)
+merge1([], L) -> L
+merge1(L, []) -> L
+merge1([X,..XR], [Y,..YR]) :: X < Y -> [X,..merge1(XR, [Y,..YR])]
+merge1([X,..XR], [Y,..YR]) -> [Y,..merge1([X,..XR], YR)]
+
+fun msort1(list(num)) -> list(num)
+msort1([]) -> []
+msort1(L) :: L = [_] -> L
+msort1(L) :: (L1, L2) = msplit(L) -> merge1(msort1(L1), msort1(L2))
+
+
+fun add1(num) -> num
+add1(N) -> N + 1
+
+
+fun twice(fun(T) -> T) -> fun(T) -> T
+twice(F)(V) -> F(F(V))
+
+
+%% Example Fact store/Query server
+
+def message_t ::= tell(dyn_term) | deny(dyn_term) | has_birthday(human)
+
+rel may_update(??dyn_term,!agent_handle)
+may_update(age_is(_,_),_)
+may_update(child_of(_,_),_)
+/* We use the may_update definition to restrict updates 
+ to certain relations and certain clients. In this case all clients are  
+ allowed to update any age_is or child_of fact. 
+ Such rules may be used to allow only certain clients to update
+ certain relations, even to restrict updates of certain facts to those
+ having certain argument values. For example, we might want 
+ to restrict updates of child_of(_,P)  facts to an agent with  
+ handle P@_ - the agent for the parent P. */
+
+act handle_messages()
+handle_messages() ~> 
+    fork(handle_a_message(), Name);
+    set_default_message_thread(Name)
+/* messages sent to the process that executes handle_messages()
+using the "to" message send action, in which no destination thread
+is specified, are automatically put in the message buffer of the 
+default message thread. This starts as the initial thread of the 
+process but can be changed using set_default_message_thread */
+
+act handle_a_message()
+handle_a_message() ~>
+    try 
+        receive { 
+            tell(Bel) from Ag :: 
+                ground(Bel) & may_update(Bel,Ag) ~> 
+                    write_list(["Remembering: ", Bel, nl_]);
+                    remember([Bel])
+            
+            deny(Bel) from Ag :: 
+                nonvar(Bel)  & may_update(Bel,Ag) ~> 
+                    write_list(["Forgetting:",Bel, nl_]);
+                    forget([Bel])
+         
+             has_birthday(P) from Ag ::
+                 nonvar(P) & may_update(age_is(P,_),Ag) ~>
+                     write_list(["Updating age of:",P, nl_]);
+                      birthday(P)
+           
+            %% special message pattern for query_at calls
+            %% from a client
+            remote_query(QueryStr) from_thread AgTh  ::
+                nonvar(QueryStr) ~> 
+                    write_list(["Agent thread ", AgTh," asked:", nl_,
+                                QueryStr, nl_]);
+                    %% respond_remote_query is a builtin action that
+                    %% parses, type checks, evaluates QueryStr and
+                    %% returns answers to the client thread AgTh
+                    respond_remote_query(QueryStr, AgTh)
+            
+            M from_thread Addr ~> 
+                write_list(["Invalid message ", M, " from ", Addr, nl_])
+            }
+        except {
+            %% All messages that are received are type checked as a term
+            %% If the test fails the message is consummed and this exception
+            %% is raised
+            input_term_type_error(_, Err) ~>
+                write_list(["Message type error: ", Err, nl_])
+            };
+    handle_a_message()
+
+%% If the above server runs with process name 'server' then a client can query
+%% the server (assuming the same type declarations) - e.g.
+%% (PAs :: PAs = [(Person, Age) ::age_is(Person, Age)]) query_at server
+%% This will (on the client side) instantiate PAs to the list of 
+%% (Person, Age) pairs with age_is(Person, Age) in the server's belief store
+%%
+%% (Person, Age :: age_is(Person, Age)) query_at server.
+%% This will, on backtracking, give instantiations for Person and Age for which 
+%% age_is(Person, Age) is true on the server side
+
+
+%% Below is a repeat forever version of the recursive action above.
+%% An advantage of this approach is that no garbage is built up
+%% (as happens with the recursive version above) and hence no garbage
+%% collection is required. repeat followed by a {...} sequence of one or 
+%% more actions is an abbreviation for repeat {...} until false.
+
+act rf_handle_messages()
+rf_handle_messages() ~> 
+    fork(rf_handle_message(), Name);
+    set_default_message_thread(Name)
+    
+act rf_handle_message()
+rf_handle_message() ~>
+    repeat 
+        try
+            receive { 
+                tell(Bel) from Ag :: 
+                    ground(Bel) & may_update(Bel,Ag)  ~> 
+                        write_list(["Remembering: ", Bel, nl_]);
+                        remember([Bel])
+                
+                deny(Bel) from Ag  :: 
+                    nonvar(Bel) & may_update(Bel,Ag) ~> 
+                        write_list(["Forgetting:",Bel, nl_]);
+                        forget([Bel])
+    
+                has_birthday(P) from Ag ::
+                   nonvar(P) & may_update(age_is(P,_),Ag) ~>
+                        write_list(["Updating age of:",P, nl_]);
+                        birthday(P)
+                
+                %% special message pattern for query_at calls
+                %% from a client
+                remote_query(QueryStr) from_thread AgTh  ::
+                    nonvar(QueryStr) ~> 
+                        write_list(["Agent thread ", AgTh," asked:", nl_,
+                                    QueryStr, nl_]);
+                        %% below is a builtin action that parses, type checks,
+                        %% evaluates QueryStr and returns answers to AgTh
+                        respond_remote_query(QueryStr, AgTh)
+                
+                M from_thread Addr ~> 
+                    write_list(["Invalid message ", M, " from ", Addr, nl_])
+                }
+           
+            except {
+                %% All messages that are received are type checked as a term
+                %% If the test fails the message is consumed and this exception
+                %% is raised
+                input_term_type_error(_, Err) ~>
+                    write_list(["Message type error: ", Err, nl_])
+            }
+            
+
+

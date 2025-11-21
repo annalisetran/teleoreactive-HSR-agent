@@ -1,0 +1,21 @@
+def gender ::=  male | female 
+def age_val ::= 0 .. 110           
+
+def man ::= roger | tom | bill | alan | graham | keith | sam | fred
+
+def woman ::= june | mary | rose | penny | sue | helen | veronica
+
+def human == man || woman
+
+dyn age_is(human,age_val)   
+
+dyn child_of(human,human)
+
+rel person(?human,?gender,?age_val)     
+
+rel descendant_is(!human,?human)       
+rel ancestor_is(!human, ?human)   
+
+def message_t ::= tell(dyn_term) | deny(dyn_term) | has_birthday(human)
+
+

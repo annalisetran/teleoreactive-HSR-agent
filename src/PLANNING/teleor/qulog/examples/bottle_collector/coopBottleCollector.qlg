@@ -1,0 +1,337 @@
+%% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+%% This program is for two agents each controlling a robot that cooperate to 
+%% avoid collisions and keep track of the total number of bottles collected
+
+%% To run:
+%% Start the Python simulator in one terminal:
+%% python bottles_centre_env.py
+%% In another terminal run:
+%% teleor -Acollector1
+%% [coopBottleCollector].
+%% go(1).
+%% and in another terminal run:
+%% teleor -Acollector2
+%% [coopBottleCollector].
+%% go(2).
+
+%% See README for how to interact with simulator
+
+int other_collected := 0
+int collected := 0
+
+
+def dir::= left | centre | right | dead_centre | far_left | far_right
+def thing::= bottle | drop | robot     
+
+tel_percept see_at(thing, int, dir), holding(), gripper_open(), over_drop(),
+    touching(dir), touching_wall(dir)
+
+tel_action  move(num), turn(dir,num), open_gripper(), close_gripper()
+
+dyn other_is_delivering()
+dyn delivering_sent()
+dyn stopped_received()
+dyn stopped_dir_sent(dir)
+dyn stopped_dir_received(dir)
+
+rel see(?thing, ?dir), next_to(?thing,?dir), close_to(?thing,?dir), 
+    near(?thing,?dir)
+
+see(Thing, Dir) <= see_at(Thing, _Dist, Dir)
+next_to(Thing, Dir) <= see_at(Thing, Dist, Dir) & Dist < 1
+close_to(Thing, Dir) <= see_at(Thing, Dist, Dir) & Dist < 17 
+near(Thing, Dir) <= see_at(Thing, Dist, Dir) & Dist < 33 
+
+
+def message ::= count(int) | delivering() | not_delivering() | 
+        stopped_dir(dir) | stopped()
+
+def display_info_t ::= display_info(message)
+
+% System declared type for following QuLog action is
+%     act handle_message(!message,!agent_handle) 
+% where message is the user defined application 
+% specific type defined above.
+
+handle_message(count(Count),_) ~>
+    other_collected := Count; 
+    forget([other_is_delivering()])
+handle_message(delivering(),_) ~>
+    remember([other_is_delivering()])
+handle_message(not_delivering(),_) ~>
+    forget([other_is_delivering()]) 
+handle_message(stopped(),_) ~>
+    forget([stopped_received()]);
+    remember_for([stopped_received()], 3)
+handle_message(stopped_dir(Dir),_) ~>
+    forget([stopped_dir_received(_)]);
+    remember_for([stopped_dir_received(Dir)], 3)
+% The forgetting and time limited remembering of the same fact 
+% in above two rules is to ensure the fact will be remembered for 3 secs. 
+
+% System declared type for  QuLog action below is
+%     act handle_invalid_message(!string, !agent_handle)
+% It is called from this agent's message handler thread whenever a message
+% is received that is not of type 'message', as defined above. The unexpected
+% message will be converted into a string before the action is called.
+
+handle_invalid_message(MessageStr,Agent) ~>                             
+    write_list(["Term denoted by string: ", MessageStr, nl_,
+                " from ", Agent, "not a term of required type 'message' "])
+
+
+tel communicating_collect_bottles(nat,nat,agent_handle)
+communicating_collect_bottles(Total,Id,OthrAg){ 
+       
+    $collected + $other_collected >= Total ~> ()
+    % The agents' joint goal of together collecting Total bottles is achieved. 
+    % First rule  may fire if other agent sends a message at any time updating
+    % other_collected. Any action the robot is executing at that time will be
+    % immediately terminated. 
+    
+    %%%  Reaction rules _____________________________________
+
+    % The 2 rules below are reaction rules for handling exceptional 
+    % events. Their guards are not sub-goals of the joint goal. 
+ 
+    close_to(robot, _)  or_while stopped_dir_received(_) ~> 
+            avoid_robot(Id,OthrAg) 
+    % This is to prevent the two robots colliding.
+    
+    touching_wall(_) & not see(bottle,_) 
+        or_while min_time 3 ~> move_from_wall()
+ 
+    %%% End of reaction rules. _________________________________.
+    
+    delivered() or_while min_time 3 ~>
+                [turn(right,0.7):2,move(2):1] ++
+                    update_and_communicate_count(OthrAg)
+    % The count update is a step towards achieving the task goal guard of 
+    % first rule of the proc. The communication of count when updated  
+    % ensures both agents have the same total of currently collected bottles.
+                 
+    holding() & next_to_centre(drop) ~> open_gripper()
+
+    holding() ~> get_next_to(drop) ++ tell_delivering(OthrAg)
+    % This agent tells the other agent its robot is delivering. 
+    % A delivering robot has priority when avoidng a collision in
+    % the avoid_robot(Id,OthrAg) proc.
+ 
+    next_to_centre(bottle) & gripper_open() ~> close_gripper()
+
+    next_to(bottle,Dir) & gripper_open() ~> turn(Dir,0.3)
+
+    gripper_open() ~> get_next_to(bottle)
+
+    true ~> open_gripper()
+    }
+
+tel move_from_wall()
+move_from_wall() {
+    % this procedure will normally execute for 3 secs. Only called if
+    % robot touches the wall with its front half. 
+    
+    not exists Dir touching_wall(Dir) ~> move(2)
+    % should now be facing away from the wall. move away for the
+    % remaining 1 sec of the 3 secs
+
+    touching_wall(far_left) commit_while min_time 2 ~> turn(right, 0.5)
+    touching_wall(far_right) commit_while min_time 2 ~> turn(left, 0.5)
+    % keep turning until approx facing directly away from wall. commit_while
+    % is used to ensure 2 secs of turning before the first rule is fired
+    
+    touching_wall(left) ~> turn(right, 0.5)  % will cause far_left rule to fire
+    touching_wall(right) ~> turn(left, 0.5)  % will cause far_right rule to fire
+    touching_wall(centre) ~> turn(left, 0.5) % will cause rule above to fire
+    }
+
+rel centre_dir(?dir)
+centre_dir(centre)
+centre_dir(dead_centre)
+
+act tell_delivering(agent_handle)
+tell_delivering(OthrAg) ~>
+    delivering() to OthrAg  ; 
+    display_info(delivering()) to env
+
+act tell_not_delivering(agent_handle)
+tell_not_delivering(OthrAg) ~>
+    not_delivering() to OthrAg  ; 
+    display_info(not_delivering()) to env
+
+rel next_to_centre(thing)
+next_to_centre(Thing) <= next_to(Thing, dead_centre)
+next_to_centre(Thing) <= next_to(Thing, centre)
+
+rel delivered()
+delivered() <= next_to(drop,_) & next_to(bottle,_) & gripper_open() 
+
+rel other_agent(!atom, ?agent_handle)
+other_agent(collector1, collector2)
+other_agent(collector2, collector1)
+
+act update_and_communicate_count(agent_handle)
+update_and_communicate_count(OthrAg) ~>
+    collected +:= 1 ;
+    count($collected) to OthrAg;
+    display_info(count($collected)) to env
+
+rel choose_direction(int,?dir)
+choose_direction(0,left)
+choose_direction(1,right)
+
+fun choose_dir() -> dir
+choose_dir() :: choose_direction(random_int(0,1), Dir) -> Dir
+
+tel get_next_to(thing)
+get_next_to(Th){               
+    next_to_centre(Th) ~> ()                              
+    close_to(Th,_)  ~> approach(Th,0.5,0.5) 
+    near(Th,_) ~> approach(Th,1.5,0.5)       
+    see(Th,_)  ~> approach(Th,2.5,0.3)
+    true ~> 
+        [make_turn():4, scan_move(left,1.5):0.5, 
+         scan_move(right,1.5):1.0,scan_move(left,1.5):0.5]
+    }
+
+tel make_turn() 
+make_turn(){
+        true ~> turn(choose_dir(),0.7)
+        }
+
+tel scan_move(dir,num)
+scan_move(Dir,S){
+    true ~> (move(S), turn(Dir,1))
+    }
+
+rel other_robot_is_stopped()
+other_robot_is_stopped() <= stopped_received()
+other_robot_is_stopped() <= stopped_dir_received(_)
+
+act send_stopped_dir_remember_sent(dir,agent_handle)
+send_stopped_dir_remember_sent(OtherRobotDir,OthrAg) ~> 
+    stopped_dir(OtherRobotDir) to OthrAg; 
+    remember_for([stopped_dir_sent(OtherRobotDir)], 3);
+    display_info(stopped_dir(OtherRobotDir)) to env
+
+act send_stopped(agent_handle)
+send_stopped(OthrAg) ~> 
+    stopped() to OthrAg; 
+    display_info(stopped()) to env
+
+fun op_dir(dir) -> dir
+op_dir(left) -> right
+op_dir(right) -> left
+op_dir(_) -> centre
+
+rel not_dead_centre_yet(thing,dir)
+not_dead_centre_yet(Th, Dir) <=
+    see(Th, D) & D \= dead_centre & D \= op_dir(Dir)
+
+tel approach(thing,num,num) 
+approach(Th,Fs,Ts){    
+    % Only active whilst see(Th,_) holds
+    see(Th,Dir) & centre_dir(Dir) ~> move(Fs)    
+    % Th seen at centre or dead_centre of camera image                       
+    see(Th,Dir) commit_while not_dead_centre_yet(Th, Dir) ~>
+            move(Fs),turn(Dir,Ts)        
+    % Dir is left or right. Turn to Dir as well as moving forward.
+    % Commit to this rule firing until Th is seen dead_centre.
+    }                             
+
+tel avoid_robot(nat,agent_handle)
+avoid_robot(Id,OtherAg) {
+    
+    stopped_dir_sent(OtherRobotDir) & stopped_dir_received(MyRobotDir) 
+        ~> avoid_move(Id,MyRobotDir,OtherRobotDir) 
+    
+    other_robot_is_stopped()  & near(robot,OtherRobotDir)
+        ~> () ++ send_stopped_dir_remember_sent(OtherRobotDir,OtherAg)
+    
+    true 
+        ~> () ++ send_stopped(OtherAg)    
+    }
+   
+       
+tel avoid_move(nat,dir,dir)
+avoid_move(Id,MyRobotDir,OtherRobotDir){
+
+    holding() & other_is_delivering() ~> 
+        avoid_based_on_Id(Id,OtherRobotDir)
+    % Both robots delivering bottles.  Robot with Id=1
+    % does avoiding move, other stays still..
+
+    holding() & not other_is_delivering() ~> ()
+    % My robot is delivering, other is not. Mine will wait for other to
+    % do avoidance move using rule below. 
+
+    not holding() & other_is_delivering() ~> my_avoid_move(OtherRobotDir) 
+    % Other robot delivering bottle, this one is not.  This
+    % robot makes avoiding move. 
+    
+    % ------------------------------------------------------------------
+    
+    % Rules below are for when neither robot is delivering.
+    
+    centre_dir(OtherRobotDir) & centre_dir(MyRobotDir)  ~> 
+        avoid_based_on_Id(Id,OtherRobotDir)
+    % Both robots facing each other.  Robot with Id=1
+    % does avoiding move, other stays still.
+    
+    MyRobotDir=OtherRobotDir ~> [turn(MyRobotDir, -0.5):0.8, move(1.0)]
+    % Each robot sees the other  in same left or right direction. 
+    % Each turns slightly in opposite direction to increase divergence
+    % of their paths. They then move forward.
+    
+    centre_dir(MyRobotDir) ~> 
+        [turn(OtherRobotDir,-0.5):0.8, move(1.0)]
+    % Other robot sees this ag's robot in centre view. Other robot will do 
+    % nothing, as per rule below, until it can no longer see this ag's robot. This 
+    % ag's robot turns to point behind the other robot,  then moves forward.
+    
+    centre_dir(OtherRobotDir)  ~>  ()
+    % This robot waits until other robot no longer seen. Other robot will 
+    % be doing an avoidance move using rule above.
+        
+    OtherRobotDir=right ~> [turn(left, 0.5):1.0, move(1.0)]
+    % The robot paths are converging.  This one, seeing other on its right,  
+    % turns slightly away from the other robot before moving forward. 
+    
+    OtherRobotDir=left  ~> () 
+    % The robot paths are converging.  This one, seeing other on its left, waits 
+    % for other rob to take avoiding action as in rule above. 
+    }
+
+tel my_avoid_move(dir)
+my_avoid_move(OtherRobotDir){
+    
+    centre_dir(OtherRobotDir)  ~> 
+        [turn(left, 0.5):1.5, move(1.0)]
+    true ~> 
+        [turn(OtherRobotDir,-0.5):1, move(1.0)] 
+    }
+
+tel avoid_based_on_Id(nat,dir)
+avoid_based_on_Id(Id,OtherRobotDir){
+    Id=1 ~> ()
+    true ~> my_avoid_move(OtherRobotDir)
+    }
+    
+act go(nat)
+go(Id) :: this_process_name(Agent) & other_agent(Agent, OtherAgent) ~>
+        start_agent(env@localhost, updates) ;
+        start_task(communicating_collect_bottles(20, Id, OtherAgent), _)
+

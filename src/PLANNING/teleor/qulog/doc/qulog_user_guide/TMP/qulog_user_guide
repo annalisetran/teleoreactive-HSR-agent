@@ -1,0 +1,2583 @@
+\documentclass[11pt]{article}
+\usepackage[final]{graphicx}
+\usepackage{color}                    
+\definecolor{lightgray}{rgb}{0.8,0.8,0.8}
+\usepackage{alltt,amsmath,amssymb}
+\usepackage{framed}
+\usepackage{textcomp}
+\usepackage{makeidx}
+\makeindex
+
+\usepackage{hyperref}
+\usepackage{xcolor}
+\hypersetup{
+    colorlinks,
+    linkcolor={red!50!black},
+    citecolor={blue!50!black},
+    urlcolor={blue!80!black}
+}
+\pagestyle{plain}
+
+\newcommand{\QL}{{\tt QuLog}}
+\newcommand{\QuP}{{\tt Qu-Prolog}}
+\newcommand{\BS}{{\it Belief Store}}
+\newcommand{\TR}{{\tt TeleoR}}
+\newcommand{\PD}{{\tt Pedro}}
+
+
+\title{ \QL\ User Guide}
+\author{Keith L. Clark and Peter J. Robinson}
+
+\begin{document}
+\maketitle
+\newpage
+\tableofcontents
+\newpage
+\section{Introduction}
+
+This user guide assumes some familiarity with the concepts of logic and functional programming and of multi-threaded and distributed programming. It is best read  in conjunction with the \QL\ specific sections of the \QL/\TR\ Reference Manual.
+\subsection{What is \QL}
+\QL\ is  a  {\em flexibly}\footnote{A \QL\ program can have a mixture of compile time and runtime type checks. The latter are needed as the language allows union types.  It also has a {\tt term} type which is the union of all possible sub-types of the {\tt term} type, i.e. all possible data terms.}{\em polymorphically typed} multi-threaded rule based language comprising {\em relation}, {\em function}  and {\em action} rules.  
+
+The relation and action rules are also moded: their type declaration also specifies which arguments must be {\it ground} (variable free) in any call,  which  arguments will become  ground, and which may be left unground, after successful evaluation of a call. Action rules form a top layer of rules in that actions  can call functions and relations but not vice versa.  The language is {\em higher order} in that named program defined relations, functions and actions can be passed as arguments and returned as values.  A special class of {\it dynamic} relations are defined solely by facts\footnote{Ground unconditional statements.}. Primitive actions allow the update of the dynamic relations in a running  \QL\ process.  
+\QL\ is an  {\em integrated} language in that function calls can appear as or inside  term arguments to relation and action calls, and arbitrary relational queries can be used as guards of function and action rules. 
+%It is also {\em multi-threaded} in that a \QL\ process can comprise multiple time-shared threads each execting an action call.  
+
+\QL's  intended use is the implementation of applications comprising {\em multi-threaded communicating agent processes}. Each process thread executes a \QL\ action. The relation, function and action rules of the agent program  are all callable by any thread, as are the  dynamic relation facts of each agent process.  The dynamic facts, which encode the  changing {\em beliefs} of the agent, can also be updated by any thread using {\tt remember}, {\tt forget} and {\tt forget\_remember} atomic actions\footnote{If need be a sequence of updates can be executed atomically by prefixing a \{...\} bracketed sequence of updates with {\tt atomic\_action}}.   The static relation and function rules  constitute  the  agent's {\em declarative knowledge}\footnote{An agent can learn by having declarative knowledge that queries beliefs which are modified by its experience.}. The action rules constitute its {\em behavioural knowledge}.
+
+Typically each agent  process has its own distinct knowledge rules and belief facts. The threads within a process communicate via atomic updates of the belief facts, or by asynchronous thread-to-thread communication. Threads in different processes communicate asynchronously via a \PD\footnote{See https://staff.itee.uq.edu.au/pjr/HomePages/PedroHome.html} communication server, or via an {\tt MQTT}\footnote{See mqtt.org} server.  
+
+\PD\ is companion software that supports name registration of \QL\ processes and  TCP/IP based communication of \QL\ data terms between processes. A \PD\ process is a message routing server supporting both email style addressed communication as well as publish/subscribe communication. \PD\ subscriptions are tests of published messages expressed as \QL\ queries using  a special set of \PD\ supported primitive relations.  \PD\ notifications are \QL\ data terms\footnote{Using C interface code ROS  (see https://www.ros.org) messages can also be received and sent allowing \QL\ agents to interface to ROS applications.  Example interface code is provided in the \QL\ distribution.}.
+
+An {\tt MQTT} server supports publish/subscribe communication of lists of attribute/value pairs. It allows a \QL\ application to monitor and control a network of low level devices using  {\tt MQTT} messages for data and control purposes. 
+
+
+A special case agent application is when each agent process is linked to a multi-purpose mobile robotic device in a physical environment.   The agents are then {\em robotic agents}.  The  {\tt TeleoR}\footnote{\TR\ is an enhancement of Nils Nilsson's Teleo-Reactive Rule  language for programming robotic agents. See Nilsson NJ (1994) Teleo-Reactive programs for agent control. J Artif Intell Res 1: 139-158} User Guide introduces a syntactic  extension of \QL\ which provides a specialised language for programming the information gathering and physical control threads of such agents.  
+
+\QL\ programs are developed using its interpreter invoked using the command {\tt qulog}. 
+This has a debugging {\tt watch} command that allows all calls to one or more relations and functions to be logged.  When fully developed and debugged the application can be compiled\footnote{This is a two stage process. \QL\ is first translated to \QuP\ and then compiled to the \QuP\ abstract machine code that is emulated in C.} using the command {\tt qulogc} as illustrated in Section \ref{Building a Runtime Application}. 
+
+\subsection{Multi-threaded processes}
+\label{thread comms}
+
+The threads of a \QL\  process each execute  an action call.    The primitive actions of the language include: file I/O, thread creation and termination, inter-thread and inter-process communication,  and {\em updates} of the dynamic relations.  As already mentioned, atomically updating the dynamic relations is one way that different threads can communicate.  A thread can be made to suspend waiting for an update of the dynamic relation store (made by another action thread) needed to answer a query, a query that directly or indirectly queries the dynamic relations.  This can be used to co-ordinate thread activity.  An optional time limit can given for how long the thread  should suspend waiting for the query to succeed. 
+
+Threads  can also co-ordinate their activities by  the asynchronous communication of messages. Each thread has a single buffer which holds all messages sent to the thread, ordered by time of arrival, and not yet processed by the thread. Periodically the message buffer can be searched by the thread looking for a message of a certain form and/or from a particular other thread. Threads  within a process must have distinct {\it ThreadNm} atom names (see the \QL\ Reference Manual for the syntax of atoms).
+
+The same inter-thread message send primitive, {\tt to\_thread}, can be used to send a message from a thread in one \QL\ process to a thread in a different process via the \PD\ server to which each process has connected and registered a name, {\it ProcessNm},  a \QL\ atom. Each process must \PD\ register a different name\footnote{Strictly speaking only different process on the same host must register a different name, i.e. the pair {\it ProcessNm}, {\tt HostNm} must be unique.}. This non-local thread is identified using a {\it handle} of the form {\it ThreadNm}:{\it ProcessNm}, when the process is on the same host, and {\it ThreadNm}:{\it ProcessNm}@{\it HostNm} when it is  on a different host\footnote{{\it ThreadNm}:{\it ProcessNm} is shorthand for {\it ThreadNm}:{\it ProcessNm}@{\tt localhost}}. {\it ProcessNm} is the \PD\ registered name of the receiving \QL\ process.  
+
+\subsection{Multi-threaded agent processes}
+
+A \QL\  agent application usually comprises a set of independent
+multi-threaded agent processes each of which has an its own distinct knowledge and beliefs.  Some beliefs may be shared, but only if explicitly communicated or placed in a communal repository.  
+ 
+ For agent applications each \QL\ process is viewed as an agent. Its action threads constitute the separate but usually {\em co-ordinated activities} of the agent. The activities are co-ordinated either by manipulation of some of the agent's beliefs in the manner of an internal Linda\footnote{See Carriero, N. and Gelernter, D. {\em Linda in context}, Commun. ACM 32, 4 (Apr. 1989) 444-458} tuple store, or by intra-agent messages passed between the activity threads using {\it MsgTerm} {\tt to\_thread} {\it ThreadNm} message send actions.  
+
+
+
+Typically one thread, the initial thread within an agent process, spawns and occasionally terminates the other threads.  The other threads  may be temporary threads forked to answer queries sent as messages from other agents, or they can be  task threads. The tasks could be {\it achieve once} tasks, {\it achieve and maintain} or {\it monitor and control} tasks. An achieve task succeeds when the agent can infer the goal of the task from its current beliefs. This may be because another agent has told it something, or because some sensor interface sends a new perception belief to the agent.  
+
+The activities of the collection of agent's can be co-ordinated by updates of information stores accessible by but external to the agents, e.g. an external Linda tuple store, or by inter-agent message passing.  The message passing can use {\it MsgTerm} {\tt to\_thread} {\it ThreadNm}@{\it AgentNm} or {\it MsgTerm} {\tt to} {\it AgentNm} message send actions.  The latter action will  send the {\it MsgTerm} to the  message handling thread within the {\it AgentNm} agent process. By default this is the initial thread of the process but this can be changed using the {\tt set\_default\_message\_thread} built-in action.
+
+A sent message, which is a  \QL\  data term,  is copied and placed
+at the back of the destination thread's message queue.   A {\tt receive} primitive allows a thread to search its message queue from front to
+back for a message term that unifies with one or more message pattern + optional test constraints.  
+The thread may suspend waiting for a particular message, with an optional timeout.  
+
+ As already mentioned, {\tt Pedro}  also supports message
+routing of unaddressed notifications using lodged subscriptions.  This allows 
+multi-casting of a message to any agent  that has lodged a subscription with {\tt Pedro} 
+that {\em covers}  the message term. 
+
+\subsection{Rule syntax}
+
+Each relation, function and action is
+defined by a contiguous sequence of rules.   The rule head is a call pattern for a call to the particular relation, function or action. The most general call pattern is {\tt rfa(X1,...,Xk)} where {\tt rfa} is the name of a k-argument relation,  function or action and {\tt X1,...,Xk} are different variables.  Specialisations of this have repeated variables, constants or data terms as arguments.  
+%As already mentioned, the special class of {\it dynamic} relations are defined solely by sequences of facts: variable free unconditional assertions. 
+
+\newpage
+Relation rules have four forms:
+\begin{alltt} 
+{\em RelationCallPtn}
+
+{\em RelationCallPtn} <= {\em RelationalQuery}
+    
+{\em RelationCallPtn} :: {\em GuardTest}
+
+{\em RelationCallPtn} :: {\em GuardTest} <= {\em RelationalQuery}
+\end{alltt}
+
+\noindent Function rules have the two forms:
+\begin{alltt}
+{\em FunctionCallPtn} -> {\em FunctionCallTerm}
+
+{\em FunctionCallPtn} :: {\em GuardTest} -> {\em FunctionCallTerm}
+\end{alltt}
+
+\noindent and action rules have two forms:
+\begin{alltt}
+{\em ActionCallPtn} ~> {\em ActionCallSequence}
+    
+{\em ActionCallPtn} :: {\em GuardTest} ~> {\em ActionCallSequence}
+\end{alltt}
+
+\noindent {\tt ::} should be read as `such that', {\tt <=} as `if', {\tt ->} as `reduces to', and {\raisebox{1pt}{\(\thicksim\)}}{\tt >}  as `executed as'. 
+
+Each {\em GuardTest}  is a relation call query.   In a {\em GuardTest}  and a {\em RelationalQuery} conditions are separated by {\tt `\&'}. In an {\em ActionCallSequence} action calls are separated by {\tt `;'}. 
+
+For functions and actions only one rule is ever used to evaluate a call. It is the first rule with a call pattern head that unifies\footnote{Unification finds a most general substitution of the variables in the  call and in the rule's call pattern head that makes the two identical. Since function calls in \QL\ are always fully instantiated the unification for a function call is just a pattern match against the rule's call pattern.} with the call and, if there is a guard test, the test succeeds\footnote{A function or action rule with no guard test is equivalent to one with the guard test {\tt true()}. This is {\em not} the case for an unguarded relation rule.}. If there is no such rule there is a runtime error.  In an action or function rule there may be local backtracking to find a solution to the guard test but once the guard succeeds there is no further backtracking to search for alternative solutions to the guard.  
+%Similarly if there is no rule that can be used to evaluate an action call inside a rule being used to evaluate an action call there is a runtime error. The same applies if there is no rule that can be used to evaluate a function call inside the function call expression of a function rule, or a function call inside action call of an action rule, there is a runtime error.
+
+For relation call evaluation several rules may be used to find alternative  solutions to the call.  A backtracking evaluation  tries the rules in before/after order. Each rule with a call pattern head that unifies with the call and, if present, a guard test that succeeds,  is a candidate for finding solutions to the call. The different solutions to the {\em RelationalQuery} of the rule body, if any, provide different solutions to the relation call. However, {\it no more  rules} will be tried after a rule has been used that has a guard test that succeeds.  The success of the guard test terminates the search for solutions using {\it later} rules\footnote{In effect the {\tt ::} of each of the rule forms behaves like a Prolog {\tt !} cut.}. Failure to find any candidate rules for a call, or failure to find any solutions to the call from its candidate rules,  is {\em not} an error. It just means there are no solutions to that relation call.  The result is backtracking to find an alternative solution to the immediately preceding relation call, if there is one, in the relation call query being evaluated. 
+\par
+
+
+
+
+%\subsection{More on agent applications}
+
+
+ %Each agent thread has a
+%name, which is unique within the agent, and  executes an action call. Each thread can
+%atomically query the agent's current belief facts using  the agent's fixed knowledge.  It can also atomically update these belief facts using {\tt remember}, {\tt forget} and {\tt forget\_remember} actions.  Typically one thread, the initial thread within an agent process, spawns and occasionally terminates the other threads.  The other threads answer queries or undertake tasks. The tasks can be {\it achieve once} tasks, or {\it achieve and maintain} tasks. The task succeeds when the agent can infer the goal of the task from its current beliefs. This may be because another trusted agent has told it something, or because some sensor interface sends a new perception belief to the agent.  
+%klc
+
+%Changing the shared memory of dynamic
+%facts is the main way that the agent's threads communicate. As mentioned earlier, a
+%thread can also asynchronously communicate with other internal agent threads my sending messages.  They are sent  
+%using the {\tt to\_thread}  action, and picked up from the threads message queue using a {\tt from\_thread} action.  Here the receiver and sender are identified by their unique thread names.  
+%Each thread has a message queue that only it can access. 
+%A sent message, which is a  \QL\  data term,  is copied and placed
+%at the back of the destination thread's message queue.   A {\tt receive} primitive allows a thread to search its message queue from front to
+%back for a message term that unifies with one or more message pattern + optional test constraints.  
+%The thread may suspend waiting for a particular message, with an optional timeout.  
+%message satisfying the test is sent to it by another thread, with an optional timeout.  
+
+%\subsection{Inter-agent communication}
+
+%The same {\tt to\_thread} message send action can be used to send a copy of a 
+%message to a thread in another agent process providing both have registered their agent process names with the same \PD\ server.   When an agent is launched it typically connects and registers its  agent name with the {\tt Pedro} server to which all the agents to which it will exchange messages will also connect and register their names\footnote{If the agents will only need to communicate using publish/subscribe communication they only need connect to the \PD\ server or to an MQTT server.}. This name must be unique for the host on which it is running.  In this case the
+%destination thread must be identified by a term  {\it Thread\_name:Agent\_name} that gives not only the
+%thread name, but the agent process name.  If the agent is running on a
+%host different from the one on which the sending agent process is
+%running, the different host must also be identified using a destination
+%address of the form {\it Thread\_name:Agent\_name}@{\it Host\_identifier}\footnote{For example {\tt thread2:agent1@`zeus.doc.ic.ac.uk'}}. 
+
+%Sometimes it is best to send a message to a default message handling thread
+%within an agent process. The default message handling thread is the initial thread of the agent but this can be dynamicaly changed using the {\tt set\_default\_message\_thread} action primitive. To send a message to the default thread, the {\tt to} action can be used with destination 
+%just the agent identified as {\it Agent\_name}@{\it Host\_identifier}, or just {\it Agent\_name}
+%if the destination agent is running on the same host as the sending agent.
+
+%Such inter-agent
+%communication routes the message via a {\tt Pedro} communication server\footnote{See {\tt https://staff.itee.uq.edu.au/pjr/HomePages/PedroHome.html}}.  
+% When an agent is launched it typically connects and registers its  name with a {\tt Pedro} server. This name must be unique for the host on which it is running,  The server may be located anywhere on
+%the internet of hosts reachable from the agent's host machine. A message sent to a thread in another \QL\ process, which has registered with the same {\tt Pedro} server, is routed to the other \QL\ process via the server which puts it at the back of the message buffer for the named thread. It is put into a default message handling thread, usually the initial thread within the agent,  if the destination address  for the message has the form {\it AgentNm@HostNm}, with no thread name. 
+
+\par
+
+%A \QL\ application can also receive and send MQTT notifications routed via an MQTT publish/subscribe server.
+
+
+
+\par
+
+
+%All \QL\  code has to have its type declared using system and user declared types. Code is defined using a sequence of relation, function and action defining rules. At this time \QL\  has no module system, so each consulted file must use different type and code names for its definitions.  
+
+%Debugging is done by putting a {\tt watch} on any number of relations, functions and actions. This invisibly transforms their code to display each call, the input and output bindings of the unification or match of the call with each rule that can be used, and optionally the instantiated body of the rule
+%before it is used. An {\tt unwatch} command reverses the code transformation. 
+
+%The declarative kernel was developed to complement our robotic agent programming language \TR, to provide a \TR\ programmed robotic agent with its reasoning capability.   \TR\ was inspired by and builds upon Nilsson's Teleo-Reactive Procedures language.
+%This guide assumes familiarity with logic programming and with functional programming in a typed language, and with   A tutorial introduction to the QuLog declarative subset is given in, @code{doc/tutorial/QuLog.pdf}.
+
+
+\subsection{Overview of the rest of this User Guide}
+
+
+
+
+
+In Section \ref{types} we introduce the \QL\ type system and the key sub-type relation for both data terms and code.  In Section \ref{syntax} we say more about program syntax and program layout.  In Section \ref{declarations} we go into more detail about type declarations.
+
+In Section \ref{relational} we  give examples of \QL\ relation definitions  and in  Section \ref{functional} we exemplify \QL\  function definitions.  In Section \ref{actions} we discuss the action rule part of \QL\ and the optional use of action wrappers of declarative code to catch runtime errors. 
+
+\QL\ has an interactive interpreter into which \QL\ programs can be consulted and tested with a  series of queries and action calls.  The use of this interpreter for the development and debugging of \QL\ programs is described in Section \ref{interpreter}. 
+
+In  section \ref{multiProcessAps} we describe a simple agent application comprising information agents and a broker agent that routes queries to the appropriate information agents. 
+
+
+\QL\  is built on top our  \QuP\ system.  Its  programs are compiled into \QuP\ clauses and hybrid \QL+\QuP+C applications can be built exploiting the C interface of \QuP. Section \ref{Language Extensions} shows how \QuP\ defined relations can be called from \QL, and \ref{Mixed Level Applications} shows how \QL\ defined relations and actions can be called from \QuP.  
+
+
+\par
+
+All   \QL\ and \TR\ program files have a {\tt.qlg} extension.  
+The examples below are nearly from  the file
+ {\tt examples/introduction/qlexamples.qlg} of the \QL/\TR\ distributiion. 
+ 
+\newpage 
+\section{\QL\ Type system}
+\label{types}
+\QL\ relations and actions are both {\em typed} and {\em moded}. The mode is given as a prefix annotation of the type of each argument.  The mode specifies, for every call, if the argument:
+\begin{itemize}
+\item  must be given as a {\em ground term}  (i.e. a variable free term), annotation {\tt !} or {\em no} annotation
+\item may be ground but if not {\em will be ground} should the call succeed, annotation {\tt ?} 
+\item may be ground but if not could {\em still not be ground} should the call succeed, annotation {\tt ??}  
+\end{itemize} 
+
+\QL\  functions are just typed,  as all their arguments must be given as ground terms and functions must return ground term values. 
+
+The types and modes are so that we can guarantee at compile time  that there will be no runtime failures or errors due to wrongly typed arguments, or due to arguments that {\em must} be given not having been computed before the call, particularly calls to \QL\ primitives. We need this to make \QL\ (and \TR) a serious agent and robotic programming language. The result of these constraints is that all but a handful of  primitives of \QL, and, for a typical robotic agent application, {\em most} program defined relations, have all their arguments become ground if they succeed.   
+
+\par
+
+The compiler   does type
+{\em checking} of function, relation and action definitions,  assisted  by  type {\em inference} 
+for data  terms and variables.   Type inference on data terms will  assign the term the minimum type in the sub-type lattice.
+
+We believe that type declarations, linked with mode of use declarations for relations and action procedures, are very useful documentation of the program.  Also, because we have union types and sub-types,  type inference on code could be very complex in some cases.  
+
+\par
+\subsection{Data Sub-type Relation}
+All \QL\ data types are partially ordered by a sub-type relation. For example, each of the primitive data types {\tt nat},   {\tt int}, {\tt num}, {\tt atomic}, {\tt term} is a sub-type of all the types that follow it in the sequence. The \QL\  {\tt atom} is a syb-type of {\tt atomic}, as is the \QL\  {\tt string} type\footnote{A \QL\ string is not a list of character codes as it is in Prolog.  It is a packed sequence of byte codes.}. 
+
+At the top of the data sub-type tree is {\tt term}. Every value of a primitive type, or a program defined data type, is a {\tt term}, and every value of the {\tt term} type is either a value of a primitive type or a program defined data type. 
+
+A   sub-type value can be given or returned instead of a required type. All \QL\ primitives will accept   sub-type values returning   sub-type values if need be. 
+A complete definition of the data sub-type relation is given in the {\tt QuLog/TeleoR} Reference Manual.  
+
+
+\subsection{Code Sub-type Relationship}
+Intuitively, a higher order type {\tt HTsub} is a sub-type of a higher order type {\tt HT} if:
+\begin{itemize}
+\item they have the same number of arguments
+\item code {\tt Csub} of type {\tt HTsub} can be called in all the modes of use of code {\tt C} of type {\tt HT}
+\item {\tt Csub} will accept all argument values that can be given in a call of {\tt C}
+\item and will return values of the same types or sub-types of the values that would be returned by {\tt C}. 
+\end{itemize}
+
+\noindent These conditions mean that for a relation or action type {\tt HT}, if the i'th argument in {\tt HT}:
+\begin{itemize}
+\item  is moded {\tt !} then the i'th argument in {\tt HTsub} must be moded {\tt !}, {\tt ?} or {\tt ??} and be of the same type
+ or a supertype of the type of the i'th argument of {\tt HT}
+\item  is moded {\tt ?} then the i'th argument in {\tt HTsub} must also be moded {\tt ?} and be of the same type as the i'th argument in {\tt HT}
+\item  is moded {\tt ??} then the i'th argument in {\tt HTsub} must  be moded {\tt ??} or {\tt ?}  and be of the same type as the i'th argument in {\tt HT}. 
+\end{itemize}
+
+\noindent For a function type {\tt HT} the sub-type conditions mean that:
+\begin{itemize}
+\item  for each argument type {\tt T} of {\tt HT} the corresponding argument type {\tt Tsub} of {\tt HTsub} must be either the same as {\tt T} or a super-type of {\tt T}
+\item the value type of {\tt HTsub} must be the same or a sub-type of the value type of {\tt HT}.  
+\end{itemize}
+
+The code sub-type relationship must hold between the type {\tt HTsub} of a code argument {\tt Csub} given in a call to a higher order function, relation or action and the code type {\tt HT} declared for that code argument.  Where the higher order function, relation or action returns a code value then this must have a type which is a code sub-type value of the declared return code type.
+
+\subsubsection{Code Sub-type Examples}
+
+A function {\tt Fsub} of type {\tt int -> int} can be used in a type safe way where a function {\tt F} of type {\tt nat -> num} is required. This is because {\tt Fsub} will accept any {\tt nat} argument that could be given in a call to {\tt F},  and {\tt Fsub} will return an  {\tt int} value, which is a {\tt num} value.  So {\tt int -> int} is a sub-type of {\tt nat -> num}. 
+ 
+A relation {\tt Rsub} of type {\tt rel(?num,?nat,?list(atomic))} allows all the modes of use of a relation {\tt R} of type {\tt rel(!int,?nat,!list(atom))}. Also any type and mode correct ground call of  {\tt R} is a type correct ground call of {\tt Rsub}. Finally,  any value returned by binding a variable given as second argument of a call of {\tt Rsub} is a type correct value, namely {\tt nat}, for the binding of a variable second argument of a call to {\tt R}. So
+{\tt rel(?num,?nat,?list(atomic))} is a sub-type of {\tt rel(!int,?nat,!list(atom))}.
+
+The second condition would not hold if {\tt Rsub} had moded type {\tt rel(?nat, ?nat,?list(atomic))} as {\tt Rsub} cannot be given an {\tt int} value as first argument.  So {\tt rel(?nat,?nat,?list(atomic))} is not a sub-type of {\tt rel(!int, ?nat,!list(atom))}. The third condition would not hold if {\tt Rsub} had moded type {\tt rel(?num,?int, ?list(atomic))} as it may return an {\tt int} value binding for a variable second argument of a call, which is a super-type of the type {\tt nat} that must be returned by a similar call to {\tt R}. So {\tt rel(?num,?int, ?list(atomic))} is not a sub-type of {\tt rel(!int,?nat,!list(atom))}.
+
+More examples of the code sub-type relationship and a more formal definition of the relationship are given in the {\tt QuLog/TeleoR} Reference Manual.
+
+\subsection{Type flexibility and runtime type checking}
+To retain some of the flexility of Prolog \QL\ has {\em union} (aka {\em disjunctive}) types.  
+For example, using the union type:
+\begin{alltt}
+def intOrstring == int || string
+\end{alltt}
+we can specify that a relation {\tt r} accepts either integers or strings in the first argument position with a type declaration:
+\begin{alltt}
+rel r(intOrstring,...)
+\end{alltt}
+ We can then use the runtime {\tt type}  primitive to determine which type of value has been given in the call.  Typically we would have two rules for a call pattern {\tt r(A1,...)}, one with the guard test {\tt type(A1,int)} and the other with the guard test {\tt type(A1,string)}. In \QL\ run-time tests using a {\tt type} call can be done for any primitive type, any program defined type, as well as any higher order type. A {\tt type} check succeeds if the value tested has the specified type or a sub-type of the specified type.  
+ 
+{\tt [1,a,-6,[b,8,3.2]]} is a ground list term of type {\tt list(integer || atom || list(atom || num))}.  The terms {\tt [1,U,"hi"]}, {\tt [1,a,-6,..L]},
+{\tt tree(L,3,R)}  are not ground as each contains at least one variable\footnote{As in Prolog, a variable is named by a sequence of letters, numerals and underscores beginning with an upper-case letter or an underscore. Underscore on its own names a unique anonymous variable, so different occurrences of underscore in the same term or rule denote different anonymous variables.}. 
+
+
+
+\newpage
+\section{Syntax}
+\label{syntax}
+\subsection{Non-extensible syntax}
+\QL\ does {\em not} have an operator precedence syntax and its syntax is not extensible. Each k-adic data constructor functor, or  function, relation or action name,  must be a unique\footnote{So unlike Prolog, in \QL\ one cannot use the same name  with a different number and type of arguments.} sequence of letters, numerals and underscores beginning with a lower case letter. It must also be written immediately next to its tuple of arguments as in {\tt n(...)}. The use of a functor, function, relation or action with no arguments must be written as {\tt n()}. 
+ There is a collection of reserved names that are used for the builtin operators and primitive functions, relations and actions. 
+
+% and each program statement must start  at the left end of a new line and a continuation of a program statement must always be indented by at least one space of tab character. In other words what is a good program layout for a Prolog program is a syntax requirement.
+
+\par
+\subsection{Python inspired program layout}
+Unlike Prolog, there  is   {\em no need} to use  a full stop followed by a white space character to  separate different program statements, i.e. the relation, function and action rules, type definitions and type declarations. 
+Instead \QL\ borrows   from Python. 
+
+All program statements  {\em must} begin at the left end of a new line.  Each can be continued over several lines but all except the first line must be {\em indented} by at least one space or tab. Starting rules at the left end of a newline, and indenting a continuation of a rule by several spaces, or one tab,  is good program  layout.  Our necessary indentation  for continuation of a rule enforces this, making programs more readable. 
+
+As a gesture towards Prolog programmers, including ourselves, a full stop followed by a newline, or a full stop, spaces then a newline, {\em may} also be used at the end of a program statement. The full stop is {\em ignored} by the \QL\ parser. Even if you use fullstops as terminators,  you {\em cannot} put two statements on the same line of the program file. Each new statement must still start at the left end of a new line.
+
+Apart from requiring a predicate or functor to be adjacent to its {\tt (...)} bracketed arguments, and treating a space or tab at the beginning of a new line as a continuation marker, \QL\ is tolerant of spaces. They should be used to aid readability of the program. 
+
+%\subsection{Terminating an interpreter query or command}
+While a fullstop followed by a newline is not required to signal then end of a program rule it {\em is required} to signal the end of an interpreter entered query or command.  The query or command can be entered over several lines and each newline may begin at the left end of the line. 
+
+
+%\subsection{Editor support}
+To aid in editing \QL\ programs we have supplied an emacs mode and a simple Python/Tkinter based editor (quled).  Both use tab to provide readable code layout,  and both provide syntax highlighting. 
+
+
+\subsection{Variables, atoms and code names}
+
+As in Prolog, alphanumeric names beginning with an upper case letter or underscore {\tt \_}, or underscore on its own, are variables. To make such a name an {\tt atom} (aka symbol), or the name of a relation, function or action, it can be singly quoted as in {\tt 'Peter'}, {\tt 'Father\_of'}, {\tt '\_xyz'}.  
+
+\par
+
+An alphanumeric name that begins with a lower case letter, which can contain under-scores, is an {\tt atom} and is used to denote individual things or names of data constructors, relations, functions or actions. Surrounding such a name with single quotes has no effect at all, and they will be dropped when the atom is displayed. Name overloading is not allowed. Names of data constructors, relations , functions, actions and individuals must be disjoint sets. 
+
+
+\par
+\subsection{Lists, sets and strings}
+
+Lists and list patterns are as in Prolog but we also allow {\tt [H,..T]} as equivalent to \verb~[H|T]~ and {\tt [H,..]} as equivalent to \verb~[H|_]~.
+
+\QL\ has sets as a separate data type from lists with convertors for mapping between the two data types. Both can be created using  comprehension expressions.  
+
+{\tt L=[1,6,2,-9,2]} is a list of 5 integers whereas {\tt S=\{1,6,2,-9,2\}} is a set of 4 different integers and will be displayed as {\tt \{-9,1,2,6\}}. 
+
+{\tt [U::U in L \& U>0]} is the list {\tt [1,6,2,2]} and {\tt \{E::E in L \& E>0\}} is the set {\tt \{1,2,6\}}. 
+
+Sets are manipulated using union, intersection and difference operators: {\tt union}, {\tt inter}, {\tt diff}.  {\tt \{1,2,3\} union \{1,4\}} is {\tt \{1,2,3,4\}}, {\tt \{1,2,3\} inter \{1,4\}} is {\tt \{1\}}, and {\tt \{1,2,3\} diff \{1,4\}} is {\tt \{2,3\}}.
+
+Lists are can be manipulated as in Prolog using a builtin {\tt append} relation with its many modes of use as illustrated in .  \ref{codetypes}. To append two ground lists we can alsio use a builtin append operator {\tt <>}.  {\tt [a,b] <> [c,d]} is the list {\tt [a,b,c,d]}.  The list  infix split operator is {\tt <>?}. It can only be used on the right hand side of the pattern decomposition operator {\tt =?} to decompose a ground list into any number of sublists.  Where {\tt L=[1,3,0,4,0]} 
+\begin{alltt}
+L =? L1 <>? [0] <> L2
+\end{alltt}
+has two solutions: {\tt L1=[1,3], L2=[4,0]} and {\tt L1=[1,3,0,4], L2=[]}.
+Its use is further illustrated in sub-section \ref{listdecomp}. 
+
+Strings, which are stored as a packed sequences of byte codes not as list of byte codes as in Prolog,  can be  concatenated using the infix string concatenation operator {\tt ++}.  The  string  decomposition operator is  the infix string {\tt ++?}.  As with {\tt <>?} it can only be used on the right hand side of {\tt =?}. 
+
+Where {\tt S} is the string "hello there bill" the decomposition query:
+\begin{alltt}
+S =? S1 ++? " " ++? S2
+\end{alltt}
+has two solutions: {\tt S1="hello", S2="there bill"}, {\tt S1="hello there", S2="bill"}. Its use is further illustrated in sub-section \ref{stringProc}.
+
+A multi-typed {\tt in} primitive can be used to access, generate or test,  elements of sets, lists and  strings.  String elements are single character sub-strings. 
+
+A multi-typed {\tt tolist} function can be used to convert a set into a list of its elements and a string into a list of its single character substrings.  Likewise, a multi-typed {\tt toset} function can be used to convert a list into a set of its distinct elements and a string into a set of its distinct single character substrings.  
+
+Where {\tt S} is the string {\tt "Hi Bill"}, {\tt "i" in S} and {\tt " " in S}  both hold, {\tt tolist(S)} is {\tt ["H","i"," ","B","i","l","l"]},  {\tt toset(S)} is {\tt \{" ","B", "H","i","l"\}} and {\tt tolist(toset(S))} is {\tt [" ","B","H","i","l"]}.
+
+
+\newpage  
+\section{Type Declarations}
+\label{declarations}
+\QL\ comes with a collection of builtin types that include the following:
+\begin{alltt}
+  nat, int, num, atom, string, atomic, term,
+  list(T), set(T)
+\end{alltt}
+
+\par
+\noindent where the {\tt T} is a variable used as a type variable providing polymorphic types. These types can be used in the construction of user defined types.
+
+\par
+
+There are four kinds of type declarations: enumerated, union and macro types; and code types. 
+
+\subsection{Enumerated Types}
+\label{enumtypes}
+Enumerated type declarations take the form:
+
+\begin{alltt}
+def {\it LHS} ::= {\it RHS}
+\end{alltt}
+\noindent where {\it LHS} is either an atom, the name of a new type, or a compound term
+with distinct type variables as arguments, the name of a new polymorphic type.  The {\it RHS} is an enumeration of ground terms that cover all the instances of the type, or it is a range of integers values.  
+So, for example,
+\par
+
+
+\begin{alltt}
+def man ::= roger | tom | bill | alan | graham | keith |
+      sam | fred
+def woman ::= june | mary | rose | penny | sue | helen |
+      veronica
+def noun ::= "boy" | "fox" | "girl" | "ball" | "man" |
+      "woman" | "lady"
+\end{alltt}
+
+\noindent declares {\tt man}, {\tt woman} and {\tt noun} to be the names of types. The right hand sides enumerate the possible values of these types.
+
+\par
+
+It's also possible to have enumerations of numbers as above but also another common enumeration for integers is to use a range as in
+
+\par
+
+\begin{alltt}
+def age_val ::= 0 .. 110           
+def digit ::= 0 .. 9
+\end{alltt}  
+
+\par
+
+In all the above enumerations, all the values are atomic. It it also possible
+to have compound terms (aka constructor terms) in enumerations as in
+\begin{alltt}
+def tree(T) ::= empty() | tr(tree(T),T,tree(T))
+def noun_phrase_tree::= np(article,noun_exp_tree)
+\end{alltt}  
+
+\noindent The first declaration above is a recursive polymorphic type declaration. All the arguments on the right hand side of a constructor enumeration must either  be types or type variables, where the type variables are all listed as arguments on the left hand side.
+ 
+\subsection{Macro and Union Types}\label{unionmacrotypes}
+Macro type declarations are similar to the above and take the form:
+\begin{alltt}
+def{\it LHS} =={\it RHS}
+\end{alltt}  
+but in this case {\it RHS} is either a type or a union of types.
+
+\par
+
+A type union is written as:
+\begin{alltt}
+  {\it T1} || ... || {\it Tn}.
+\end{alltt}  
+
+\noindent So, for example, following from the above type definitions:
+\begin{alltt}
+def human == man || woman
+def int_tree == tree(int) 
+\end{alltt}
+In the first example we are declaring {\tt human} as a macro for the union of
+the types {\tt man} and {\tt woman} and so {\tt man} and {\tt woman} are both subtypes of {\tt human}.
+In the second example we are declaring {\tt int\_tree} as an abbreviation for the {\tt tree(int)} instance of
+the polymorphic {\tt tree(T)} type.
+
+\subsection{Doc Strings} 
+\label{docstrings}
+Again, we borrow the idea of doc strings from Python where triple quoted strings can accompany definitions. For us we use single quoted strings that immediately follow a type declaration as below (and in the examples above).
+\begin{alltt}
+fun fact(N:nat) -> nat 
+"Returns the factorial of N"
+
+def man ::= roger | tom | bill | alan | graham | keith |
+              sam | fred
+"The allowed men in the application"
+\end{alltt}
+
+\par
+
+It is quite common in doc strings to refer to the arguments. We support this by allowing the argument types in the declaration to be preceded by  {\tt VarName:} with the {\tt VarName}  being used in the doc string (as in the examples above). This is purely to facilitate composing document strings and has no semantic implications for the declarations.
+
+
+%In a similar way that doc string in Python are shown when the user uses {\tt help}, the doc string is displayed when the interpreter command {\tt types} is used.  {\tt types} followed by a comma separated sequence of program defined relation, function or action names, given in any order,  will display the type declaration of each named definition followed by any "..." comment associated with the definition.  {\tt stypes} does the same for \QL's built in code.
+
+
+\subsection{Code Types}
+\label{codetypes}
+There are two different uses of code types for relations, actions and functions: for the declaration of the code; and for specifying the type of an argument of a relation, function or action as a code type.
+
+\par
+
+Instead of using the key word {\tt def} we use {\tt rel}, {\tt fun} and {\tt act} as in the examples below.
+
+\par
+
+\begin{alltt}
+rel descendant_is(!human,?human)
+fun num_children(human) -> nat
+act do_parse(!string, ?parse_tree)
+\end{alltt}
+
+\par
+
+The arguments of relation and action type declarations are moded types. If the mode is missing it defaults to {\tt !}. The arguments of a function declaration are just types - modes are not required as the arguments and value are always ground.
+
+\par
+
+By giving multiple type declarations for a single relation, function or action, using different argument types, we are  declaring an intersection type.  The built in addition function {\tt +} has the type:
+\begin{alltt}
+fun nat + nat -> nat,
+    int + int -> int,
+    num + num -> num
+\end{alltt}      
+For relations we often need to give multiple type expressions differing only with respect to their mode annotations.  As an example this is the type statement for the primitive list {\tt append} relation which is defined by the two rules that follow.
+\par
+
+\begin{alltt}
+rel append(!list(T), !list(T), ?list(T)),
+    append(?list(T), ?list(T), !list(T)),
+    append(!list(??T), !list(??T), ?list(??T)),
+    append(?list(??T), ?list(??T), !list(??T)),
+    append(?list(??T), ??list(T), ??list(T))
+    
+append([],L,L)
+append([Head,..Tail],L,[Head,..Tail_L]) <=
+    append(Tail,L,Tail_L)
+\end{alltt}
+The first  moded type declaration tells us that appending two ground list terms will generate a ground list term - the moded type {\tt ?list(T)}.  The second tells us that splitting  a given ground list will result in a pair of ground lists.  The third moded type tells us that appending a pair of complete lists which may have non-ground elements - the moded type {\tt !list(??T)} - will result in a complete list but it may have non-ground elements - the moded type {\tt ?list(??T)}.  The fourth tells us that splitting a complete list of possibly non-ground elements will result in two complete lists but each may have non-ground elements.  The last moded type declaration is the most interesting.  It covers the case where all three arguments of an {\tt append} call may be partial lists of non-ground elements, indeed may each be a variable.  It tells us that after a successful call the second and third arguments may still be partial lists of non-ground elements, but that the first argument will become a {\it complete} list of possibly non-ground elements.  
+An example of this last mode of use is the call:
+\begin{alltt}
+  append([X,2,..L1],[3,Y,..L2],[U,Z,..L3])
+\end{alltt}
+which succeeds with the answer bindings:
+\begin{alltt}
+  L1=[], U=X, Z=2, L3=[3,Y,..L2]
+\end{alltt}
+for a first solution to the call and with answer bindings:
+\begin{alltt}
+  L1=[A], U=X, Z=2, L3=[A,3,Y,..L2]
+\end{alltt}
+for a second solution to the call, and so on.
+
+Below are some example code type declarations with code arguments. 
+
+\par
+
+\begin{alltt}
+fun mapF((fun(T1) -> T2), list(T1)) -> list(T2)
+rel mapR(rel(T1,?T2), !list(T1), ?list(T2))
+fun curry(fun(T1,T2) -> T3) -> fun(T1) -> fun(T2) -> T3
+\end{alltt}
+For the {\tt mapR} relation the moded type expression {\tt rel(T1,?T2)} tells us that the first argument of {\tt mapR} must be given and be a relation {\tt R} that  takes a given element {\tt X} of type {\tt T1} as first argument.  It can then be given or used to find an element {\tt Y} of type {\tt T2} such that {\tt R(X,Y)}. The {\tt mapR} relation can then be used to map a complete list of {\tt L} of ground elements, each of type {\tt T1}, into a complete list of ground elements {\tt L'}, each  of type {\tt T2}.  If {\tt L'} is given as a variable it will generate this list. If {\tt L'} is a partial list it will extend this into a complete list if possible. Finally, if {\tt L'} is given as a complete list with given elements it will check {\tt L'}.   
+
+\par
+
+To declare the type for a dynamic relation we must use {\tt dyn} instead of {\tt rel}. 
+\par
+
+\begin{alltt}
+dyn child_of(human,human)
+\end{alltt}  
+
+\par
+
+These dynamic relations are defined solely by sequences of  ground facts and as such no matter how they are queried a solution always has ground values for any variables in the query.  This means their use mode is  {\tt ?} for every argument so the mode should  not be given in the {\tt dyn} declaration, just as the {\tt !} mode should not be given for the arguments of a function type declaration. 
+\par
+
+A special case of dynamic relation is what we call ``global values'' - they can either be of type {\tt int} or {\tt num}. The declaration also initialises the value. The current value can be accessed using a {\tt \$} prefix and the value can be modified by using the operators {\tt :=}, {\tt +:=} and {\tt -:=} as in the examples below.
+
+\par
+
+\begin{alltt}
+int a:=0
+num b:=0.0
+
+act inc_a(?int)
+"Increment the global value a and return the incremented value"
+inc_a(N) :: N = $a+1 ~> a +:= 1
+\end{alltt}
+
+\par
+
+In declaring relations and functions 
+we can use {\tt mrel} and {\tt mfun} instead. The {\tt m} stands for memoization. Please refer to the section entitled ``Automatic Memoization of Functions and Relations'' in the Reference Manual for details.
+
+\subsection{Default Arguments given in a Code Type} 
+\label{defargs}
+Sometimes it is the case, particularly for actions, that some arguments take default values. In making such declarations we can use the keyword {\tt default} followed by a value of the required type. In such cases all the arguments with default values must appear at the end and, in use, if an argument is given a value other than its default then all previous arguments with defaults have to be also given a value (usually its default value). Below are examples from the builtin (system) declarations.
+
+\par
+
+\begin{alltt}
+act write_list(TermList : !list(??term),
+                 Stream : !stream_type default stdout)
+"Write TermList to Stream."
+
+act connect_to_pedro(Host : !atom default localhost,
+                       Port : !int default 4550)
+"Connect to the pedro server on Host using Port."
+\end{alltt}
+
+\par
+
+In the second example if the \PD\ server on this machine was started using, say port 5000, then we would need to use
+\begin{alltt}
+  connect_to_pedro(localhost, 5000)
+\end{alltt}
+
+
+\subsection{Constraints on Type Declarations}
+\label{typeconstraints}
+The constraints on type declarations are discussed in detail in the Reference Manual. From the point of view of these constraints we consider the names of code types as though they are type names. Here we simply list them for convenience. 
+
+\begin{itemize}
+\item If enumeration of atomics overlap then one must be completely contained in the other.
+\item Overlaps between constructor enumerated types are not allowed.
+\item The union of parameterised (polymorphic) types are not allowed.
+\item Enumerator values (or their functors in the case of constructor enumerations) can not be used as the names of types and visa a versa.
+\end{itemize}
+
+\par
+
+
+The following example, from the Reference Manual, shows how union types can be used when we want overlapping types.
+\par
+
+
+\begin{alltt}
+def digit ::= 0..9
+def range12 ::= 10..20
+def range21 ::= -10..-1
+def range1 == digit || range12
+def range2 == range21 || digit
+\end{alltt}
+
+\par
+
+Now {\tt range1} and {\tt range2} are essentially the same as the enumerated types {\tt 0..20} and {\tt -10..9} without breaking the above constraints.
+
+\par
+
+The more strict constraint on constructor enumerations seems to be excessively strong but we believe that it will not come up often in practice. If it does we can define two constructor enumerations with different constructors and then write a converter relation as in the following example.
+
+\par
+
+\begin{alltt}
+def tree(T) ::= empty() | tr(tree(T),T,tree(T))
+def tree2(N,L) ::= 
+      leaf(L) | none() | node(tree2(N,L),N,tree2(N,L))
+
+rel tree_to_tree2(!tree(T), ?tree2(T, T)),  
+    tree_to_tree2(?tree(T), !tree2(T, T))
+    
+tree_to_tree2(empty(), none())
+tree_to_tree2(tr(empty(), V, empty()), leaf(V)) :: true
+tree_to_tree2(tr(L, V, R), node(L2, V, R2)) <=
+      tree_to_tree2(L, L2) &
+      tree_to_tree2(R, R2)
+
+\end{alltt}
+\newpage
+\section{\QL\ Relation Rule Subset}
+\label{relational}
+The definition of a given relation is made up of a contiguous sequence of relation rules. Relation rules take one of the following forms:
+\par
+
+\begin{alltt}
+{\em RelationCallPtn}
+
+{\em RelationCallPtn} <= {\em RelationalQuery}
+    
+{\em RelationCallPtn} :: {\em GuardTest}
+
+{\em RelationCallPtn} :: {\em GuardTest} <= {\em RelationalQuery}
+\end{alltt}
+
+\par
+
+\noindent Normally {\it RelationCallPtn} is a simple compound term {\tt p(t1,..,tk)} whose functor {\tt p} is the  name of the relation, {\tt k}   is the arity that matches the arity of the corresponding type declaration for {\tt p}, and {\tt t1,...,tk} are terms that do not include any function calls.  Both {\it GuardTest} and {\it RelationalQuery} are conjunctions of relational query conditions separated by \verb~&~.  These include simple relation calls, negated conditions and {\tt forall} conditions. All the relation calls in both the {\it GuardTest} and the {\it RelationalQuery} may also include embedded function calls.  The EBNF in Appendix C of the Reference Manual gives a more exact description of the allowed syntax of relational queries.   
+
+
+
+\subsection{Guard test instead of the Prolog cut}
+
+\QL\ does not have the Prolog cut so we use the guards to commit to rules.  A
+rule like
+\begin{alltt}
+p(X) :: q(X) <= r(X)
+\end{alltt}
+
+\par
+
+\noindent is semantically the same as the  Prolog rule
+\begin{alltt}
+p(X) :- q(X), !, r(X)
+\end{alltt}
+
+\par
+
+If we wanted to commit to a rule with no body we need to write something like
+\begin{alltt}
+p(X) :: true
+\end{alltt}
+
+\par
+
+\noindent which is semantically the same as the  Prolog rule
+\begin{alltt}
+p(X) :- !
+\end{alltt}
+
+\par
+
+\subsection{{\tt isa} relation for accessing elements of an enumerated type}
+
+The examples file {\tt examples/introduction/qlexamples.qlg} contains many rules for relations (and functions and actions).
+We discuss a cross section of the relation definitions in this file below. The definitions of auxiliary relations used but not defined below can be found in this file.
+
+\
+First consider
+\begin{alltt}
+rel person(?human,?gender,?age_val)     
+person(H,male,A) <=  isa(H,man) & age_is(H,A)
+person(H,female,A) <= isa(H,woman) & age_is(H,A)
+\end{alltt}
+
+\par
+
+\noindent This is a straightforward definition comprising two rules in which the relational query preconditions are just simple conjunctions.
+The point of interest here is the call on {\tt isa} in these rules. This, along with {\tt type}, is a way of doing run time type checking. The main difference is that {\tt type} is purely a type checker while {\tt isa}, only useable on enumerated or union of enumerated types, can be used as a generator. {\tt man} and {\tt women} are defined in Section \ref{enumtypes}. 
+
+Notice the
+the first argument of {\tt person} is of mode {\tt ?} and so it is expected that the relation should be able to generate instances of {\tt H}. If {\tt H} is a variable at the time of call then {\tt isa(H,man)} will, on backtracking, bind {\tt H} to each value in the enumerated type. On the other hand, if {\tt H} is given it will simply check that {\tt H} is in the enumeration of the {\tt man} type.
+
+\par
+
+\subsection{\QL\ {\tt forall} and {\tt exists} conditions}
+
+\begin{alltt}
+rel only_has_adult_children(?human)
+only_has_adult_children(H) <=  
+    child_of(_,H) & 
+    forall C, A ( 
+            child_of(C,H) & age_is(C,A) => 
+                        A >= 18) 
+\end{alltt}
+
+\par
+
+\noindent The point of this example is to understand the reason why there is an initial
+call on {\tt child\_of} and why {\tt C} and {\tt A} are quantified variables of the {\tt forall}.
+The quantification of {\tt C} and {\tt A}  makes these variables local variables of the {\tt forall} 
+which will be given values by its two precondition calls.  {\tt H} is a global variable of the {\tt forall}
+and must be given a ground value before the {\tt forall} is evaluated. This is the role of the {\tt child\_of(\_,H)} 
+initial call of the rule.  (This condition would not be needed if \verb~only_has_adult_children~ had test only moded  type {\tt !human}). If {\tt H} is not given,  the call will progressively instantiate {\tt H} to each {\tt human} that has at least  one child. 
+
+\par
+
+The {\tt forall} condition may be read as ``for a given human {\tt H},
+for every child {\tt C} of {\tt H} with age {\tt A}, {\tt A}  is greater than or equal to 18.
+
+We could replace the first condition
+    {\tt child\_of(\_,H)} by {\tt isa(H,human)} as this will also generate a binding for 
+    {\tt H} should it not be given in the call.  However this subtly changes the semantics.
+    Having the initial condition be {\tt child\_of(\_,H)} means that only a human with at least
+    one child will be determined to only have adult children, whereas having the initial 
+    condition be  {\tt isa(H,human)} means that a human with no children at all will be
+    determined to  have only adult children.
+
+\par
+
+\subsection{Negated conditions}
+Negation has similar constraints - global variables inside {\tt not} need to have been given ground values by the time they are evaluated. Multiple occurrence local variables of the negated condition must be existentially quantified after the {\tt not}. Single occurrence local variables can be replaced by {\tt \_} and do not need to be existentially quantified. 
+
+\par
+
+\begin{alltt}
+rel childless(?human)
+childless(H) <=
+    isa(H, human) & not exists C child_of(C,H) 
+
+rel childless2(?human)
+childless(H) <=
+    isa(H, human) & not child_of(_,H) 
+      
+rel has_no_siblings(?human)
+has_no_siblings(H) <=
+    isa(H, human) &
+    not exists Parent, Child 
+                     (child_of(H, Parent) & 
+                      child_of(Child, Parent) &
+                      H \verb~\=~ Child)
+
+rel only_has_adult_children2(?human)
+"Alternative def using negation and age function"
+only_has_adult_children2(H) <=  
+    child_of(_,H) &
+    not exists C (child_ofC,H) & age(C)<18) 
+    
+fun age(human) -> age_val
+age(H) :: age_is(H,A) -> A
+age(_) -> 0
+\end{alltt}
+  
+
+\par
+
+\subsection{Set comprehensions} 
+The next example gives an example of set comprehension.
+
+\begin{alltt}  
+rel children_are(?human,?set((age_val,human)))
+children_are(H, Cs) <= 
+    isa(H,human) & Cs = \verb~{~(A,C) :: child_of(C,H) & age_is(C,A)\verb~}~
+\end{alltt}
+
+\par
+
+\noindent This set comprehension produces a set of {\tt (age\_val, human)} tuples ordered by increasing age. If we replace the parentheses by square brackets we would get a list of such pairs (of type {\tt list((age\_val,human))} sequenced by the order in which the pairs are found.
+
+\par
+
+Set and list comprehension have the same ground constraints for their global variables as {\tt forall} and {\tt exists}.  This is  why the call {\tt isa(H,human)} is before the comprehension. In this case {\tt A} and {\tt C} are local variables of the set comprehension.
+
+\par
+
+
+Prolog programmers will see set and list comprehension as a variant of {\tt findall}, and indeed it is. Python programmers might see this is as similar to a list comprehension - we chose this syntax to make it look more like Python so as to be more readable than using something like {\tt findall}, and also to make it  clear what the quantified variables are.
+
+\subsection{Backtracking as iterative search for all solutions}
+
+Python programmers who are not familiar with Prolog might now be wondering about iterators and generators. We don't need to do anything special as backtracking naturally produces one solution at a time as can be seen in the comparative examples below.
+
+\par
+
+We start with a simple  example - turning a list into an iterator.
+In Python one way to do this is as follows
+\begin{alltt}
+def list2gen(lst) :
+    for x in lst:
+        yield x
+\end{alltt}
+
+\par
+
+Then we could use this to produce a more complex iterator, for example, with the following Python expression.
+\begin{alltt}
+map(lambda x: x**2,
+      filter(lambda x: x < 8, list2gen([1,6,2,8,5])))
+\end{alltt}
+
+\par
+
+We could then use {\tt next} to get one value from this iterator at a time with a {\tt StopIteration} exception raised when there are no more values.
+
+\par
+
+In \QL\  we could simply enter the query:
+\begin{alltt}
+X in [1,6,2,8,5] & X < 8 & Y = X**2
+\end{alltt}
+\par
+
+\noindent
+and {\tt Y} would be instantiated to the first solution. On backtracking {\tt Y} would be instantiated to the next solution. When there are no more solutions we would simply get a query failure.
+
+\par
+
+Below is a simple example using {\tt range} to compare an iterator approach in Python with a backtracking approach in \QL.
+
+\par
+
+In Python we might write
+
+\par
+
+\begin{alltt}
+((x,y) for x in range(5) for y in range (5) if x < y)
+\end{alltt}
+
+\par
+
+\noindent
+whereas in \QL\ we might write
+
+\par
+
+\begin{alltt}
+range(X, 0, 5) & range(Y, 0, 5) & X < Y & Z = (X, Y)
+\end{alltt}
+
+\par
+
+For those not familiar with Python, the above Python expression is a generator and we can ask for the next value as in the following example in the Python interpreter.
+\begin{alltt}
+gtgtgt g = ((x,y) for x in range(5) for y in range (5) if x < y)
+gtgtgt next(g)
+(0, 1)
+gtgtgt next(g)
+(0, 2)
+gtgtgt next(g)
+(0, 3)
+\end{alltt}
+
+\par
+
+Using {\tt next} is very similar to backtracking to get another solution in the corresponding \QL\ call.
+
+\par
+\subsection{List comprehension}
+In Python, replacing the brackets with square brackets will produce the list while in \QL\ we would write the equivalent list comprehension:
+
+\par
+
+\begin{alltt}
+[(X, Y) :: range(X, 0, 5) & range(Y, 0, 5) & X < Y]
+\end{alltt}
+
+\par
+
+We could use list comprehension for list processing as in the following example.
+
+\begin{alltt}
+[X**2 :: X in [0,1,2,3,4] & p(X)]
+\end{alltt}
+
+\noindent
+where \verb~p~ is a relation and so \verb~p(X)~ is a test on \verb~X~.
+However, because this uses {\tt findall}, it is less efficient than using straightforward list processing.
+
+With this in mind we have supplied the system defined functions \verb~map~, \verb~filter~ and \verb~filter_map~ and so the above example is more efficiently written as
+\begin{alltt}
+filter_map(p, square, [0,1,2,3,4])
+\end{alltt}
+
+\noindent
+where \verb~square~ has been defined as the square function.
+
+\par
+
+\subsection{Runtime type tests}
+The next example shows a use of a run-time type check. The intention is to produce the sum of all the numbers that are in the supplied list of terms.
+\begin{alltt}
+rel add_nums_of_list_of_any_term(!list(term), ?num)
+add_nums_of_list_of_any_term([],0)
+add_nums_of_list_of_any_term([N | Rest], Total)  ::
+      type(N,num) <=
+          add_nums_of_list_of_any_term(Rest, RTotal) &
+          Total = RTotal+N
+add_nums_of_list_of_any_term([ _Any | Rest], Total) <=
+      add_nums_of_list_of_any_term(Rest, Total)
+\end{alltt}
+
+\par
+
+\noindent Since the first argument is a list of terms then any individual element of the list may or may not be a number. The type check {\tt type(N,num)} as a guard in the second rule guarantees {\tt N} will be a  number for the body of the rule. Note that the type check is in the guard and not part of the body. This is because when {\tt N} is a number we want to commit to the second rule and not use the third rule.  The third rule is for skipping over non-number values on the list of terms.
+\par
+
+The \QL\ unification {\tt Total = RTotal+N} will automatically evaluate the expression argument {\tt RTotal+N}.  This is because, unlike Prolog,  \QL\ evaluates any function calls in arguments of relation calls before evaluating the relation call.
+
+\subsection{String processing}
+\label{stringProc}
+
+The next example shows the power of string processing in \QL. 
+We present two versions of a ``tokeniser'' for English sentences given as strings with a sentence terminator - fullstop, question mark or exclamation mark. The first version uses backtracking to find and extract the words.   The second version uses regular expressions with minimal backtracking. More efficient versions are given in the file {\tt qlexamples.qlg}.
+ \begin{alltt}
+rel words(!string,?list(string))
+words(Str,[WStr]) ::  Str =? WStr::word(WStr) ++? E::endchar(E)
+words(Str,[WStr,..Words]) :: 
+    Str =?  WStr::word(WStr) ++? Seps::seps(Seps) ++? 
+                               RStr::words(RStr,Words) 
+ 
+rel endchar(?string)
+endchar(Str) <=  Str in [".", "?", "!"]
+                             
+rel seps(!string)
+seps(Str) <= forall C (C in Str => C in ["," , ";" , ":" , " "])
+ 
+rel word(!string) 
+word(Str) <=
+     forall C (C in Str => not endchar(Str) & not seps(C))
+\end{alltt}
+\par
+
+\noindent The first rule for {\tt words} is the termination rule of a recursive definition.  It checks if {\tt Str} is a word string, here defined as a string that does not contain any sentence terminator - i.e. any of {\tt "." "?" "!"} - nor any word separator - i.e. any of {\tt "," ";" ":" " "}.  It finds such a word string followed by a sentence terminator by a backtracking search for a way of splitting {\tt Str} into a word substring followed by a single character string which is a sentence terminator.
+
+The second rule for {\tt words} again uses backtracking search to find a way of splitting {\tt Str} into a {\tt word} initial sequence of characters, followed by a sequence of word separator characters, followed by a sequence of characters that satisfies this {\tt words} two rule definition. 
+
+\par
+
+As an example of how this backtracking string matching works consider how the sentence \verb~"Hello    world!"~ is processed by the {\tt words} rules. First {\tt WStr} is instantiated to \verb~"H"~.  This is a word string as defined - it does not contain a punctuation mark or a space.  It therefore satisfies the constraint {\tt word(W)}).  However \verb~"ello    world!"~  does not satisfy the {\tt endchar} condition. This causes backtracking and  {\tt W} is now instantiated to \verb~"He"~ followed by a failure of the {\tt endchar} test on the remaining string. This backtracking continues until {\tt WStr} is instantiated to \verb~"Hello"~. But again the remaining string does not satisfy the {\tt endchar} condition.  There are no more solutions to the {\tt word} condition of the first rule so the second rule is tried with {\tt Str} the full string  \verb~"Hello    world!"~.  
+
+Again there is backtracking, extending the {\tt WStr} one  character at a time to find the initial word string {\tt "Hello"},  This is followed by backtracking to find the substring of four space characters one space at a time.  Finally there is a recursive call to convert {\tt "world!"} into a one word list {\tt ["world"]} of word strings, with the initial string {\tt "Hello    world!"} converted to {\tt ["Hello","world"}].  
+
+\subsection{Regular expression conditions in string matches}
+\begin{alltt}
+rel words2(string, ?list(string))
+words2(Str,[WStr]) :: Str =? WStr/"\texttt{\textbackslash}\texttt{\textbackslash}w+" ++? \_End/"[.?!]"    
+words2(Str,[WStr,..Words]) :: 
+    Str =? 
+        WStr/"\texttt{\textbackslash}\texttt{\textbackslash}w+" ++? 
+        Seps/"[,;:]?\texttt{\textbackslash}\texttt{\textbackslash}s+" ++? 
+        RStr::words2(RStr,Words)  
+\end{alltt} 
+In the rules for {\tt words2}, instead of using {\tt::} constraints there us  a slash followed by a string representing a regular expression.\footnote{See the references given at beginning of section \ref{regexps} for the syntax of regular expressions.} In the \QL\ representation of regular expressions we need to double up the use of backslash.  Regular expression matches are deterministic and find the maximal length substring that matches the regular expression.  The matching  does not create \QL\ choice points. 
+
+For the example sentence \verb~"Hello    world!"~ the first rule of {\tt words2}  matches the sentence string against the given regular expression {\tt "\texttt{\textbackslash\textbackslash}w+"}.  This finds the maximal initial substring of \verb~"Hello    world!"~ comprising just alphanumeric characters or underscores, containing at least one character.  This is the meaning of the \QL\ regular expression {\tt "\texttt{\textbackslash\textbackslash}w+"}.  So, without backtracking at the \QL\ level {\tt WStr} is bound to {\tt "Hello"}. This leaves the string \verb~"    world!"~ which fails the second condition of the first {\tt words2} rule expressed by the regular expression string {\tt "[.?!]"}. This only matches a one character string comprising one of its three alternative punctuation characters.  
+
+There is now backtracking to try the second rule.  The first condition of the three component {\tt Str} decomposition again generates the binding {\tt "Hello"} for {\tt WStr}.  The second condition  has {\tt "[,;:]?s+"} as its regular expression string.  This is more precise than the {\tt seps} test of the second {\tt words} rule.  It  matches a string  comprising  one or more white space characters - the meaning of {\tt w+},  possibly preceded by one of {\tt ,}, {\tt ;} or {\tt :}  - the meaning of {\tt [,;:]?}.    This regular expression match leaves {\tt RStr} as the string {\tt "world!"}.  The recursive  call will now  succeed using just the first {\tt words2} rule. 
+
+Note that, for this sort of example, regular expression matching is more efficient as minimal backtracking is  required. However, in other situations, using maximum length matching can miss solutions that backtracking would find.
+
+\par
+
+Each argument of {\tt ++?} is one of
+\begin{alltt}
+  {\it VarOrString}
+  {\it VarOrString} :: {\it RelationalQuery}
+  {\it VarOrString} / {\it REString}
+  {\it VarOrString} / {\it REString} :: {\it RelationalQuery}
+\end{alltt}
+
+\par
+
+Often {\it RelationalQuery} is simply a test on {\it VarOrString}, if this is a variable, as in the first rule of {\tt words}.  However it may be any arbitrary  call,
+as in the second rules for both {\tt words} and {\tt words2} where it is a recursive call.
+
+
+
+\subsection{Regular Expressions in \QL\ }
+\label{regexps}
+
+\QL\ uses the PCRE2 library for processing regular expressions
+as described in
+\verb~http://www.pcre.org/current/doc/html/pcre2syntax.html~.\\
+Regular expressions are used in the builtin relation \verb~re_match~ and in string matching using \verb~=?~.
+For those unfamiliar with regular expressions we suggest looking at, for example,  
+\begin{alltt}
+https://www.regular-expressions.info/quickstart.html
+\end{alltt}
+\noindent or
+\begin{alltt}
+https://medium.com/factory-mind/
+  regex-tutorial-a-simple-cheatsheet-by-examples-649dc1c3f285
+\end{alltt}
+In \QL\ regular expressions are strings using the format as described in \\ \\
+\verb~http://www.pcre.org/current/doc/html/pcre2syntax.html~ \\ \\
+except that all backslashes in a \QL\ regular expression string need to be escaped with a preceding backslash.  This is because backslash on its own in a \QL\ string is an escape character. (For example, in a \QL\ string \verb~\n~ denotes the newline character and \verb~\t~ denotes the tab character.)  If the given string is not a valid regular expression string then
+a call on \verb~re_match~ or in a  \verb~=?~ call will fail.
+
+Because the use of regular expressions can be somewhat complicated we suggest
+testing a regular expression string in the interpreter using \verb~re_match~ on strings that should, and should not, match the regular expression.
+
+The \verb~words2~ example above uses the regular expression strings:
+\begin{alltt}   
+"\texttt{\textbackslash}\texttt{\textbackslash}w+"      "[,;:]?\texttt{\textbackslash}\texttt{\textbackslash}s+"
+\end{alltt}
+
+%Note the use of double backslashes in these regular expression strings.
+\noindent The \QL\ regular expression \verb~\\w~ matches a single word character whereas \verb~\\w+~
+matches one or more word characters with the match being of maximal length (the default).
+
+We could test this in the interpreter as follows.
+
+\begin{alltt}
+| ?? re_match("\texttt{\textbackslash}\texttt{\textbackslash}w+", "Hello  World!", Match).
+
+Match = [(0, 5)] : list((nat, nat))
+...
+Match = [(7, 12)] : list((nat, nat))
+\end{alltt}
+The two answers, respectively, match the string from position 0 (the start of the string) up to position 5 (the first space character).  That is it matches the substring  \verb~"Hello"~.   It also matches the string from position 7 up to  position 12 (i.e. \verb~"World"~).
+
+For the second regular expression string, the regular expression \verb~[,;:]~
+matches one of the characters in the brackets while \verb~[,;:]?~ matches
+zero or one of the characters in the brackets. The regular expression \verb~\s+~ matches one or more white space characters and so \verb~[,;:]?\s+~ matches zero or one of the characters in the brackets followed by one or more white space characters.
+
+Again we can test this in the interpreter.
+
+\begin{alltt}
+| ?? re_match("[,;:]?\texttt{\textbackslash}\texttt{\textbackslash}s+", "Hello, \texttt{\textbackslash}t \texttt{\textbackslash}n World", Match).
+
+Match = [(5, 11)] : list((nat, nat))
+
+\end{alltt}
+This matches the string from position 5 up to but not including position 11 (i.e. it matches the substring \verb~", \t \n "~).  
+
+
+\subsection{List pattern match decomposition}
+\label{listdecomp}
+
+Using {\tt <>?} instead of {\tt ++?}   on the right hand side of {\tt =?} turns into a backtracking list splitter.
+Where {\tt L=[1,-6,2,-9,2]} the pattern decomposition condition:
+\begin{alltt}
+L =? F <>? [U]::U<0 <>? B
+\end{alltt}
+has two solutions: {\tt F=[1],U=-6,B=[2,-9,2]} and  {\tt F=[1,-6,9],U=-9,B=[2]}.
+
+The following example, on backtracking, splits a list of numbers at pairs that are in order.
+\begin{alltt}
+rel split_on_ordered_pair(!list(num), ?list(num), ?num, ?num,
+                           ?list(num))
+split_on_ordered_pair(Lst, LeftLst, V1, V2, RightLst) <=
+      Lst =? LeftLst <>? [V1, V2] :: V1 < V2 <>? RightLst
+\end{alltt}
+So {\tt split\_on\_ordered\_pair([3,1,3,2,4]),LeftLst,V1,V2,RightLst)} has two answers:
+\begin{alltt}
+LeftLst=[3], V1=1, V2=3, RightLst=[2,4]
+LeftLst=[3,1,3], V1=2, V2=4, RightLst=[]
+\end{alltt}
+
+\noindent In general each argument of {\tt <>?} is one of
+\begin{alltt}
+  {\it VarOrListPattern}
+  {\it VarOrListPattern} :: {\it RelationalQuery}
+\end{alltt}
+
+\subsection{Relation rule definition for functions that return a relation}
+\label{relRules}
+
+For relation rules that define a relation the {\it RelationCallPtn} head of the rule is always of the form {\tt p(t1,..,tk)}  where {\tt p} is the name of the relation being defined and {\tt t1,..,tk} are terms giving patterns for possible arguments of a call to {\tt p}.  However, we can also use a  relation rule  to define a function {\tt f} whose value is a relation.  The {\it RelationCallPtn} can then have a functor that is a  call pattern for this function.
+
+An example of this is the evaluation rule for a function {\tt squareIn(L)} which maps a list of integers {\tt L} into a monadic relation {\tt  X in [Y ** 2 :: Y in L]}.  We define this  function using a single relation rule with a relation call pattern {\tt squareIn(L)(X)}.
+
+\begin{alltt}
+fun squareIn(list(int)) -> rel(?num)
+squareIn(L)(X) <= X in [Y ** 2 :: Y in L]
+\end{alltt}
+
+A function call term such as {\tt squareIn([2,7,-4,23])} is essentially a closure denoting a unary relation over numbers. As such it can be passed as a relation argument to a higher order relation, function or action.  Only when the unary relation needs to be evaluated will the above relation rule be used.
+
+A more complex example is a single relation rule definition for a relation currying function {\tt curryR}.  Suppose {\tt Rel} is a binary relation comprising pairs {\tt (T1,T2)} for any types {\tt T1}, {\tt T2}.  
+{\tt curryR(Rel)} is a function that maps a value X of type {\tt T1} into a monadic relation {\tt M} which holds of all the values {\tt Y} of type {\tt T2} such that {\tt Rel(X,Y)}.  The modes of use of the {\tt M} depend on the modes of use of {\tt Rel}.  The type definition covering the three possible modes of use of {\tt Rel}, and a single relation rule defining {\tt curryR}, are:
+
+\begin{alltt}
+fun curryR(rel(T1,??T2)) -> fun(T1) -> rel(??T2),
+    curryR(rel(T1,?T2)) -> fun(T1) -> rel(?T2),
+    curryR(rel(T1,!T2)) -> fun(T1) -> rel(!T2)  
+      
+curryR(Rel)(X)(Y) <= Rel(X,Y)
+\end{alltt} 
+{\tt curryR(child\_of)} is a closure denoting a single argument function of type {\tt fun(human) -> rel(?human)}.  The call {\tt curryR(child\_of)(bill)}  is a closure denoting a unary relation of type {\tt rel(?human)}.  It can be passed as an argument value where such a moded typed relation is required. Its extension is the two parents of {\tt bill}, if they are given in the facts for the  relation {\tt child\_of}. 
+
+Please note the complex type declaration for {\tt curryR}. This intersection type allows different modes for the second argument that is reflected in the modes of the resulting relation. This maximises the flexibility of the use of this function.
+
+\subsection{Parsing lists of words}
+\label{parsing}
+In \ref{stringProc} we showed how string processing using regular expressions could be used to map a sentence string such as 
+
+{\tt "the tall boy kicks a red  ball."} 
+
+\noindent into the list of word strings 
+
+{\tt ["the","tall","boy","kicks","a","red","ball"]}. 
+
+A next stage might be to map this list of word strings into a parse tree term such as:
+\begin{alltt}
+ s( np(the,ne(tall,n(boy))), vp(kicks,np(a,ne(red,n(ball)))) )
+\end{alltt}
+where this term is a member of the defined type {\tt parse\_tree} with type definition:
+\begin{alltt}
+def parse_tree ::= s(noun_phrase_tree,verb_phrase_tree) 
+def noun_phrase_tree::= np(article,noun_exp_tree) 
+def noun_exp_tree::= ne(adjective,noun_exp_tree) | n(noun)
+def verb_phrase_tree ::= vp(verb,noun_phrase_tree) | v(verb)  
+\end{alltt}
+where {\tt noun}, {\tt article}, {verb} are defined types comprising enumerations of word strings such as:
+\begin{alltt}
+def noun ::= "boy" | "fox" | "girl" | "ball" | ...
+def article ::= "the" | "a" | "an" | "some" | ...
+\end{alltt}
+
+The examples file {\tt qlexamples.qlg} contains  example type definitions for {\tt article}, {\tt adjective} etc as well as relational rules defining the relation:
+\begin{alltt}
+  a_parse_tree(Tree:?parse_tree,Wrds:!list(string),
+                               RemWrds:?list(string))
+\end{alltt}  
+where {\tt Tree} is the parse tree for the list of words from the first word on {\tt Wrds} up to the the tail sublist {\tt RemWrds} of {\tt Wrds}. The first five  rules of its definition are:
+\begin{alltt}
+rel a_parse_tree(?parse_tree, !list(string), ?list(string))
+a_parse_tree( s(NP,VP), A, C) <= 
+    a_noun_phrase_tree(NP, A, B) & a_verb_phrase_tree(VP, B, C)
+
+rel a_noun_phrase_tree(?noun_phrase_tree, !list(string), 
+                                            ?list(string))
+a_noun_phrase_tree(np(Ar,NE), [Ar1,..B], C) <=
+    type(Ar1,article) &  Ar=Ar1 & a_noun_exp_tree(NE, B, C)
+    
+rel a_noun_exp_tree(?noun_exp_tree,!list(string),?list(string))
+a_noun_exp_tree(ne(Adj,NE), [Adj1,..B], C) <=
+    type(Adj1,adjective) & Adj=Adj1 & a_noun_exp_tree(NE, B, C)
+a_noun_exp_tree(n(N), [N1,..B], B) <=
+    type(N1,noun) & N=N1
+\end{alltt} 
+\newpage
+\section{\QL\ Function Rule Subset}
+\label{functional}
+The definition of a given function is made up of a contiguous sequence of function rules. Function rules take one of the following forms.
+
+\par
+
+\begin{alltt}
+{\em FunctionCallPtn} -> {\em FunctionCallTerm}
+
+{\em FunctionCallPtn} :: {\em GuardTest} -> {\em FunctionCallTerm}
+\end{alltt}
+
+\par
+
+\noindent The first of the above forms is a special case of the second where {\it GuardTest}  is {\tt true}. A consequence of this is that all function defining rules are committed choice rules, i.e. function calls are deterministic. This is one of the main differences between function rules and relation rules - relations are non-deterministic. Another difference is that relation calls can fail - indicating no solutions - whereas functions are not allowed to fail. Instead, if no rules match the function call then a 
+\par
+\verb~no_matching_function_rule~ 
+
+\noindent exception is raised. This is flagging that the argument tuple of the call is outside the domain of the function.
+
+\par
+\subsection{Type tests in guards}
+Consider the following definition of the factorial function.
+\begin{alltt}
+fun fact(N:nat) -> nat 
+"Returns the factorial of N"
+fact(0) -> 1
+fact(N) :: N1 = N-1 & type(N1,nat) -> N*fact(N1)
+\end{alltt}
+
+\par
+
+\noindent The type check call is required as the type checker deduces that the type of {\tt N1} is {\tt int} because of  the assignment {\tt N1 = N-1}. 
+
+As an alternative we could define an extended factorial function {\tt efact} with domain the set of integers and range the natural numbers as below.
+
+\begin{alltt}
+fun efact(N:int) -> nat 
+efact(N) :: N=<0 -> 1
+efact(N) :: type(N,nat) -> N*efact(N - 1)
+\end{alltt}
+\noindent  This time we cannot replace the type check {\tt type(N,nat)} by the inequality {\tt N>0} as the type checker cannot do type inference using inequalities.  It can only infer types from type declarations and explicit type checks.
+
+
+\subsection{Functions on structured data}
+%For the next example we consider converting between lists and ordered trees. Note that this code does not produce balanced trees.
+
+\par
+
+\begin{alltt}
+def tree(T) ::= empty() | tr(tree(T),T,tree(T))
+  
+fun tree2list(tree(T)) -> list(T)
+tree2list(empty()) -> []
+tree2list(tr(LT, V, RT)) -> 
+       tree2list(LT) <> [V] <> tree2list(RT)
+
+fun list2tree(list(int)) -> tree(int)
+list2tree([]) -> empty()
+list2tree([H|T]) -> add2tree(H, list2tree(T))
+
+
+fun add2tree(T, tree(T)) -> tree(T)
+add2tree(NewV, empty()) -> tr(empty(), NewV, empty())
+add2tree(NewV, tr(L, V, R)) :: NewV @< V -> 
+                           tr(add2tree(NewV, L), V, R)    
+add2tree(NewV, tr(L, V, R)) -> tr(L, V, add2tree(NewV, R))  
+\end{alltt}
+
+
+
+\noindent Recall that {\tt <>} is the list append function. {\tt add2tree} uses the builtin term ordering relation {\tt @<}.
+
+\par
+
+\subsection{Higher order functions}
+Below are three examples of higher order functions - i.e. functions that take functions or relations as arguments. The {\tt qlexamples.qlg}  file contains several more such examples.
+
+\par
+
+\begin{alltt}
+fun mapF((fun(T1) -> T2), list(T1)) -> list(T2)
+mapF(_, []) -> []
+mapF(F, [H|T]) -> [F(H)|mapF(F, T)]
+
+fun setVals(rel(!T1,?T2)) -> fun(T1) -> set(T2)
+setVals(R)(X) -> \{Y::R(X,Y)\} 
+
+fun curry(fun(T1,T2) -> T3) -> fun(T1) -> fun(T2) -> T3 
+curry(F)(X)(Y) -> F(X,Y)
+\end{alltt}
+
+\par
+
+\noindent You will note that in value expressions for each example we have a function or a relation call  with a variable functor. The type checker allows this if the   variable of the call has the required code type and will have a value by the time that its use will be evaluated. 
+\par
+
+In the second and third examples the head of the rule is a compound term whose functor is itself a compound term. The third  definition is the definition of the currying function for functions, analogous to the currying function for relations of section \ref{relRules}. 
+
+\par
+\newpage
+\section{\QL\ Action Rule Subset}
+\label{actions}
+Actions form the procedural component of \QL.
+The definition of a given action is made up of a contiguous sequence of action rules. Action rules take one of the following forms.
+
+\par
+
+\begin{alltt}
+{\em ActionCallPtn} ~> {\em ActionCallSequence}
+    
+{\em ActionCallPtn} :: {\em GuardTest} ~> {\em ActionCallSequence}
+\end{alltt}
+\par
+
+As with function rules the first of the above forms is a special case of the second where {\it GuardTest}  is {\tt true}. In some cases we might want to write a rule that has no action in the rule body. In this case \verb~{}~ represents the null action.
+
+\par
+
+Action calls are deterministic.  There should be a rule for each possible call.  If some call is not covered, a \verb~no_matching_action_rule~ exception will be raised.
+%As discussed in the reference manual, we constrain the use of {\tt ?} and {\tt ??} moded arguments for actions as follows.
+
+%\begin{enumerate}
+%\item Non-variables are not allowed in {\tt ?} and {\tt ??} moded arguments.
+%\item Variables that are {\tt !} moded are not allowed in {\tt ?} and {\tt ??} moded arguments.
+%\item Variables that have already occurred in the body of a rule are not allowed in {\tt ?} and {\tt ??} moded arguments.
+%\end{enumerate}
+%For example, the call
+%\begin{alltt}
+%  read_term([X])
+%\end{alltt}
+%\par
+
+%\noindent violates the first constraint. The following rule with the given declaration violates the second constraint.
+%\begin{alltt}
+%  act a(!term)
+%  a(X) ~> read_term(X)
+%\end{alltt}
+%\par
+
+%Given the declaration
+%\begin{alltt}
+%  act read2(??term, ??term)  
+%\end{alltt}
+%\par
+
+%the call
+%\begin{alltt}
+%  read2(X, X)
+%\end{alltt}
+%\par
+
+%violates the third constraint as the second {\tt X} occurs earlier (in the first argument).
+
+
+\par
+
+Each \QL\ thread executes an action call. The language has primitive actions for forking a new thread local to a \QL\ process and for terminating a local thread.  It also has primitive actions to send a message to another thread, either inside the same \QL\ process or in another \QL\ process,\footnote{The message will be routed via the \PD\ server to which the \QL\ process must be connected} and to read received messages in the message buffer of the thread in which the read is executed.  There are primitive actions to update  dynamic relations of a \QL\ process, manage threads and read and write to streams.
+
+\par
+\subsection{Actions that update dynamic relations}
+
+
+\par
+
+\begin{alltt}
+act new_child(!human, !age_val, !human, !human)  
+new_child(C, A, M, F) ~> 
+    remember([child_of(C,M), child_of(C,F), age_is(C,A)])
+
+act birthday(!human)
+birthday(P) :: age_is(P, A) & Z = A+1 & type(Z, age_val) ~> 
+        forget_remember([age_is(P, A)], [age_is(P, Z)])
+birthday(P) ~> write_list([P,
+              " is not a person or would have an invalid age"])
+\end{alltt}
+
+\par
+
+\noindent In the first example we use {\tt remember} to add facts to the \BS\ (similar to {\tt assert} in Prolog except that {\tt remember} takes a list of facts as its argument). In the second we replace an old fact by an updated fact using \verb~forget_remember~. 
+
+\par
+
+Each call to \verb~remember~, \verb~forget~ and {\verb~forget_remember~ is done atomically, no other thread has either read or write access to the \BS\ until the update is complete. Also when such a call completes a single update to the timestamp on the \BS\ is done and this is used in the \TR\ system to trigger re-evaluation.
+Furthermore, before the atomic update is complete, any memoized relation or function (see the reference manual) is checked to see if their memoized data needs to be cleared and if so,  the memoized data is cleared.
+
+\par
+Used in relation rules {\tt forall} is a test but in action rules
+it is used for action iteration, as in the following example.
+\begin{alltt}
+  act remove_child(!human) 
+  remove_child(C) ~> 
+  	  forall P \verb~{~child_of(C,P) ~> forget([child_of(C,P)])\verb~}~
+\end{alltt}
+\par
+
+In this example, for a given  child {\tt C}, we find each parent {\tt P} of {\tt C} and forget the \verb~child_of~ fact for {\tt P}..
+Note that the two facts recording the two parents of {\tt C} are not removed atomically.  If we had a multi-threaded application we can remove both facts atomically by adding the {\tt atomic\_action} prefix to the {\tt forall}. 
+
+\begin{alltt}
+  act remove_child2(!human) 
+  remove_child2(C) ~> 
+  	  atomic\_action forall P \verb~{~child_of(C,P) ~> 
+	                                 forget([child_of(C,P)])\verb~}~ 
+\end{alltt}
+\par
+
+
+\subsection{Action wrappers for declarative programs}
+
+The next example is an action variant of the relational parser in the examples file part of which was given in section \ref{parsing}.  The problem with the relational version is that if the sentence did not parse then the relational parser would simply fail. For the action version below we give feedback output. Because output is an action then this version of the parser needs to be an action at the outer level.
+
+
+
+\newpage
+\begin{alltt}
+def dword == noun || adjective || verb || complement || article
+% noun, adjective etc are as defined in qlexamples.qlg
+
+def parse_tree ::= 
+        s(noun_phrase_tree,verb_phrase_tree) | parse_error()
+% parse_error() is returned when sentence string cannot 
+% be parsed
+
+act do_parse(!string, ?parse_tree)  
+do_parse(Str,PT) ~> 
+    to_words(Str,Wrds); 
+    write_list(["Word list: ",Wrds,nl_]); 
+    check_dict(Wrds); 
+    write_list(["All words in dictionary",nl_]);
+    to_parse_tree(Wrds,PT)
+
+act to_words(!string, ?list(string))
+to_words(Str,Wrds) :: words2(Str,Wrds) ~> \verb~{}~
+to_words(Str,[]) ~>
+    write_list(['Cannot split into words: ',Str, nl_])
+
+act check_dict(!list(string))
+check_dict(Wrds) :: all_dict_words(Wrds) ~> \verb~{}~
+check_dict(Wrds) ~> 
+     write_list(["Unknown words in: ",Wrds, nl_])
+
+act to_parse_tree(!list(string), ?parse_tree)
+to_parse_tree(Wrds,PT) :: a_parse_tree(PT,Wrds,[])  ~> \verb~{}~
+to_parse_tree(Wrds,parse_error()) ~> 
+     write_list(['Cannot parse word list: ',Wrds,nl_])
+\end{alltt}
+
+\par
+
+\noindent First note that the moded type declaration for {\tt do\_parse} says that the action must produce a ground term of type \verb~parse_tree~. Because actions are not allowed to fail, we have added \verb~parse_error()~ as an extra term of the {\tt parse\_tree} type.
+
+The problem with this implementation is that if either we cannot tokenise the input or some of the tokenised words are not allowed we still continue on to \verb~to_parse_tree~.  Ideally we should terminate the parsing activity sequence as soon as an error is found.  We can do this by raising and catching errors.
+
+\subsection{Raising and catching user defined exceptions}
+\label{exceptions}
+
+Another option is to declare one or more user declared exceptions and have the action raise one of these exceptions when a problem occurs as in the variant below. This also allows us to terminate early (by raising an exception) as soon as a problem is discovered.
+
+\par
+\label{exception_eg}
+\begin{alltt}
+def user_exception ::= cannot_tokenise() |
+        unknown_words(list(string)) | 
+        cannot_parse(list(string))
+
+act do_parse2(!string, ?parse_tree)
+do_parse2(Str,PT) ~>
+    try \verb~{~
+        to_words2(Str,Wrds);
+        write_list(["Word list: ",Wrds,nl_]); 
+        check_dict2(Wrds);
+        write_list(["All words in dictionary",nl_]);
+        to_parse_tree2(Wrds,PT)
+        \verb~}~
+    except \verb~{~
+        cannot_tokenise() :: PT = parse_error() ~> 
+             write_list(["Cannot split into words: ",Str, nl_])       
+        unknown_words(Wrds) :: PT = parse_error() ~> 
+             write_list(["Unknown words in: ",Wrds, nl_])        
+        cannot_parse(Wrds) :: PT = parse_error() ~> 
+             write_list(["Cannot parse word list: ",Wrds,nl_])
+             \verb~}~
+
+act to_words2(!string, ?list(string))
+to_words2(Str,Wrds) :: words2(Str,Wrds) ~> \verb~{}~
+to_words2(_, _) ~> raise(cannot_tokenise())
+
+act check_dict2(!list(string))
+check_dict2(Wrds) :: all_dict_words(Wrds) ~> \verb~{}~
+check_dict2(Wrds) ~> raise(unknown_words(Wrds))
+
+act to_parse_tree2(!list(string), ?parse_tree)
+to_parse_tree2(Wrds,PT) :: a_parse_tree(PT,Wrds,[]) ~> \verb~{}~
+to_parse_tree2(Wrds,_) ~> raise(cannot_parse(Wrds))
+\end{alltt}
+
+This program is more complicated than the first version because, instead of simply printing messages, it raises exceptions that are caught by the main action that prints the error messages. On the other hand the first version is less flexible as it
+would essentially need to be rewritten to support a more serious application.
+For the second version \verb~to_words2~, \verb~check_dict2~ and \verb~to_parse_tree2~ can remain as is and the implementation can directly use these actions
+as long as it manages the exceptions.
+
+
+
+\newpage
+\section{General use of the \QL\ Interpreter}
+\label{interpreter}
+The \QL\ interpreter is essentially the same as a Prolog interpreter - queries are entered and the interpreter responds by evaluating the query and displaying answers. There are some differences, most notably is that the \QL\ interpreter carries out type and mode checking on each query (in a similar way to when it checks the body of a rule).
+
+\subsection{Starting the interpreter}
+To start the interpreter, assuming paths have been set up, we simply need to use the command
+\begin{alltt}
+  qulog
+\end{alltt}
+\par
+
+In the examples below we will assume we are in the same directory as {\tt qlexamples.qlg}
+
+\par
+
+Once we have started the interpreter we will get the prompt {\tt | ??} and we can consult the example file in the same way as in Prolog
+\begin{alltt}
+  | ?? [qlexamples].
+\end{alltt}
+or
+\begin{alltt}
+  | ?? consult qlexamples.
+\end{alltt}
+\par
+
+All queries are terminated by a fulstop, whitespaces, linefeed.
+
+\par
+
+If the file contains syntax or type errors we can modify and save the file and consult again - this is really a re-consult. Note that files we consult can contain consults themselves. These files are consulted and checked before the main file is consulted. The reference manual gives details about how reconsulting works when either the main file or a sub-file is edited.
+
+\par
+
+Assuming the file of interest has been successfully consulted we can then enter queries. In the \QL\ interpreter queries are either a conjunction of relation calls or a sequence of action calls. The interpreter does not allow a mixture.
+
+\subsection{Controlling the number of answers given for a relation query}
+We start with a simple example (a comment has been added to the interpreter interaction to highlight a particular line).
+\begin{alltt}
+| ?? age_is(P,A).
+
+P = roger : man
+A = 110 : age_val
+...
+P = fred : man
+A = 55 : age_val
+...
+P = tom : man
+A = 26 : age_val
+...
+P = june : woman
+A = 23 : age_val
+...
+P = bill : man
+A = 43 : age_val
+..    % .. {\em was entered by user to get more answers, if any}
+P = mary : woman
+A = 40 : age_val
+...
+P = rose : woman
+A = 21 : age_val
+...
+P = penny : woman
+A = 1 : digit
+\end{alltt}
+
+\par
+
+Unlike in Prolog where answers are printed one at a time and a semi-colon is used to get the next answer, in {\tt qulog} interpreter the first five answers are printed and a {\tt ..} is used to get the next batch of answers. Notice that the interpreter displays the minimal inferred type next to each answer term. That is why the last answer gives type {\tt digit} for the answer {\tt A = 1}. {\tt digit} is a declared type in the file {\tt qlexamples.qlg}. 
+
+\par
+
+We can change the number of answers displayed  each time using the special interpreter query action \verb~set_num_answers~. This, and other actions such as {\tt watch} described below, are only for use in the interpreter. They cannot be used in rules.
+
+\par
+
+\begin{alltt}
+| ?? set_num_answers(3).
+
+success
+
+| ?? age_is(P,A).
+
+P = roger : man
+A = 110 : age_val
+...
+P = fred : man
+A = 55 : age_val
+...
+P = tom : man
+A = 26 : age_val
+    % <return> was entered to stop answer display
+    
+\end{alltt}
+  
+\par
+
+\noindent We can set the number of solutions back to the default:
+\begin{alltt}
+| ?? set_num_answers(5).
+
+success
+\end{alltt}
+
+\par
+
+We can constrain the query in a couple of ways as illustrated below. Say we wanted to know the people who have ages over 39 then we could use the query
+
+\par
+
+\begin{alltt}
+| ?? age_is(P,A) & A > 39.
+  
+P = roger : man
+A = 110 : age_val
+...
+P = fred : man
+A = 55 : age_val
+...
+P = bill : man
+A = 43 : age_val
+...
+P = mary : woman
+A = 40 : age_val
+
+\end{alltt}
+
+\par
+
+What if we didn't care about the age of {\tt P} and didn't want to clutter the interpreter output with this information then we use either of the following queries.
+\begin{alltt}
+| ?? P :: age_is(P,A) & A>39.
+
+P = roger : man
+...
+P = fred : man
+...
+P = bill : man
+...
+P = mary : woman
+
+| ?? exists A age_is(P,A) & A>39.
+
+P = roger : man
+...
+P = fred : man
+...
+P = bill : man
+...
+P = mary : woman
+
+\end{alltt}
+
+\par
+
+What if we wanted the answers to this particular query to appear two at a time
+but didn't want to globally change the number of answers printed. The following query will do this.
+\begin{alltt}
+| ?? 2 of P :: age_is(P,A) & A>39.
+
+P = roger : man
+...
+P = fred : man
+..     % {\em user input}
+P = bill : man
+...
+P = mary : woman
+..     % {\em user input}
+no more solutions
+\end{alltt}
+
+\subsection{Action calls and commands} 
+One or more action calls (separated by {\tt ;}), or a single interpreter command,  may be entered in response to the query prompt.
+Remember the action calls are deterministic and so an entered action call sequence will give exactly one answer binding for its variables, or produce an exception. 
+\begin{alltt}
+| ?? do_parse2("the fat lady sings!", PT).
+
+Word list: ["the", "fat", "lady", "sings"]
+All words in dictionary
+PT = s(np("the", ne("fat", n("lady"))), v("sings")) : parse_tree
+success
+\end{alltt}
+\par
+
+The first two lines of output are produced by the action call. The last two lines are produced by the interpreter.
+
+\par
+
+We can't call functions directly but we can turn them into a relational query by using an {\tt =} query as below.
+
+\par
+
+\begin{alltt}
+| ?? X = curry(+).
+
+X = curry(+) : term_naming(fun(int) -> fun(int) -> int &&
+                           fun(num) -> fun(num) -> num &&
+                           fun(nat) -> fun(nat) -> nat)
+
+| ?? X = curry(+)(2).
+
+X = curry(+)(2) : term_naming(fun(int) -> int &&
+                              fun(num) -> num &&
+                              fun(nat) -> nat)
+
+| ?? X = curry(+)(2)(3).
+
+X = 5 : digit
+\end{alltt}
+\par
+
+Note the types in the first two examples. The answer terms are terms that name functions and the type of each of these functions are intersection types - i.e. can can be used in multiple situations.
+
+\subsection{Seeing code type declarations}
+We can list both system types and user types using, respectively, {\tt stypes} and {\tt types}. Without arguments these will list all types. We can follow these with a comma separated list of atoms. The interpreter will respond by listing all types whose name includes one of the supplied atoms. For example
+
+\par
+
+\begin{alltt}
+| ?? stypes line, term.
+
+
+act get_line(Line : ?string, Stream : !stream_type default stdin)
+"Read Line from Stream"
+
+act put_line(Line : !string, Stream : !stream_type default stdout)
+"Write Line to Stream"
+
+rel copy_term(Term : ??term, Copy : ??term)
+"Copy Term with all variables in Term replaced by fresh variables."
+
+act read_term(??term, Stream : !stream_type default stdin)
+"Unifies its argument with the next term denoted by the next
+sequence of characters in the stream followed by fullstop, return."
+
+rel string2term(String : !string, Term : ??term)
+"String is a string comprising the character sequence of a \QL\  term. 
+Term is unified with that term."
+
+rel term2string(Term : ??term, String : ?string)
+"Term is converted to String - the string representation of the term."
+success
+
+| ?? types curr.
+
+fun curry(fun(T1, T2) -> T3) -> fun(T1) -> fun(T2) -> T3
+"Curried form of F"
+fun curryR(rel(T1, ??T2)) -> fun(T1) -> rel(??T2),
+    curryR(rel(T1, ?T2)) -> fun(T1) -> rel(?T2),
+    curryR(rel(T1, !T2)) -> fun(T1) -> rel(!T2)
+fun uncurry(fun(T1) -> fun(T2) -> T3) -> fun(T1, T2) -> T3
+fun uncurryR(fun(T1) -> rel(!T2)) -> rel(T1, !T2),
+    uncurryR(fun(T1) -> rel(?T2)) -> rel(T1, ?T2),
+    uncurryR(fun(T1) -> rel(?T2)) -> rel(T1, ?T2),
+    uncurryR(fun(T1) -> rel(??T2)) -> rel(T1, ??T2)
+
+success
+    
+| ?? types tree2.
+
+def tree2(N, L) ::= leaf(L) | none() |
+                    node(tree2(N, L), N, tree2(N, L))
+rel on_tree2(?tree_val(N, L), !tree2(N, L))
+act to_parse_tree2(!list(string), ?parse_tree)
+fun tree2list(tree(T)) -> list(T)
+rel tree_to_tree2(!tree(T), ?tree2(T, T)),
+    tree_to_tree2(?tree(T), !tree2(T, T))
+
+success
+\end{alltt}
+
+\par
+
+Similar to {\tt types}, we can also show user code definitions using {\tt show} as follows. This is similar to {\tt listing} in Prolog. Note that both the type declaration and any {\tt "...."} quoted comment string are displayed,  along with the defining rules.
+\begin{alltt}
+| ?? show age_.  % {\em This will show defs for all code beginning with} age_
+
+dyn age_is(human, age_val)
+age_is(roger, 110)
+age_is(fred, 55)
+age_is(tom, 26)
+age_is(june, 23)
+age_is(bill, 43)
+age_is(mary, 40)
+age_is(rose, 21)
+age_is(penny, 1)
+
+success
+
+| ?? show inc.
+
+act inc_a(?int)
+"Increment the global value a and return the incremented value"
+inc_a(N) ::
+    N = $a + 1 ~>
+        a +:= 1
+\end{alltt}
+\newpage
+\begin{alltt}
+fun inc(nat) -> nat
+inc(N) -> N + 1
+
+success
+\end{alltt}
+\noindent  All rules  for code with a name beginning {\tt int} are displayed.
+\subsection{Debugging using {\tt watch} }
+\label{watch}
+We finish the section on the interpreter with a discussion on debugging. For debugging Prolog code we often use {\tt trace}. This can be very frustrating as we will often suffer from information overload but, even worse, we might accidentally use {\tt skip} when we should have continued to use {\tt creep} causing us to start again.
+
+\par
+
+In \QL\ we have tried to make debugging simpler.  Here is a relation definition in the {\tt qlexamples.qlg} file.
+
+\par
+
+\begin{alltt}
+rel only_has_adult_children(?human)
+only_has_adult_children(P) <=
+    exists C child_of(C,P) &
+    forall C (
+        child_of(C, P) => 
+            exists A age_is(P, A) & A > 20)
+\end{alltt}
+It can be used for both finding the humans who have one of more children but  all are above the age of 20, or for checking if a given human has that property.   
+
+\par
+
+We can watch its use by entering the command
+
+\par
+
+\begin{alltt}
+| ?? watch only_has_adult_children.
+
+success
+\end{alltt}
+\par
+
+If we do a {\tt show only\_has\_adult\_children} we will see the same single rule definition but when we query the relation we get information about its use.
+\newpage
+\begin{alltt}
+| ?? only_has_adult_children(P).
+
+1:only_has_adult_children(P)
+  Call 1 unifies rule 1
+      input  H_0 = P
+      output none
+  Rule body is:
+      child_of(_, P) &
+      forall C_0, A_0 (
+          child_of(C_0, P) &
+          age_is(C_0, A_0) => 
+              A_0 >= 18)
+1:only_has_adult_children(fred) succeeded
+P = fred : man
+
+1:only_has_adult_children(P) seeking another proof
+1:only_has_adult_children(fred) succeeded
+...
+P = fred : man
+% fred {\em is given as answer again as}
+% child_of(_, fred) {\em has two solutions}
+
+1:only_has_adult_children(P) seeking another proof
+1:only_has_adult_children(mary) succeeded
+...
+P = mary : woman
+
+1:only_has_adult_children(P) seeking another proof
+1:only_has_adult_children(bill) succeeded
+...
+P = bill : man
+
+1:only_has_adult_children(P) seeking another proof
+  no (more) proofs using rule 1 trying next rule for call 1
+1:only_has_adult_children(P) no (more) proofs
+
+\end{alltt}
+\par
+
+Ideally we would not get {\tt fred} given as an answer twice. We get the {\tt fred} answer twice because we have  two different solutions {\tt child\_of(tom,fred)} and {\tt child\_of(june,fred)} to the
+test or generate condition {\tt child\_is(\_,P)}.  The use of the anonymous variable {\tt \_} indicates
+we are not interested in knowing the child of {\tt P}. 
+
+
+To avoid the repeated answers for any parent that has more than 1 child we can replace the condition {\tt child\_of(\_,P)} by the condition {\tt has\_a\_child(P)} where:
+\begin{alltt}
+rel has_a_child(?human)
+has_a_child(P) <=
+    isa(P,human) &
+    % When P needs to be found, generate in turn names of humans
+    once(child_of(_,P))
+% Then check, once only, if they have a child
+
+fun age(human) -> age_val
+age(P) :: age_is(P,A) -> A
+age(_) -> 0
+% 0 {\em is used as the default age if none is recorded}
+
+rel only_has_adult_children2(?human)
+"Alternative def using not exists and age function
+plus has_a_child instead of child_of"
+only_has_adult_children2(H) <=  
+    has_a_child(P)  &
+    not exists C (child_of(C,P) & age(C)<18) 
+\end{alltt}
+\par
+
+\noindent We now get the answer {\tt P=fred} just once.
+\begin{alltt}
+| ?? only_has_adult_children2(P).
+
+P = bill : man
+...
+P = fred : man
+...
+P = mary : woman
+\end{alltt}
+We can also {\tt watch} a function evaluation.
+\begin{alltt}
+watch age.
+\end{alltt}
+\newpage
+\begin{alltt}
+| ??  only_has_adult_children2(P).
+
+1 : age(rose) (matches rule 1) 
+  Function body is:
+    :: age_is(rose, A_0) ->
+      A_0
+    1 : age(rose)  -> 21
+    1 : age(rose) <- 21
+P = bill : man
+2 : age(tom) (matches rule 1) 
+  Function body is:
+    :: age_is(tom, A_0) ->
+      A_0
+    2 : age(tom)  -> 26
+    2 : age(tom) <- 26
+3 : age(june) (matches rule 1) 
+  Function body is:
+    :: age_is(june, A_0) ->
+      A_0
+    3 : age(june)  -> 23
+    3 : age(june) <- 23
+...
+P = fred : man
+4 : age(rose) (matches rule 1) 
+  Function body is:
+    :: age_is(rose, A_0) ->
+      A_0
+    4 : age(rose)  -> 21
+    4 : age(rose) <- 21
+...
+P = mary : woman
+5 : age(penny) (matches rule 1) 
+  Function body is:
+    :: age_is(penny, A_0) ->
+      A_0
+    5 : age(penny)  -> 1
+    5 : age(penny) <- 1
+\end{alltt}
+
+\newpage
+]\section{Multi-process applications using \PD\ communication}
+\label{multiProcessAps}
+
+\subsection{A simple info server for multiple client agents}
+
+In this section we give a brief explanation of the code for a simple fact data server that can be updated and queried by any number of  \QL\ client agent processes. The code is included near the end of the {\tt qlexamples.qlg} file. It makes use of the dynamic relations {\tt age\_of} and {\tt child\_of} given initial values at the beginning of the examples file as well as some of the defined 'family' relations of that file. 
+
+Clients may update the server's facts  by adding and removing facts for its {\tt age\_is} and {\tt child\_of} dynamic relations.  They may also query the facts and some of its rule defined relations. 
+We implement the  server using  a non-terminating {\tt repeat} loop\footnote{{\tt repeat} {\it action} is shorthand for {\tt repeat} {\it action} {\tt until} {\tt false}}. The {\tt qlexamples.qlg} file also contains a recursive version of the server's non-terminating behaviour.
+
+\par
+
+\begin{alltt}
+def message_t ::= tell(dyn_term) | deny(dyn_term) |
+                    has_birthday(human)
+  
+rel may_update(??dyn_term,!agent_handle)
+may_update(age_is(_,_),_)
+may_update(child_of(_,_),_)
+/* We can use the may_update definition to restrict updates 
+ to certain agents. Here any agent can update age_is 
+ or child_of facts. The second argument identifies the agent
+ by its \PD\ process address - its agent_handle*/
+
+act rf_handle_messages()
+rf_handle_messages() ~> 
+    fork(rf_handle_message(), ThName);
+    set_default_message_thread(ThName)
+\end{alltt}
+\newpage
+\begin{alltt}    
+act rf_handle_message()
+rf_handle_message() ~>
+  repeat 
+      try 
+         receive \verb~{~ 
+              tell(Bel) from Ag ::  
+                 ground(Bel) & may_update(Bel,Ag) ~> 
+                     write_list(["Remembering: ", Bel, nl_]);
+                     remember([Bel])
+                
+               deny(Bel) from Ag :: 
+                  nonvar(Bel) & may_update(Bel,Ag) ~> 
+                     write_list(["Forgetting:",Bel, nl_]);
+                     forget([Bel])
+                     
+               has_birthday(P) from Ag ::
+                  nonvar(P) & may_update(age_is(P,_),Ag) ~>
+                      write_list(["Updating age of:",P, nl_]);
+                      birthday(P)
+                
+                %% special message pattern for query_at calls
+                %% from a client, in this case AgTh
+                remote_query(ID, QueryStr) from_thread AgTh ::
+                    nonvar(ID) & nonvar(QueryStr)  ~>
+                        write_list(["Agent thread ", AgTh," 
+                                    asked:", nl_,QueryStr, nl_]);
+                        %% respond_remote_query is a builtin action 
+                       respond_remote_query(ID, QueryStr, AgTh)
+                
+                M from_thread Addr ~> 
+                    write_list(["Invalid message ", M, 
+                                    " from ", Addr, nl_])
+                \verb~}~
+        except \verb~{~
+            %% All messages that are received are type checked 
+            %% as a term. If the test fails the message is 
+            %% consumed and this exception is raised
+            input_term_type_error(_, Err) ~>
+                write_list(["Message type error: ", Err, nl_])
+            \verb~}~
+\end{alltt}
+
+\par
+
+First we declare a \verb~message_t~ type so that {\tt tell}, {\tt deny} and {\tt has\_birthday} terms
+will be accepted as valid messages. Note that the type declaration says that both {\tt tell} and {\tt deny}  take an argument of type \verb~dyn_term~,  i.e. a term that denotes a fact or fact pattern for a dynamic relation.  In the file {\tt qlexamples.qlg}  just two dynamic relations are declared: 
+\begin{alltt}
+age_is(human,age_val)  child_of(human,human)
+\end{alltt}
+  We want terms denoting facts or fact patterns for these relations to  be sent as arguments of {\tt tell} and {\tt deny} messages from client processes. To enable this the type declarations for the two dynamic relations will need to be included in the client code. 
+\par
+
+At the top-level, calling \verb~rf_handle_messages()~ will fork a thread executing the action \verb~rf_handle_message()~.   The {\tt fork} action will assign a name to this thread which will be returned as the value for the variable {\tt  ThName}. The call \verb~set_default_message_thread(ThName)~ then makes this the default message handling thread, the thread that will receive  messages sent using {\tt to} where the sender doesn't specify the name of the destination thread. 
+\par
+
+The top-level of \verb~rf_handle_message()~ uses a {\tt repeat} that causes the thread
+to repeatedly call the inner action which is a {\tt try-except} action. We use this in case a client sends a message that is not of type term, which causes an \verb~input_term_type_error~ exception to be raised.
+
+\par
+
+Inside the {\tt try} we call the {\tt receive} action which contains a collection of message/address patterns (with an optional guard) and an action. The semantics of the use of {\tt receive} in this example is as follows.
+
+\par
+
+The call will access the first message in the message queue for the message handling thread and will  block waiting for a message to arrive if the queue is empty. When there is a message the {\tt receive} checks that the message is a valid \QL\ term and if not raises an exception. If it is a {\tt tell(Bel)} message it checks if the message is ground.  It also checks that the sender of the {\tt tell}, any thread within the process with agent handle {\tt Ag},  is allowed to update the {\tt Bel} fact. It does this   by querying the \verb~may_update~ relation. If allowed,  it prints a message and remembers the sent belief. If instead it is a {\tt deny(Bel)} message, it checks that {\tt Bel} is a non-variable, and that the sender may do the update.  If so it  prints a message and forgets the belief {\tt Bel}.  If the message is {\tt has\_birthday(P)}, where {\tt P} is a {\tt human}, it calls the {\tt birthday(P)} action to add 1 to the recorded age of {\tt P}. The action will just  print a message if {\tt P} already has the maximum recordable age of 110.  
+Finally, if the received message is a  \verb~remote_query~ term,   a message is printed recording receipt of the query string {\tt QueryStr}.   The server then parses the {\tt QueryStr} producing a \QL\ query which it evaluates locally. It  then sends back the query answers to the client as a stream of strings using the query identifier {\tt ID}.  All this is done by the \verb~respond_remote_query~ primitive.  If the remote query has no answers then a special message is returned to the client thread {\tt AgTh} signalling this.   In the client thread the query {\tt Query query\_at server},  encoded and sent to {\tt server} as the {\tt remote\_query(ID, QueryStr)} message, will then fail. 
+
+\par
+
+Although not used in this case, a {\tt receive} action can have an optional timeout as the last choice and has the form
+\begin{alltt}
+             timeout {\it Time} ~> {\it Action}
+\end{alltt}
+
+
+\noindent If no message that matches one of the {\tt receive} choices has arrived within {\it Time} seconds of the 
+{\tt receive} being started then {\it Action} will be called and control will move on from the {\tt receive}.
+
+\par
+
+Note that the use of {\tt ground} and {\tt nonvar} in the first two choices are necessary as {\tt remember} requires a ground \verb~dyn_term~ and {\tt forget} requires a non-variable and hence a \verb~dyn_term~ pattern.
+
+\par
+
+Because {\tt receive} rejects messages that do not type check it is important that the client and server agree on types otherwise a message term that type checks on the client side might not type check on the server side and so the message will be rejected. This suggests that the programmer should use a common ontology of term types and relation types for both clients and server, at least for the subset of the server's data that a client needs to access. One way to do this is to create an ontology file for each client that contains the subset of type definitions of the server program needed to correctly type each message and remote query that will be sent from that client to the server.  
+
+\subsection{Interpreter testing of the info server}
+
+\PD\ is the primary tool for communication between  different \QL\ processes.  We shall assume a \PD\ process has been started, using default ports for communication, on the same host {\it Host} on which we are going to run two invocations of the \QL\ interpreter.  If \PD\ has been installed in {\tt /usr/local/bin/} the simplest way to do this is to execute the command:
+\begin{alltt}
+pedro
+\end{alltt}
+from the command line of any terminal on {\it Host}.  We now want to consult the file {\tt qlexamples.qlg} but inside a \QL\ process with the name {\tt server}.   In this process we will start up the {\tt rf\_handle\_message()} server code as a new thread of activity separate from the \QL\ interactive interpreter thread. We do all this with the terminal commands:
+
+\begin{alltt}
+qulog -A server
+QuLog Version ...
+
+| ?? [qlexamples].
+
+....
+success
+
+| ?? rf_handle_messages().
+
+success
+
+| ??  
+\end{alltt}
+\par
+
+The command {\tt qulog -Aserver} will connect the invoked \QL\ interpreter to the \PD\  process already running on {\it Host} and try to register {\tt server} as the name of this new \QL\ process.  This will succeed   providing no other process running on {\it Host} has already registered {\tt server} as its name\footnote{However, a process running on a different host {\it Host2} can have registered with the \PD\ server on {\it Host} using the name {\tt server}. As destinations for messages the {\tt server} process on {\it Host} is addressed as {\tt server@}{\it Host} and that on {\it Host2}  as {\tt server@}{\it Host2}.}. If {\tt server}  is already registered as the name of some process on {\it Host}  the {\tt qulog -A server} command will produce an error message and terminate.
+
+In order to send queries and update commands to the  {\tt server}  process we will use another invocation of the \QL\ interpreter in a separate terminal on the same host\footnote{This new process does not need to be on the same host but it does need to connect and register its name with the same \PD\ server. This is simply done by adding an extra command line flag to the invocation of \QL\ on the different host identifying the host on which \PD\ is running.  See the \PD\ manual for details.}. 
+\begin{alltt}
+qulog -Aclient
+QuLog Version ...
+
+| ?? [remote_query_ontology].
+
+....
+success
+\end{alltt}
+The command line {\tt -Aclient} will connect with the \PD\ process on the same host as the {\tt server} enabling communication between this {\tt client} and the {\tt server}. The {\tt remote\_query\_ontology} contains the type declarations:
+\begin{alltt}
+def gender ::=  male | female 
+def age_val ::= 0 .. 110           
+
+def man ::= roger | tom | bill | alan | graham | keith | sam | fred
+def woman ::= june | mary | rose | penny | sue | helen | veronica
+
+def human == man || woman
+
+dyn age_is(human,age_val)   
+dyn child_of(human,human)
+
+rel person(?human,?gender,?age_val)     
+rel descendant_is(!human,?human)       
+rel ancestor_is(!human, ?human)   
+
+def message_t ::= tell(dyn_term) | deny(dyn_term) | 
+                   has_birthday(human)
+\end{alltt} 
+which will be displayed by the terminal command {\tt types}.
+With these type declarations in the {\tt client} remote queries using the \verb~age_is~, \verb~child_of~, \verb~descendant_is~,  {\tt ancestor\_is} and {\tt person} relations can be sent to the {\tt server} with type checking of the queries in the {\tt client}.  The type definition for {\tt message\_t} is so that {\tt tell}, {\tt deny} and {\tt has\_birthday} messages can be sent from the {\tt client} to the {\tt server}. {\tt dyn\_term} is the built in type for a term denoting a dynamic relation fact or fact template.
+
+The following queries and commands, entered into the {\tt client} terminal, show interaction with the {\tt server}.  
+\begin{alltt}
+ | ?? age_is(june, A) query_at server.
+
+A = 23 : age_val
+
+| ?? has_birthday(june) to server.
+
+| ?? age_is(june, A) query_at server.
+
+A = 24 : age_val
+
+|?? descendant_is(bill,D) query_at server.
+
+D = rose : woman
+...
+D = penny : woman
+
+| ?? (2 of P :: age_is(P,A) & A>39) query_at server.
+
+P = roger : man
+...
+P = fred : man
+
+\end{alltt}
+\par
+
+The first message is an example of a remote query. We are asking the {\tt server} to find all solutions for the variable {\tt A} in  \verb~age_is(june, A)~. The {\tt server} returns the list of answers and the {\tt client} binds {\tt A} to the first answer and then, on backtracking, binds {\tt A} to the next solution, if there is one. The result is the same as the query \verb~age_is(june, A)~ locally at the server. 
+\par
+
+The second message causes the {\tt server} to replace the \verb~age_is(june, 23)~ dynamic fact by  \verb~age_is(june, 24)~. The second remote query confirms this change has been made. The next remote query calls the defined relation {\tt descendant\_is} to find the two descendants of {\tt bill}.  The last remote query is a conjunctive query asking for just two humans with recorded age over 39.   Any form of query that can be posed locally in the {\tt server} can be sent as a remote query providing it only uses the relations and terms of the \verb~remote_query_ontology~ that has been consulted in the {\tt client}, and, if other than a single query condition is surrounded by "(", ")" brackets. 
+
+
+\subsection{Guarded actions}
+
+The action {\tt receive} of the fact server message handling loop uses a form of guarded actions - in this case the guard is a message pattern together with a test. \QL\ supports two other forms of guarded  actions: \verb~case~ and \verb~wait_case~.
+
+\par
+
+The first of these has the form
+\begin{alltt}
+  case \verb~{~
+      {\it Guard1} ~> {\it Action1}
+      ...
+      {\it Guardk} ~> {\it Actionk} \verb~}~
+\end{alltt}
+\par
+
+This is similar to a cascading if-then-else in Prolog. If {\it Guardi} is the first guard that is true then {\it Actioni} will be called. If no guards are true an \verb~action_failure~ exception will be raised.
+
+\par
+
+The second of these has the same form and is a generalisation of the {\tt wait} action.
+\begin{alltt}
+  wait_case \verb~{~
+      {\it Guard1} ~> {\it Action1}
+      ...
+      {\it Guardk} ~> {\it Actionk} \verb~}~
+\end{alltt}
+\par
+
+The semantics is the same as for {\tt case} except that if none of the guards are true then \verb~wait_case~ waits until the \BS\ has changed and then re-tests the guards. It only makes sense to use \verb~wait_case~ if the guards either directly or indirectly depend on the \BS.
+
+\par
+
+As with {\tt receive}, \verb~wait_case~ can have an optional timeout as the last choice.
+
+
+
+
+\subsection{A multi info\_server example}
+In the directory \verb~qulog/examples/introduction/info_broker~ there are program files for a simple multi sensor information server  application.  There are two base level sensor information servers, but there can be many more.  Acting as an optional query interface to  these sensor information servers is a broker agent.   The broker agent and the information servers have a shared ontology of three relations describing rooms in a building.  The relations give the room temperature, the open or closed status of the room's doors, and which people are in the room.   
+
+\par
+
+In the information servers, the rules for the common ontology relations just query dynamic relation facts. For example:
+\begin{alltt}
+temperature(L,T) <=
+    temp_info(L,T)
+\end{alltt}
+where {\tt temp\_info} is a dynamic relation.
+\par
+    The dynamic relation facts in each information server are being frequently updated  by a Python sensor process.  In the example you will interact with the Python sensor processes to provide the sense data, but in a real application this Python process would be harvesting readings from sensors in the rooms,  sending each changed reading as a message to the information server for which it is the data provider. On receipt of the new reading message the dynamic fact recording the new reading is immediately updated by the information server.  So repeated remote queries to the information server return different answers at different times, even when the queries are to rule defined relations such a {\tt temperature}. 
+
+\par
+ The broker agent does not store sensor data. Its dynamic data comprises facts such as:
+\begin{alltt}
+info_source(temperature, sensor_server1)
+\end{alltt}
+giving meta information about which sensor servers are active and may be queried about temperatures. The broker agent's rule defining {\tt temperature} is:
+\begin{alltt}
+temperature(Loc, Temp) <=
+    info_source(temperature, Server) &
+    temperature(Loc, Temp) query_at Server
+\end{alltt}
+This  maps a query about {\tt temperature} to remote queries to each of the sensor servers currently believed to be 
+an {\tt info\_source} for  {\tt temperature}, i.e. which will have temperature readings for rooms recorded as {\tt temp\_info} dynamic facts.
+
+\par
+In the \verb~info_broker~ directory is a README file giving instructions of how to deploy and query this multi-server toy application.
+
+
+\newpage
+\section{Advanced Topics}
+\label{Advanced Topics}
+In this section we look at three advanced topics: extending \QL\ by accessing the underlying Qu-Prolog and C levels; writing mixed level applications; and building a runtime application.
+
+\subsection{Language Extensions}
+\label{Language Extensions}
+
+\QL\ programs are first compiled into \QuP, which is then further compiled into
+ abstract machine code. This machine code is then executed by a {\tt C} interpreter. Currently \QL\ includes only a small subset of the underlying functionality provided by the \QuP\ built-in relations, some of which are implemented in C.
+ It is our intention to include more functionality as the need arises.
+
+However in this section we  show how to ``lift'' \QuP\ functionality to \QL\ for\
+ a specific application.   Given \QuP\ has a foreign code interface to the C\
+ -level, this means a \QL\ application can also access the C-level.
+ 
+\par
+
+The first question the programmer needs to ask is ``Am I lifting \QuP\ functionality as a \QL\ relation, function or action?''. The answer to this question determines the required approach. Remember that
+any functionality that is stateful needs to be lifted as an action.
+
+\par
+
+\QuP\ does not have functions but we can lift a relational version of a function and then define the required function in terms of this relation. So, for example, suppose we want to use in \QL\ a function to find the earliest start position of the sequence of characters of one atom, {\tt SubAtom}, within  the sequence of characters of another atom {\tt Atom}, returning {\tt 0} if {\tt SubAtom} is not found. \QuP\ already has a more general \verb~atom_search~ predicate defined and so we can lift that to the \QL\ level
+by simply declaring the type:
+
+\par
+
+\begin{alltt}
+rel atom_search(SubAtom:!atom,StartPos:!nat,Atom:!atom,Pos:?nat)
+"Succeeds when sequence of chars of SubAtom occurs in  
+  Atom starting at a position Pos >= StartPos"
+\end{alltt}  
+\par
+
+
+\noindent We can then define the search function in terms of this relation. As the {\tt atom\_search} call fails when {\tt SubAtom} in not a sub-atom of {\tt Atom} starting at {\tt StartPos=1} we need the second rule to return 0 in that case.
+\newpage
+\begin{alltt}
+fun search_atom(SubAtom:atom, Atom:atom) -> nat
+"Returns the position of SubAtom within Atom if found 
+ and 0 otherwise"
+search_atom(SubAtom, Atom) :: 
+    atom_search(Atom, 1, SubAtom, Position) -> 
+        Position
+search_atom(_, _) -> 0  
+\end{alltt}
+\par
+
+%In fact any relation that has exactly one argument in {\tt ?} mode and all the other arguments in {\tt !} mode can be turned into a function using the above approach.
+
+\par
+
+There are two possible problems with the direct lifting of a relation or action  to the \QL\ level simply by adding a \QL\ moded type declaration for the underlying \QuP\ relation, as for the {\tt atom\_search} relation.  It could be that the direct call to the \QuP\ level  raises a \QuP\ level exception for certain argument values.  Also, some output value might not be of the type
+specified in the \QL\ level moded type declaration. The programmer must ensure that the \QuP\ level implementation 
+does not cause either of these problems.
+
+ If need be \QuP\ code  for an interface relation 
+must be written that wraps around the call to the \QuP\ primitive (or programmer defined \QuP\ code) whose functionality needs to be accessed at the \QL\ level.  The interface code can then catch any \QuP\ error that might be raised, converting it to a \QL\ level error message, and any computed value that is not of the type expected at the \QL\ level can be mapped to a value
+of the required type. 
+
+\par
+
+For actions there is another problem - actions have to be deterministic. That is
+they produce a single solution and should raise an \verb~action_failure~ exception
+if the call fails. Again, the programmer needs to be careful that any \QuP\
+implementation correctly implements this requirement.
+
+\par
+
+We provide a mechanism that links the code at the two levels and, when required,provides protection to the programmer from the above problems.
+We illustrate these ideas with the examples given below that can be found in \verb~lift_eg.qlg~ and \verb~lift_eg_support.ql~ in the {\tt examples/introduction} folder. The file  \verb~lift_eg_support.ql~ supplies the required  \QuP\ code
+while the \QL\ file \verb~lift_eg.qlg~ consults this \QuP\ file and provides the type declarations for the lifted relations and actions.
+
+\par
+
+Note that, \QuP\ code used in a mixed application (discussed in this and the following section) is consulted in the \QL\ program using a query of the form
+\begin{alltt}
+  ?- pconsult(Filename)
+\end{alltt}
+\noindent
+
+This file is not actually consulted until all the \QL\ code is consulted so that the code transformations (wrapping calls) has access to all the \QL\ declarations.
+
+\par
+
+The first example is lifting \verb~atom_search~ as above. Here we are confident that
+this relation will not raise any exceptions nor generate an output of the wrong type. Note that, when this \QL\ file is consulted, the system
+will give a warning that the relation has been declared but has no definition.
+This will remind the programmer that they are ``living dangerously''.
+
+\par
+
+For the second example consider lifting \verb~gmtime~ which is a predicate for converting between seconds since the Unix epoch and the GM time structure.  In this case, because we have a {\tt time} data structure we start by declaring this type as well as the relation types as below. 
+
+\par
+
+\begin{alltt}
+  def time_t ::= time(nat, nat, nat, nat, nat, nat)
+  rel time2gmtime(!nat, ?time_t)
+  rel gmtime2time(!time_t, ?nat)
+\end{alltt}
+\par
+
+At the \QuP\ level we simply add the facts below which links the \QL\ declared relations to the \QuP\ implementation:
+\begin{alltt}
+qulog2qp_map(time2gmtime(A, B), gmtime(A, B)).
+qulog2qp_map(gmtime2time(A, B), gmtime(B, A)).
+\end{alltt}
+
+\noindent
+That is all that is required as the compiler will then convert any calls to
+\verb~time2gmtime~ to the appropriate interface call. 
+
+The \QuP\ predicate {\tt gmtime} is bidirectional and so it is tempting
+to make a declaration such as:
+\begin{alltt}
+  rel gmtime(!nat, ?time_t), gmtime( ?nat, !time_t)
+\end{alltt}
+
+\noindent
+However, the corresponding
+\begin{alltt}
+qulog2qp_map(gmtime(A, B), gmtime(A, B)).
+\end{alltt}
+will not be accepted by the system as multiple type declarations are not supported by this interface as it is too difficult to determine what the right
+type test will be at compile time.
+
+\par
+
+The last example involves lifting \verb~tcp_server~ as an action. The
+\QuP\ call returns the socket ID which is a {\tt nat}. If we use this type
+at the \QL\ level then we wouldn't be able to distinguish between a socket ID
+and another number thus reducing the usefulness of type checking. In order
+to avoid this we define a constructor type as follows
+\begin{alltt}
+  def socket_t ::= socket(nat)
+\end{alltt}
+\noindent
+We can then make the required declaration as follows.
+\begin{alltt}
+  act tcp_server(Socket:?socket_t, Port:!nat default 0, 
+               Host:!atom default localhost)
+  "Create a Socket for a tcp_server for given Port and Host"
+\end{alltt}
+noting that the \QuP\ version uses the same defaults for the port and host.
+
+\par
+
+The \QuP\ version of  \verb~tcp_server~ can raise an exception and so we can
+choose to produce the default exception or, as we have done here, declare the appropriate exception at the \QL\ level as follows and modify the interface code to manage that exception.
+
+\begin{alltt}
+  def user_exception ::= tcp_exception(string)
+\end{alltt}
+\noindent
+The \QuP\ level code then becomes:
+
+\begin{alltt}
+  qulog2qp_map(tcp_server(Socket, Port, Host),
+               tcp_server_interface(Socket, Port, Host)).
+
+%% For the interface use catch to trap any exceptions generated
+%% Note that we convert the socket ID  into a constructor term
+%% of the required type
+tcp_server_interface(socket(Socket), Port, Host) :-
+    catch(tcp_server(Socket, Port, Host), Pattern,
+          handle_tcp_exception(Pattern)).
+
+%% convert the QuProlog exception to the corresponding
+%% Qulog exception where the argument is a string
+%% representation of the QuProlog exception
+handle_tcp_exception(Pattern) :-
+    open_string(write, Stream), 
+    write_term_list(Stream, [Pattern]),
+    stream_to_string(Stream, Str),
+    throw(tcp_exception(Str)).
+\end{alltt}                       
+
+For each \verb~qulog2qp_map~ fact the \QL\ translator-compiler will generate
+interface code that links the two levels.
+
+If the programmer can't guarantee (or is uncertain that) output types will be correct then \verb~qulog2qp_wrap~ can be used to get the translator-compiler to wrap the code
+in such a way that:
+\begin{enumerate}
+\item \QuP\ exceptions are turned into a \QL\ \verb~qp_exception~ exception.
+\item Any output variables will have an appropriate type check applied and if
+  that check fails then the \QL\ \verb~qulog2qp_type_exception~ exception will be raised.
+\item For an action a cut is placed after the call to stop backtracking.
+\item Also for actions a second call is added that raises an \verb~action_failure~ exception if the call fails.
+  \end{enumerate}
+
+For example, in the above \QuP\ program, the fact
+\begin{alltt}
+  qulog2qp_wrap(tcp_server).
+\end{alltt}
+will cause calls to \verb~tcp_server_interface~ to be wrapped as above.
+
+It's not necessary to have a \verb~qulog2qp_map~ map fact corresponding to
+a \verb~qulog2qp_wrap~ fact. For example, if the programmer is uncertain
+that \verb~atom_search~ will produce correctly typed output then the programmer
+can simply add the fact
+\begin{alltt}
+  qulog2qp_wrap(atom_search).
+\end{alltt}
+
+If, after testing, the programmer is confident that there is no problem with a
+call then the wrap fact can be removed.
+\par
+
+The folder {\tt examples/ev3} contains a simple example using a Mindstorm EV3
+robot. The C-code is specific to this application but is relatively easy to
+modify for other applications. Because this interface is so simple (at the \QuP\ level) then we use a direct lifting to the \QL\ level.
+
+\par
+
+The folder {\tt examples/ROS} contains a different approach where we create a process that provides a 2-way \PD\-ROS interface that can be used to link a ROS based robot to a \TR\ control program.
+
+%% \subsection{Mixed Level Applications}
+%% \label{Mixed Level Applications}
+
+%% In designing \QL\ we made the decision to completely separate relations and actions - relations can't call actions and actions are deterministic. A consequence of this decision is that there is a class of applications that can't be implemented purely at the \QL\ level without introducting a mixed relation/action code type. Examples  in this class include interactive applications that contain state that is updated, but backtracking to find alternative solutions is required. The \QL\ interpreter itself is not one of these since there is no state that needs
+%% to be updated. On the other hand the simple interactive natural deduction prover
+%% in {\tt examples/prover} is one such application as it maintains proof state that is updated when rules are applied and backtracking is required when a sequence of rule applications lead to a dead end.
+
+%% \par
+
+%% Our feeling is that programmers using \QL\ would very rarely need to write such applications and it is not worth ``polluting'' the language by introducting a mixed relation/action type to support such applications. Instead we provide support
+%% for these sorts of applications by allowing the programmer to write a mixture of \QL\ and \QuP\ code. Of course, such applications could be completely written in \QuP\ but then the programmer would not get any type/mode checking.
+
+%% \par
+
+%% The approach we suggest is to  write as many relations and actions at the \QL\ level as possible in order to maximise type and mode checking. In fact all
+%% relations should be written at the \QL\ level (unless the relation is a lifting
+%% of a \QuP\ predicate as described in the previous section).
+
+%% \par
+
+%% We illustrate the suggested approach by considering the interactive prover example in {\tt examples/prover}. The \QL\ file \verb~natural_deduction.qlg~ contains most the implementation and takes advantage of type and mode checking.
+%% Because the proof interpreter itself is a mixed relation/action predicate it cannot be given a declaration at the \QL\ level. We therefore put such code at the \QuP\ level in the file \verb~natural_deduction_support.ql~.
+
+%% \par
+
+%% The predicates \verb~interactive_proof~, \verb~interactive_proof_step~ and \\
+%% \verb~do_auto~ are examples of mixed relation/action predicates because they use I/O (an action) to interact with the user and backtracking (a relation) to deal with proof dead ends, for example, when the user undoes a proof step. Note that \verb~do_auto~ could have been made a relation if we leave out the output showing the progress of \verb~do_auto~. 
+
+%% The remaining predicate \verb~start_proof~ provides the interface between the \QL\ level and the \QuP\ level. It is declared as an action in \verb~natural_deduction.qlg~ and so it can be called at the \QL\ level. As discussed in the previous section, any choicepoints for \verb~start_proof~ will be removed on termination. When an interaction is completed, either because a proof is found or the user gives up then all choicepoints are removed anyway and so this is not an issue.
+
+
+%% \par
+
+%% Note that the relation/action predicates above call relations and actions at the \QL\ level.  Given all \QL\ code is compiled to the \QuP\ level then, in principle, these mixed relation/action predicates could simply call \QuP\ relations and actions. The problem is that, because type and mode checking is not carried out at the \QuP\ level then calls could be made to the \QL\ level with arguments that have incorrect types or modes.
+
+%% \par
+
+%% To avoid this problem, when a \QuP\ file is consulted using \verb~pconsult~ from a \QL\ program file,
+%% code transformations are automatically applied to wrap calls to  \QL\ relations from within the \QuP\ file. It is important to note that that wrapping that happens here is not the same as the call wrapping from the previous section. The wrapping from the previous section is to type and mode check the call output (because we are calling from \QL\ to \QuP), while the wrapping in this section is to type and mode check the call input (because we are calling from \QuP\ to \QL).  
+
+
+%% A consequence of wrapping calls to the \QL\ level is that, as well as programmer declarations, all system level declarations are also wrapped, including \QuP\ predicates that have been lifted using the same name. For example \verb~append~ has a type declaration and so any use of  \verb~append~ in the consulted \QuP\ code will be wrapped with type checking.
+%% Note that some lifted predicates like \verb~get_line~ have the same name
+%% but the arguments are in a different order to take advantage of default arguments.
+
+%% \par
+
+%% Consider a simple example where the programmer makes the declaration
+
+%% \begin{alltt}
+%%   act get_from_stdin(?string)
+%% \end{alltt}
+
+%% \noindent
+%% and, at the \QuP\ level writes the following
+%% \begin{alltt}
+%%   get_from_stdin(S) :-
+%%       get_line(stdin, S).
+%% \end{alltt}  
+
+%% \noindent
+%% then the \QL\ call \verb~get_from_stdin(S)~ will produce the exception
+%% \begin{alltt}
+%%   prolog_call_type_error("get_line(stdin, S)")
+%% \end{alltt}
+%% because the \verb~get_line~ call will be wrapped (and therefore type checked).
+%% \par
+%% Hopefully, by looking at the type declaration of \verb~get_line~ the programmer
+%% will realize the predicate definition should have been
+
+%% \begin{alltt}
+%%   get_from_stdin(S) :-
+%%       get_line(S, stdin).
+%% \end{alltt}
+
+%% \noindent
+%% or, since \verb~stdin~ is the default,
+
+%% \begin{alltt}
+%%   get_from_stdin(S) :-
+%%       get_line(S).
+%% \end{alltt}
+
+%% \par
+
+%% For efficiency reasons the programmer might want to stop some \QuP\ code from being wrapped. This can be done by moving such code to another \QuP\ file, compiling
+%% that to object code and then using \verb~load~ rather than \verb~consult~ in the interface \QuP\ file.
+
+
+\subsection{Building a Runtime Application}
+\label{Building a Runtime Application}
+
+Typically we develop an application using the interpreter for experimenting and testing. Often we subsequently want to deploy the application as a runtime application - i.e. it can be started from the command line and does not require the interpreter.
+
+\par
+
+The {\tt bin} folder contains the Python program {\tt qulogc} that takes a {\tt .qlg} file and translates the file to the corresponding {\tt .ql} file and then, if requested, compiles the program to a runtime application.
+
+\par
+
+The default call is
+\begin{alltt}
+  qulogc {\it application}
+\end{alltt}
+
+\par
+\noindent
+that will, assuming the program type checks, translate the program {\tt {\it application}.qlg} to
+{\it application}{\tt .ql}
+and then compile that to a runtime application.
+\par
+
+The default is that the program is a \TR\ program and is to be used as a runtime application and so needs a definition of {\tt qmain} - the same as the \QuP\ {\tt main} definition. If the application is not a {\tt TeleoR} application but instead is a \QL\ application then a {\tt -Q} switch can be used. 
+\par
+
+So, for example, if we wanted to translate the \QL\ program {\tt qapp.qlg} and
+compile it as a runtime application we would use
+\begin{alltt}
+  qulogc -Q qapp
+\end{alltt}
+
+and if we wanted to translate the TeleoR program {\tt trapp.qlg} and
+compile it as a runtime application we would simply use
+\begin{alltt}
+  qulogc trapp
+\end{alltt}
+
+\end{document}

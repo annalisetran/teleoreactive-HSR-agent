@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<launch>
+
+  <node name="raw_pcl_throttler" type="throttle" pkg="topic_tools" args="messages /hsrb/head_rgbd_sensor/depth_registered/image_rect_raw 20" />
+
+    <node pkg="nodelet" type="nodelet" name="gpu_manager"  args="manager" output="screen" />
+
+    <!-- Bandwidth used to stream pointcloud exeeds network capacity, so we stream depth image and convert pointcloud-->
+    <node pkg="nodelet" type="nodelet" name="PointcloudXYZ" args="load depth_image_proc/point_cloud_xyz gpu_manager" >
+       <remap from="camera_info" to="/hsrb/head_rgbd_sensor/depth_registered/camera_info" />
+       <remap from="image_rect" to="/hsrb/head_rgbd_sensor/depth_registered/image_rect_raw_throttle" />
+    </node>
+</launch>

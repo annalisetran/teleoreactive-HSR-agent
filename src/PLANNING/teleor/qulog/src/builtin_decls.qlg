@@ -1,0 +1,812 @@
+%% Copyright 2019 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
+%% System qulog declarations - translated to the corresponding .ql file
+%% to be compiled as part of the qulog/teleor library
+
+%% --------------------------------------------------------------------
+%% Input/Output
+%% --------------------------------------------------------------------
+
+def stream_num_type_ ::= stream_(nat)
+def stream_enum_type_ ::= stdin | stdout | stderr
+def stream_type == stream_enum_type_ || stream_num_type_
+"Used for stream related actions eg open/close/read/write"
+
+act open(FileName : !atom, RW : !atom, Stream : ?stream_type)
+"Open the file FileName in RW mode, matching Stream with generated stream"
+
+act close(Stream : !stream_type)
+"Close the stream Stream"
+
+def write_type_nl__ ::= nl_
+"The atom that indicates a newline in argument list
+of the write_list action"
+
+def write_type_other__ ::= sp_(int) | q_(string) | uq_(atom) | wr_(term)
+"The compound layout terms that can be used in argument
+list of the write_list action"
+
+def write_type__ == write_type_nl__ || write_type_other__
+"The union type of all layout terms for use in  
+argument list of the write_list action"
+
+act get_line(Line : ?string, Stream : !stream_type default stdin)
+"Read Line from Stream"
+
+act put_line(Line : !string, Stream : !stream_type default stdout)
+"Write Line to Stream"
+
+act read_term(??term, Stream : !stream_type default stdin)
+"Unifies its argument with the next term denoted by the next
+sequence of characters in the stream followed by fullstop, return."
+
+act read_op_term(??term, Stream : !stream_type default stdin)
+"Unifies its argument with the next term denoted by the next
+sequence of characters in the stream followed by fullstop, return. The
+read uses QuProlog level op declarations."
+
+act peek(?atom, Stream : !stream_type default stdin)
+"Peek at the next character (as an atom) in Stream. 
+EOF is the empty atom ''"
+
+act flush_output(Stream : !stream_type default stdout)
+"Flush Stream"
+
+rel term2string(Term : ??term, String : ?string)
+"Term is converted to String - the string representation of the term. 
+Term is left unchanged."
+
+fun str(term) -> string
+"Return the string representation of the (ground) term."
+
+%rel interact(Prompt:!string, Answer:?string)
+%"Interact with the user by providing a Prompt (query) with Answer being the
+%users response."
+
+rel string2term(String : !string, Term : ??term)
+"String is a string comprising the character sequence of a QuLog term. 
+Term is unified with that term."
+
+act write_list(TermList : !list(??term), Stream : !stream_type default stdout)
+"Write TermList to Stream leaving TermList unchanged."
+
+rel write_list_to_string(TermList : !list(??term), String:?string)
+"Write TermList to string String leaving TermList unchanged."
+
+act write_op_term(Term : ??term, Stream : !stream_type default stdout)
+"Write Term to Stream. The write uses QuProlog level op declarations. 
+Term is left unchanged."
+
+act log_list(!list(??term))
+"Display a list of terms to the TR logger with layout controlled 
+using write_type_ descriptors. Term is left unchanged."
+
+rel writeDebug(!list(??term))
+"A relational version of write_list - meant to be only used for 
+debugging purposes. Term is left unchanged."
+
+%% --------------------------------------------------------------------
+%% Arithmetic
+%% Note: some of these functions can raise an 
+%% arithmetic_function_domain_error_(term) exception - e.g. division by 0
+%% --------------------------------------------------------------------
+
+fun *(nat, nat) -> nat,
+    *(int, int) -> int,
+    *(num, num) -> num
+"Infix multiplication operator - left associative"
+
+fun **(nat, nat) -> nat,
+    **(int, int) -> int,
+    **(num, num) -> num
+"Infix exponentiation operator - not associative"
+
+fun +(nat, nat) -> nat,
+    +(int, int) -> int,
+    +(num, num) -> num
+"Infix addition operator - left associative"
+
+fun -(int, int) -> int,
+    -(num, num) -> num
+"Infix subtraction operator - left associative
+and number complement prefix operator"
+
+fun /(num, num) -> num
+"Infix division operator - left associative
+Note it always returns a floating point number
+Use // for integer division returning an integer"
+
+fun //(nat, nat) -> nat,
+    //(int, int) -> int
+"Infix integer division operator - left associative
+Returns integer part of the division operation"
+
+fun /\(int, int) -> int
+"Infix, integer bitwise AND operator - left associative"
+
+fun >>(int, int) -> int
+"Shift bits of integer first arg. right by pos integer of second"
+
+fun \(int) -> int
+"Prefix, returns integer that is the bitwise complement
+of the argument integer"
+
+fun \/(int, int) -> int
+"Infix integer bitwise OR operator - left associative"
+
+fun abs(int) -> nat,
+    abs(num) -> num
+"The absolute value of number arg."
+
+fun acos(num) -> num
+"Inverse cosine function"
+
+fun asin(num) -> num
+"Inverse sine function"
+
+fun atan(num) -> num
+"Inverse tangent function"
+
+fun atan2(Y : num, X : num) -> num
+"The angle in radians between the
+positive x-axis of a plane and the point  (X, Y)."
+
+fun ceiling(num) -> int
+"The smallest integer greater than number arg."
+
+fun cos(num) -> num
+"The cosine of radian value argument"
+
+fun e() -> num
+"The value of arithmentic constant 'e'"
+
+fun floor(num) -> int
+"The greatest integer less than the number arg."
+
+fun log(num) -> num
+"The natural log value."
+
+fun max(nat, nat) -> nat,
+    max(int, int) -> int,
+    max(num, num) -> num
+"The maximum of the two numbers"
+
+fun min(nat, nat) -> nat,
+    min(int, int) -> int,
+    min(num, num) -> num
+"The minimum of the two numbers"
+
+fun mod(M : int, N : int) -> int
+"The remainder of integer division of M by N.
+Can be used as infix operator."
+
+fun pi() -> num
+"The value of arithmentic constant 'pi'"
+
+fun prod(list(int)) -> int,
+    prod(list(num)) -> num
+"Returns product of nums or ints on list argument."
+
+fun round(num) -> int
+"The nearest integer to number argument."
+
+fun sin(num) -> num
+"The sine of radian value argument"
+
+fun sqrt(num) -> num
+"The square root of argument."
+
+fun random_int(M : int, N : int) -> int
+"A random integer between M and N inclusive."
+
+fun random_num() -> num
+"A random number between 0 and 1 inclusive."
+
+act random_seed(S : ?nat)
+"S is the seed for the random number generator."
+
+fun sum(list(int)) -> int,
+    sum(list(num)) -> num
+"The sum of nums or ints on list argument."
+
+fun tan(num) -> num
+"The tangent of radian value argument"
+
+fun <<(int, int) -> int
+"Shift bits of integer first arg. left by pos integer of second"
+
+
+%% Qulog doesn't allow declarations with different arities and so
+%% we use unary_minus ather than '-'  bid_translator changes unary_minus
+%% to '-'
+fun unary_minus(int) -> int, unary_minus(num) -> num
+
+
+%% --------------------------------------------------------------------
+%% Term comparisons
+%% --------------------------------------------------------------------
+
+rel =(??term, ??term)
+"Any terms, unification with occurs check"
+
+
+rel =@(?T, !T), =@(??T, ??T)
+"One sided unification"
+
+rel <(num, num)
+"Numeric values, less than"
+
+rel =<(num, num)
+"Numeric values, less than or equal"
+
+rel >(num, num)
+"Numeric values, greater than"
+
+rel >=(num, num)
+"Numeric values, greater than or equal"
+
+rel @<(??term, ??term)
+"QuLog term ordering, less than. 
+Both arguments are left unchanged."
+
+rel @=<(??term, ??term)
+"QuLog term ordering, less than or equal. 
+Both arguments are left unchanged."
+
+rel @>(??term, ??term)
+"QuLog term ordering, greater than. 
+Both arguments are left unchanged."
+
+rel @>=(??term, ??term)
+"QuLog term ordering, greater than or equal.
+Both arguments are left unchanged."
+
+rel \=(??term, ??term)
+"Any terms, the negation of unification with occurs checkl. 
+Both arguments are left unchanged."
+
+
+%% --------------------------------------------------------------------
+%% Type/mode checking
+%% --------------------------------------------------------------------
+
+rel isa(?term, !typeE(_))
+"Can be used to check or generate instances of the type
+described by second argument providing this has a finite number of
+ground instances."
+
+rel template(??term)
+"Tests that its term argument is a compound term with non-variable
+constructor. The argument is left unchanged."
+
+rel var(??term)
+"Tests that its term argument is a variable. The argument is left unchanged."
+
+
+rel type(??term, !typeE(T))
+"Can be used to check if a value has the type described by type 
+the expression second argument. As a top level QuLog query 
+can be used to find the type of a value. The first argument
+is left unchanged."
+
+rel allowed_dyn_call(??term)
+"Check that the argument is an allowed relation call to a dynamic relation. 
+Typically used just before a call on forget. The argument is left unchanged."
+
+rel allowed_rel_call(??term)
+"Check that the argument is an allowed relation call, i.e. it is a term
+representing a relation call with the correct modes and types. 
+Typically used just before a call call(C). The argument is left unchanged."
+                     
+rel allowed_act_call(??term)
+"Check that the argument is an allowed action call, i.e. it is a term
+representing an action call with the correct modes and types. 
+Typically used just before a call do(C). The argument is left unchanged."
+
+
+def type_kind_ ::= 
+        enumT_(list(atomic)) |
+        constrT_(list(term)) |
+        unionT_(list(term)) |
+        tupleT_(list(term)) |
+        rangeT_(int, int)
+
+rel type_info(!typeE(T), ?type_kind_)
+
+%% --------------------------------------------------------------------
+%% List/Set/String/Tuple processing
+%% --------------------------------------------------------------------
+
+fun #(list(term)) -> nat,
+    #(set(term)) -> nat,
+    #(string) -> nat
+"Operator that returns the length of a list or string or the size of a set"
+
+rel in(?T, !list(!T)),
+    in(??T, !list(??T)),
+    in(?T, !set(T)),
+    in(?string, !string)
+"Multi-purpose infix membership operator for retrieving or testing
+membership of lists, sets and strings. For strings the first
+argument is (or will be) a singleton string."
+
+fun tolist(string) -> list(string),
+    tolist(set(T)) -> list(T)
+"Converts a string or set to a list preserving order. For a string the 
+result is the list of characters of the string as singleton strings."
+
+fun toset(string) -> set(string),
+    toset(list(T)) -> set(T)
+"Converts a string or list to a set. For a string the result
+is the set of characters of the string as singleton strings."
+
+fun <>(list(T),list(T)) -> list(T)
+"Infix left associative operator which is both a function for appending 
+a pair of complete lists and a pattern operator for use
+on RHS of =? for non-deterministically splitting a list."
+
+rel append(!list(T), !list(T), ?list(T)),
+    append(?list(T), ?list(T), !list(T)),
+    append(!list(??T), !list(??T), ?list(??T)),
+    append(?list(??T), ?list(??T), !list(??T)),
+    append(?list(??T), ??list(T), ??list(T))
+"Similar to the <> operator except it can be used
+with non-ground lists and lists that have ,..Var undetermined tails"
+
+rel delete(X:?T, Xs:list(T), R:?list(T))
+"R is Xs with X deleted."
+
+rel member(?T, !list(T)),
+    member(??T, ??list(T))
+"Similar to the 'in' operator except the second argument
+may be a list template, even an unbound variable."
+
+rel reverse(!list(T), ?list(T)),
+    reverse(?list(T), !list(T)),
+    reverse(!list(??T), ?list(??T)),
+    reverse(?list(??T), !list(??T))
+"Can be used to reverse a complete list of template
+terms.  Second argument can be list pattern using ,.."
+
+rel sort(!list(!T), ?list(T), !rel(!T, !T)),
+    sort(!list(??T), ?list(??T), !rel(??T, ??T))
+"Will match the second argument against the first argument sorted by the
+transitive order relation given as the third argument, without instantiating 
+variables in the first argument. 
+If the relation is asymmetric, duplicate terms will be removed."
+
+rel transform_subterms(rel(??term, ??term), ??term, ??term)
+"A lift of QuProlog's transform_subterms. The call fails if 
+the transformed term is not of type term."
+
+rel collect_simple_terms(rel(??term, ??term, ??term), ??term, ??term, ??term)
+"A lift of QuProlog's collect_simple_terms"
+
+rel term2list(!term, ?list(term)),
+    term2list(?term, !list(term)),
+    term2list(??term, ??list(term))
+"A lift of =.. where the call fails when a generated compound 
+term is not of type term. If a function application is constructed 
+then that application is evaluated."
+
+fun diff(set(T), set(T)) -> set(T)
+"Infix operator for finding elements of first set arg. not in the second."
+
+fun inter(set(T), set(T)) -> set(T)
+"Infix operator for finding intersection of two sets."
+
+fun union(set(T), set(T)) -> set(T)
+"Infix operator for finding union of two sets."
+
+fun ++(string, string) -> string
+"Infix left associative operator which is both a function for 
+concatenating a pair of strings and a pattern operator for use on
+LHS of =? for non-deterministically splitting strings."
+
+rel sub_string(String : !string, Start : ?nat, Length : ?int, 
+               After : ?nat, SubString : ?string)
+"Substring is the sub-string of String of length Length
+starting at position Start. After is the number of characters
+remaining in the string after Substring."
+
+rel re_match(RE : !string, String : !string, Match : ?list((nat, nat)))
+"RE is a regular expression, String is the string to match the RE against. 
+If a match is found, Match is a list of 
+pairs representing the start and end of matches.
+On backtracking, Match is instantiated to the next list of matches.
+re_match fails if RE is an invalid regular expression."
+
+
+fun map(F:fun(T1) -> T2, List:list(T1)) -> list(T2)
+"Apply F to each element of List"
+
+fun filter(Test:rel(T1), List:list(T1)) -> list(T1)
+"Filter the elements of List using Test"
+
+fun filter_map(Test:rel(T1), F:fun(T1) -> T2, List:list(T1)) -> list(T2)
+"Filter the elements of List using Test and then 
+apply F to the filtered elements"
+%% --------------------------------------------------------------------
+%% Exceptions
+%% --------------------------------------------------------------------
+
+
+def builtin_exception ::= 
+        read_term_syntax_error() | input_term_type_error(atom, string) |
+        read_op_term_syntax_error(string) |
+        input_term_error(atom, string) |
+        string2term_syntax_error(string) | 
+        stream_not_writeable(string) |
+        stream_not_readable(string) |
+        stream_not_open(string) |
+        prolog_call_type_error(string) |
+        
+        action_failure(string) | no_matching_action_rule(string) |
+        no_matching_function_rule(string) | no_matching_tr_rule(tel_term) | 
+
+        arithmetic_function_domain_error(term) | 
+        remote_query_ontology_mismatch(string) |
+        remote_query_exception(exception) |
+        pedro_not_connected(atom) | pedro_name_already_registered(atom) |
+        fork_thread_name_exists(atom) |
+        qp_exception(string) |
+        qulog2qp_type_exception(string)|
+        
+        no_agent_to_kill() | no_matching_task_to_kill(atom) |
+        not_start_task_TR_procedure(string) |
+        task_name_in_use(atom) 
+
+
+"Constructor type for all qulog exception terms"
+
+def exception == builtin_exception || user_exception
+"The type for all exception terms including user exceptions. 
+If the user doesn't define user_exception_ then the system declares it as
+def user_exception ::= default_exception_().
+This will be overwritten by a user declaration."
+
+%% converted by translator to raise
+act 'compilerraise'(Patt : !exception)
+"Raise Patt as an exception to be caught in some outer try-except"
+
+%% --------------------------------------------------------------------
+%% Thread management
+%% --------------------------------------------------------------------
+
+def thread_sizes_t ::= 
+        choice_size(nat) | env_size(nat) | heap_size(nat) | 
+        binding_trail_size(nat) | other_trail_size(nat) | 
+        scratchpad_size(nat) | name_table_size(nat) | ip_table_size(nat)
+"Sizes structures for specifying the sizes of data areas when forking."
+
+act exit()
+"Exit this thread."
+
+act exit_thread(!atom)
+"Exit thread with given name (if it exists)."
+
+act fork(Act : !act_term, Name : ?atom, 
+         Sizes : !list(!thread_sizes_t) default [])
+"Creates a new thread named Name executing
+the action call Act. Name must be new thread name if given,
+the sizes of the data areas are specified in Size."
+
+act fork_light(Act : !act_term, Name : ?atom)
+"Same as fork except the sizes of the data areas are small"
+
+act thread_sleep(!num)
+"Causes the executing thread to suspend for given number of seconds."
+
+rel is_thread(Th : !atom)
+"Succeeds iff Th is the name of an existing thread."
+
+%% --------------------------------------------------------------------
+%% Pedro message management
+%% --------------------------------------------------------------------
+
+def agent_handle == atom || process_handle
+"Address formats for agents"
+def thread_handle == atom || thread_in_process
+"Address formats for threads"
+def handle == agent_handle || thread_handle
+"All the different address formats of a thread for communication"
+
+%% translator converts to '@'
+def process_handle ::= 'compiler@'(atom, atom)
+
+%% translator converts to ':
+def thread_in_process ::= 'compiler:'(atom, agent_handle)
+"Address format for communication to another thread of an
+agent or QuLog process on same host"
+
+rel this_process_name(Name : ?atom)
+"The Pedro registered name of this process is Name."
+
+rel this_task_name(?atom)
+"Unifies it's argument with the name of this task."
+
+rel this_agent_name(?atom)
+"Unifies it's argument with the name of this agent."
+
+rel this_thread_name(Name : ?atom)
+"The name of thread executing the call is Name."
+
+act connect_to_pedro(Host : !atom default localhost, Port : !int default 4550)
+"Connect to the pedro server on Host using Port."
+
+act register_with_pedro(!atom)
+"Register process name with the Pedro server.
+Deregister and reregister if already connected."
+
+act deregister_from_pedro()
+"Deregister process name with the Pedro server"
+
+act disconnect_from_pedro()
+"Disconnect from the Pedro server"
+
+act subscribe(!string, ?nat)
+"Use the first arg as a string representing a Pedro subscription
+and subscribe using that. The second argument is instantiated to 
+the Id of the subscription."
+
+act unsubscribe(ID:!nat)
+"If ID is the Pedro subscription of this process then that 
+subscription will be removed."
+
+rel same_thread_handle(!handle, ?handle)
+rel same_agent_handle(!agent_handle, ?agent_handle)
+
+act send_robotic_message(!robot_message)
+
+act set_default_message_thread(!atom)
+"Changes the destination of messages sent to this agent/process without
+a thread identification, to the thread named by the atom arg."
+
+%% translator converts to 'to'
+act 'compilerto'(Msg : ??term, Handle : !agent_handle)
+"Message send action. Sends Msg to the  agent 
+given by Handle."
+
+%% translator converts to 'to_thread'
+act 'compilerto_thread'(??term, !thread_handle)
+
+rel peek_messages(Msg : ??term, Addr:?thread_handle, 
+                            Timeout:!int default -1)
+"Search message buffer for Msg from Addr and fail if no match is found
+within Timeout seconds (-1 means to block until message arrives)"
+
+
+%% --------------------------------------------------------------------
+%% Control
+%% --------------------------------------------------------------------
+
+
+
+rel true()
+"Relation call that always immediately succeeds."
+
+%% for internal use
+rel '$true'()
+
+rel false()
+"Relation call that always immediately fails."
+
+def remote_query_t_ ::= remote_query(string)
+"Type for remote queries - for internal use"
+act respond_remote_query(!string, !thread_handle)
+"Takes a query string from a client, parses it, type checks it and then calls 
+it - answer bindings, together with the query ID, are returned to the client"
+
+rel remote_query_call(!handle)
+"A dummy declaration to be used with allowed_remote_query_from to 
+allow remote queries from withing remote queries"
+
+rel call(C:??rel_term)
+"Call the relation term C. The type checker checks that C is callable as a
+relation - i.e. it has a ground functor and the arguments have suitable types 
+and modes."
+
+act do(A:??act_term)
+"Call the action term A. The type checker checks that A is callable as an
+action - i.e. it has a ground functor and the arguments have suitable types 
+and modes."
+
+%% --------------------------------------------------------------------
+%% Time
+%% --------------------------------------------------------------------
+
+fun exec_time() -> num
+"Returns lapsed time in secs since qulog process was forked."
+
+fun now() -> num
+"Returns Unix epoch time as a number of seconds"
+
+fun start_time() -> num
+"Returns now() value when the qulog process was started."
+
+rel time_(?num)
+"Dynamic belief maintained by default agent's percept and message handlers.
+It always records the time of the most recent belief store update."
+
+%% --------------------------------------------------------------------
+%% Belief Store
+%% --------------------------------------------------------------------
+
+act remember_for(list(dyn_term), num)
+
+%%
+%% --------------------------------------------------------------------
+%% Global state
+%% --------------------------------------------------------------------
+
+fun $(rel(int)) -> int,
+    $(rel(num)) -> num
+"Operator that returns numeric  value linked with an atom name"
+
+act +:=(!rel(?num), !num),
+    +:=(!rel(?int), !int)
+"Increment number associated with LHS atom by RHS value"
+
+act -:=(!rel(?num), !num),
+    -:=(!rel(?int), !int)
+"Decrement number associated with LHS atom by RHS value"
+
+act :=(!rel(?num), !num),
+    :=(!rel(?int), !int)
+"Change number associated with LHS atom by RHS value"
+
+%% --------------------------------------------------------------------
+%% Hash tables
+%% --------------------------------------------------------------------
+act hash_table_insert(Table:!atom, Key:!atomic, Value:!term)
+"Insert the key-value pair Key, Value into the hash table with name Table"
+act hash_table_remove(Table:!atom, Key:!atomic)
+"Remove the pair with key Key from the hash table Table"
+rel hash_table_lookup(Table:!atom, Key:!atomic, Value:?term)
+"Lookup the value associated with the key Key in the hash table 
+with name Table"
+rel hash_table_search(Table:?atom, Key:?atomic, Value:?term)
+"Search the hash tables for entries that match Table, Key, Value"
+%% --------------------------------------------------------------------
+%% Other
+%% --------------------------------------------------------------------
+
+rel between(Start : !int, End : !int, N : ?int)
+"Test or generate N such that Start =< N =< End"
+
+rel range(N : ?int, Start : !int, End : !int, Step: !int default 1)
+"Similar to Python range - Test or generate N such that 
+Start =< N < End and N = Start + k*Step for some K in nat"
+
+
+%% --------------------------------------------------------------------
+%% Teleor specific
+%% --------------------------------------------------------------------
+
+
+def hand_shake_ ::= initialise_ | finalise_
+"Type of the pair of atom messages sent by a TeleoR agents to
+a robotic interface to initiate and terminate control"
+
+
+def robot_message == hand_shake_ || list(tel_action_term)
+"Union of hand_shake_ and robotic actions"
+
+act handle_robotic_actions()
+"User defined action for embedded agent to translate robotic actions"
+
+rel copy_term(Term : ??term, Copy : ??term)
+"Copy Term with all variables in Term replaced by fresh variables.
+The first argument is left unchanged."
+
+act poll_sensors(?list(tel_percept_term))
+"User defined action for embedded agent percept collection"
+
+act post_process_percepts(!list(tel_percept_term), !list(tel_percept_term))
+"User defined action for post processing percepts"
+
+act qmain(!list(string))
+"Entry point for qulog runtime system - same as main for prolog"
+
+
+%% Below are teleo specific declarations - '$running_teleo' added to body
+%% in bid_translator
+act resources_hook()
+act handle_message(!message, !agent_handle)
+"System declared, user defined handler for messages sent to a TR agent"
+act handle_invalid_message(!string, !agent_handle)
+"System declared, user defined handler for invalid messages sent to a TR agent"
+act handle_template_message(??message, !agent_handle)
+"System declared, user defined handler for template messages sent to a TR agent"
+act init_message_handler()
+act init_percept_handler()
+dyn received_message(term, agent_handle, num)
+"Used by the default message handler to store recieved messages."
+
+
+%%act start_priority_task(?atom, !term)
+
+act start_agent(!agent_handle, atom)
+ "Command that can be used only in teleor extension of qulog. 
+First arg. is the handle of the robot interface or simulation with which 
+the agent will interact, and the second argument
+is the percepts update convention being used: all or updates."
+
+act start_embedded_agent(!num)
+"Command that can be used only in teleor extension of qulog. 
+The argument is the reactivity of the interface thread i.e. the 
+time between percept collection events."
+
+act start_task(TR:!tel_term, Name:?atom, Root:!atom default task)
+"Start the TR procedure and give it the task name Name based on Root by 
+extending Root with 1, 2, ... until an unused task name is found."
+
+act start_named_task(TR:!tel_term, Name:!atom)
+"Start the TR procedure and give it the task name Name."
+
+act kill_task(!atom)
+act kill_agent()
+act actions(!robot_message)
+"Interpreter command that can be used in teleor mode when an agent\nhas been started using start_agent. It is followed by a list\nof actions that agent wants the robotic interface to perform. \nThe given actions must have been robotic actions."
+act refresh_bs()
+"Used to enter a list of beliefs that replace the existing beliefs. 
+Useful for debugging teleor programs as the user can check which TR procedure 
+guards are true for a given state of the belief store."
+
+rel task(?atom, ?tel_term)
+"Dynamic relation remembered by start_task and forgotten by kill_task.\nAtom arg. is task name, term arg is term denoting the TeleoR procedure\n call it is executing."
+
+rel running(Task:?atom)
+"True if Task is a running task"
+rel waiting(Task:?atom)
+"True if Task is a waiting task"
+rel resources(Task:?atom, Resources:?list(resource))
+"True if Task is a running task using Resources resources"
+
+def resource_info_ ::= res_(atom, list(resource))
+
+rel get_active_resources(?list(resource_info_))
+"Get the resources being used by the current running tasks as a list
+of  resource_info_ terms where each term is of the form 
+res_(TaskName, ResourceList) where each resource in ResourceList is
+either a declared resource or all__ when no resources have been declared."
+
+rel get_waiting_resources(?list(resource_info_))
+"Get the resources needed by the current waiting tasks as a list
+of  resource_info_ terms where each term is of the form 
+res_(TaskName, ResourceList) where each resource in ResourceList is
+either a declared resource or all__ when no resources have been declared."
+
+rel overlapping_resources(!list(resource), !list(resource))
+
+act control_device(!list(!tel_action_term), !list(tel_action_term))
+"User defined - required for embedded agents (only).
+The arguments are the old actions and the new actions."
+
+
+%% --------------------------------------------------------------------
+%% Dummy declarations needed for Qulog to check this file - the translator
+%% ignores them
+%% --------------------------------------------------------------------
+
+
+def '$dynamic' == '$belief' || '$percept'
+def tel_action_term ::= dummy
+def tel_percept_term ::= dummy
+def '$belief' ::= dummy
+def '$percept' ::= dummy
+def message ::= dummy
+
+def resource ::= dummy_res

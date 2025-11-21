@@ -1,0 +1,94 @@
+?- pconsult(clean_the_table_interface)
+?- consult(world_knowledge)
+
+def object_term ::= object(int, int, position_term, atom)
+def position_term ::= position(num, num, num)
+
+dyn objects(object_term)
+
+act clear_objects_store()
+clear_objects_store() ::
+    true ~> {}
+clear_objects_store() ::
+    objects(ObjId) ~>
+        forget([objects(ObjId)]) ;
+        clear_objects_store()
+
+act update_objects_store()
+update_objects_store() ::
+    true ~> {} 
+update_objects_store() ::
+    scene_objects(Objects) ~>
+    clear_objects_store();
+    remember_objects_from_list(Objects)
+
+act remember_objects_from_list(list(object_term))
+remember_objects_from_list([]) ~> {}
+remember_objects_from_list([Obj|Rest]) ::
+    true ~>
+    remember([objects(Obj)]);
+    remember_objects_from_list(Rest)
+
+tel_percept
+	robot_base_x(num),
+	robot_base_y(num),
+	robot_base_z(num),
+	robot_base_r(num),
+	robot_base_p(num),
+	robot_base_yw(num),
+	driveable_state(atom),
+	holding_object_id(int),
+	region_id(int),
+	scene_objects(list(object_term))
+
+tel_action log_output(list(term))
+
+act start_node_thread(list(tel_percept_term), tel_percept_term)
+rel get_percepts(?list(tel_percept_term))
+
+rel can_see_object(?atom, ?int)
+can_see_object(ClassName, ObjId) <=
+	scene_objects(Objects) &
+	member(object(ObjId, _, _, ClassName), Objects)
+
+init_percept_handler() ~>
+    start_node_thread([
+        robot_base_x(0.0),
+        robot_base_y(0.0),
+        robot_base_z(0.0),
+        robot_base_r(0.0),
+        robot_base_p(0.0),
+        robot_base_yw(0.0),
+        driveable_state(true),
+        holding_object_id(-1),
+        region_id(-1)
+    ], scene_objects([]));
+    thread_sleep(1)
+
+poll_sensors(P) ::
+	get_percepts(P) ~> update_objects_store()
+
+control_device(_OldActions, [log_output(Message)]) ~>
+    write_list(Message)
+
+control_device(_OldActions, []) ~> {}
+
+tel test_can_see_object()
+test_can_see_object() {
+    can_see_object(ClassName, ObjId) ~> 
+        log_output(["PASS: can_see_object(", ClassName, ", ", ObjId, ")", nl_])
+    true ~> 
+        log_output(["FAIL: cannot see any objects", nl_])
+}
+
+tel can_see_object_coordinator()
+can_see_object_coordinator(){
+    true ~> 
+        () ++ start_task(test_can_see_object(), _)
+}
+
+act go()
+go() ~>
+    write_list(["Testing can_see_object(ObjectName, ObjId) guard...", nl_]);
+    start_embedded_agent(1.0);
+    start_task(can_see_object_coordinator(), _)

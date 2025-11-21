@@ -1,0 +1,19 @@
+29/10/2024
+person_speech.msg
+- added new message to associate the speech to a person_speech
+
+person_speech.py
+- to synchronise the detected speech with an identified person
+
+speech_recognition.msg
+- added a header to the message so it can be synchronised with other nodes
+
+vosk_node.py
+- updated the create message to include header information
+
+cmakelists.txt
+-  add the new message person_speech.msg
+
+.gitignore
+- add the ignore file
+- include the path scripts/__pycache__/

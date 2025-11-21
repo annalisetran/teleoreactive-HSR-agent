@@ -1,0 +1,8 @@
+# Define the goal
+geometry_msgs/PointStamped target_point
+---
+# Define the result
+bool action_success
+---
+# Joints values
+string feedback

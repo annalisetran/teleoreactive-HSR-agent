@@ -1,0 +1,54 @@
+21/06/2024
+manip_control.py
+  - change approach_object service to 20cm
+  - adding missing return in some services 
+21/05/2024
+manip_control.py
+  - Add a service to use specifically for get to the appraoching pose
+  - Add a service to grasp
+  - Add a service to retract
+06/05/2024
+manip_control.py
+  - Remap the direction. Now the up/down/left/right move is based on the frame of the rotated image(90 degree counterClockwise)
+manip_server.py
+  - change the height to 640 for the rotated image
+03/05/2024
+manip_control.py
+  - add service to move the end effector up,down,left and right(along x and y axis of the end effector)
+  - each move is 3 cm now
+manip_server.py
+  - create this to be used as a service to control high level stuff such as a stage in tmc_manipulation_msgs
+  - write the logic to centre the object using the service in manip_control(a service that require a class as input)
+  - tested and worked
+  - return true if alligned, else, the cannot see(detected) the object for 10 seconds, return false and abort
+  - TODO: rotate the image if nessary or find out why the object detection was not so good in for handcam
+15/04/2024
+manip_control.py
+  - logic fix in the front grasp
+  - encapsulates the robot model into another class. Need to be put into another file later
+  - add collision model to the robot initialiasation
+15/04/2024
+manip_control.py
+  - add another grab trajectory where it grasp from the front side of the object_grasp
+  - add checks for whether the object is held on hand(need to be integrated with the return msg)
+    - check distance between finger tips
+    - check wrist pressure sensor
+11/03/2024
+manip_control.py
+  - add gazeCb which subscriber to /gaze_point. This functions as a wrap for hsrb interface
+05/03/2024
+manip_control.py
+  - move to neutral pos first in task initliastion pose, so the head is back to right pos
+  - remove from /pickupPoint to /pickup_point
+  - setup max height for grasping
+04/03/2024
+manip_control.py
+  - rename the topic /object_grasper/bag/handle_coordinate to /pickupPoint
+  - any given point is translated into base_footprint.
+  - for top down approach, add extra z value to it to counter effect the overreaching.
+
+01/03/2024
+manip_control.py
+  - rename getTargetPoseCB to grabBagCB and remove grabBag method
+  - add translation to convert all given point to hand_palm_link frame so the rotation after a motion can be constant regardless of given frame.
+  - fail to turn on plan-only according to the documentation. the source code of the hsrb interface does not support it.(it always executes the plan)

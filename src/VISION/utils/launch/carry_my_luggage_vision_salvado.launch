@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<launch>
+  <include file="$(find yolov8_ros)/launch/tracker_carry_my_luggage_salvado.launch"/>
+  <include file="$(find person_recognition)/launch/person_recognition.launch"/>
+</launch>

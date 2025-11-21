@@ -1,0 +1,8 @@
+view_kitchen,12.084,2.349,-3.070
+view_bedroom,12.354,3.405,2.150
+view_desk,15.228,4.363,-0.413
+view_bar,14.667,4.675,2.775
+view_kitchen_cupboard,9.729,1.166,-1.988
+view_kitchen_sink,9.896,0.758,-0.367
+view_side_table,11.769,6.044,1.180
+view_bed,11.993,5.940,2.730

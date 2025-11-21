@@ -1,0 +1,167 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>TeleoR Specific Actions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="TeleoR Specific Actions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="TeleoR Specific Actions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Built_002dIns.html" rel="up" title="Built-Ins">
+<link href="Other-Actions.html" rel="prev" title="Other Actions">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="TeleoR-Specific-Actions">
+<div class="header">
+<p>
+Previous: <a href="Other-Actions.html" accesskey="p" rel="prev">Other Actions</a>, Up: <a href="Built_002dIns.html" accesskey="u" rel="up">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="TeleoR-Specific-Actions-1"></span><h3 class="section">7.8 TeleoR Specific Actions</h3>
+<span id="index-TeleoR-Specific-Actions"></span>
+
+<p>The following actions are available when the system is running in TeleoR mode (after the command <code>teleor</code> has been executed in the interpreter).
+</p>
+
+<p><code>actions(Actions)</code>
+<span id="index-actions"></span>
+</p><blockquote class="indentedblock">
+
+<p>An interpreter command that can be used in teleor mode when an agent has been started using the <code>start_agent</code> command but no task thread is active. Actions should be a list of valid robotic actions - ones that have been declared in a consulted program as a <code>tel_action</code>,  or just a hand shake message (<code>initialise_ | finalise_</code>).  The action list will be sent from the agent to its linked robotic interface to be performed by a real or simulated robot. Its use is to interactively test that the externally programmed robotic actions perform as expected,  or to find what perceptual capabilities need to be programmed to write the perceive/action rules of a control program for a new robot task. 
+<br>
+<code>act actions(list(robot_message))</code>
+</p>
+</blockquote>
+
+<p><code>start_agent(Handle, Convention)</code>
+<span id="index-start_005fagent"></span>
+</p><blockquote class="indentedblock">
+
+<p>Start a new agent. <code>Handle</code>
+is the message address of the robot interface or simulation with which the agent will interact. <code>Convention</code> is the percepts update convention being used. This is one of: <code>all</code> if the robot sends all the percepts each time
+it sends percepts or <code>updates</code> if the robot only sends changes to percepts.
+<br> 
+<code>act start_agent(handle, atom)  </code>
+</p></blockquote>
+
+<p><code>kill_agent()</code>
+<span id="index-kill_005fagent"></span>
+</p><blockquote class="indentedblock">
+
+<p>Kill the current agent started using <code>start_agent</code>.
+<br>
+<code>act kill_agent() </code>
+</p></blockquote>
+
+
+<p><code>start_task(TeleoRCall, Name)</code>
+<span id="index-start_005ftask"></span>
+</p><blockquote class="indentedblock">
+
+<p>Start a new task (as a thread) 
+whose name is <code>Name</code>. <code>TeleoRCall</code>
+is the TeleoR call to be executed in the thread.
+<br>
+<code>act start_task(tel_term, atom)  </code>
+</p></blockquote>
+
+<p><code>kill_task(Task)</code>
+<span id="index-kill_005ftask"></span>
+</p><blockquote class="indentedblock">
+
+<p>Kill the task with name <code>Task</code> started 
+using <code>start_task</code>.
+<br>
+<code>act kill_task(atom)</code>
+</p></blockquote>
+
+
+
+
+<p><code>post_process_percepts(Forgotten, Remembered)</code>
+<span id="index-post_005fprocess_005fpercepts"></span>
+</p><blockquote class="indentedblock">
+<p>This is a user defined action that is, if defined, executed after the system defined percept handling. <code>Forgotten</code> is the list of percepts that have just been forgotten and <code>Remembered</code> is the list of percepts that have just been remembered by the percept handler. This is part of the atomic update of the <i>Belief Store</i>.
+</p></blockquote>
+
+
+<p><code>get_active_resources(ResourceInfo)</code>
+<span id="index-get_005factive_005fresources"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>ResourceInfo</code> is the list of terms 
+<code>res(atom,list(resource))</code> 
+giving resources used by each running task in a multi-tasking agent. The atom is task name.
+<br>
+<code>rel get_active_resources(?list(resource_info_))</code>
+</p></blockquote>
+
+
+<p><code>get_waiting_resources(ResourceInfo)</code>
+<span id="index-get_005fwaiting_005fresources"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>ResourceInfo</code> is the list of terms 
+<code>res(atom,list(resource))</code> 
+giving resources needed by each waiting task in a multi-tasking agent. The atom is task name.
+<br>
+<code>rel get_waiting_resources(?list(resource_info_)) </code>
+</p></blockquote>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="Other-Actions.html">Other Actions</a>, Up: <a href="Built_002dIns.html">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

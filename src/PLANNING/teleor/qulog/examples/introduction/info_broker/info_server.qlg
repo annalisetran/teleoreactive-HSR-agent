@@ -1,0 +1,67 @@
+
+
+?- [shared_ontology]
+
+def sensor_message ::= 
+        temp_data(location, int) | 
+        person_data(person, location) |
+        door_data(location, door_status)
+
+dyn temp_info(location, int)
+dyn person_info(person, location)
+dyn door_info(location, door_status)          
+                
+temperature(L,T) <=
+    temp_info(L,T)
+person_location(P,L) <=
+    person_info(P,L)
+door(L, S) <=
+    door_info(L, S)
+
+
+act start_server()
+start_server() ~> 
+    fork(handle_message(), Name, messages);
+    set_default_message_thread(Name)
+    
+% server_message type declared in server_ontology
+act handle_message()
+handle_message() ~>
+    repeat {
+        try {
+            receive { 
+                SensorMessage  from Sensor :: 
+                    type(SensorMessage, !sensor_message) ~> 
+                        write_list(["Received: ",SensorMessage, 
+                                    " from ", Sensor, nl_]);
+                        update_belief(SensorMessage)
+                
+               remote_query(QueryStr) from_thread Client ::
+                    ground(QueryStr) ~> 
+                        write_list(["Agent ", Client," asked:", nl_,
+                                    QueryStr, nl_]);
+                        %% run query in its own thread
+                        fork(respond_remote_query(QueryStr, Client), _)
+                
+                M from_thread Addr ~> 
+                    write_list(["Invalid message ", M, " from ", Addr, nl_])
+                }
+            } 
+        except {
+            input_term_type_error(_, Err) ~>
+                write_list(["Message type error: ", Err, nl_])
+            }
+        }
+
+
+act update_belief(sensor_message)
+
+update_belief(temp_data(Room, Temp)) :: 
+    Template = temp_info(Room, _) ~>
+        forget_remember([Template], [temp_info(Room, Temp)])
+update_belief(door_data(Room, Temp)) :: 
+    Template = door_info(Room, _) ~>
+        forget_remember([Template], [door_info(Room, Temp)])
+update_belief(person_data(Person, Room)) :: 
+    Template = person_info(Person, _) ~>
+        forget_remember([Template], [person_info(Person, Room)])

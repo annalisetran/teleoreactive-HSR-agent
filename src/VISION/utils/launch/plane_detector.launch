@@ -1,0 +1,13 @@
+<launch>
+  <node pkg="unsw_vision_utils" type="PlaneDetector" name="PlaneDetector" output="screen">
+    <param name="plane_distance_threshold" value="0.01"/>
+    <param name="max_iterations" value="100"/>
+    <param name="optimize_coefficients" value="true"/>
+    <param name="plane_min_height" value="0.4"/>
+    <param name="plane_max_height" value="3.0"/>
+    <param name="debug" value="true"/>
+    <param name="max_angle_from_horizontal" value="15.0" />  <!-- In degrees -->
+    <param name="min_plane_size" value="0.1" />  <!-- Minimum 10% of filtered cloud -->
+    <param name="max_planes" value="3" /> 
+  </node>
+</launch>

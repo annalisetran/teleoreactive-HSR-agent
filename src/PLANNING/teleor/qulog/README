@@ -1,0 +1,32 @@
+The first step is to install Qu-Prolog and Pedro. Both can be obtained from
+http://staff.itee.uq.edu.au/pjr/
+
+Qu-Prolog is required because qulog is implemented in Qu-Prolog.
+
+Pedro is needed because qulog (and in particular TR programs) use Pedro 
+communication. The Pedro server needs to be running to use Pedro communication 
+between processes.
+
+The second step is to build the qulog interpreter by running 
+./configure
+make
+
+The file PROFILE_CMDS contains details of how to modify your PATH
+so that you can run the various programs in the bin directory without having 
+to give the path.
+
+The system contains the following directories:
+
+doc: Various pdfs of documentation.
+
+bin: Various Qulog related programs. This includes quled which is a simple
+Python based editor for Qulog and Teleor programs that use indentation and
+syntax highlighting in a similar way to that using the emacs mode.
+
+emacs: An emacs mode for Qulog
+
+examples: Various examples of using the Qulog interpreter and for running
+          TR programs
+
+src: The source for Qulog
+

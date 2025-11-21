@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="person_recognition" type="stats_node.py" name="stats_node" respawn="False" output="screen" />
+</launch>

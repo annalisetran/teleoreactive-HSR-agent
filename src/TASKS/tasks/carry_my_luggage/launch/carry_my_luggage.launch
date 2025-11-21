@@ -1,0 +1,19 @@
+<launch>
+    <include file="$(find speech_to_text)/launch/speech_to_text.launch"/>
+    <include file="$(find unsw_vision_utils)/launch/carry_my_luggage_vision.launch"/>
+    <!-- <include file="$(find unsw_vision_utils)/launch/pcl-republisher.launch"/> -->
+    <node name="wrist_press" pkg="utility" type="wrist_press.py"/>
+    <node name="carry_my_luggage_controller" pkg="carry_my_luggage" type="carry_my_luggage_controller_smach.py" output="screen">
+        <param name="start_topic" type="str" value="/start_task"/>
+        <param name="pointing_topic" type="str" value="/unsw_vision/detections/pointedBag"/>
+        <param name="follow_topic" type="str" value="/navigation/person_following/id" />
+        <param name='tts_topic' type="str" value="/tts/phrase" />
+         <param name="stt_topic" type="str" value="speech_recognition/vosk_result"/>
+    </node>
+    
+    <node name="point_follow" pkg="nav_utils" type="point_follow.py"/>
+    <node name="person_follow" pkg="nav_utils" type="person_follow.py"/>
+    <node name="manip_control" pkg="object_grasper" type="manip_control.py"/>
+<!-- 
+    <include file="$(find hsrb_rosnav_config)/launch/hsrb_nav_slam_withPCL.launch"/>  -->
+</launch>

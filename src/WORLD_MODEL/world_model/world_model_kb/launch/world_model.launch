@@ -1,0 +1,15 @@
+<launch>
+    <node pkg="world_model_kb" type="scene_processor.py" name="scene_processor" output="screen">
+        <param name="database_config_path" value="$(env HOME)/.ros/world_model_kb/database.ini" />
+    </node>
+    <node pkg="world_model_kb" type="wm_service.py" name="wm_service" output="screen">
+        <param name="database_config_path" value="$(env HOME)/.ros/world_model_kb/database.ini" />
+    </node>
+    <node pkg="world_model_kb" type="svs_interface.py" name="svs_interface" output="screen">
+        <param name="database_config_path" value="$(env HOME)/.ros/world_model_kb/database.ini" />
+        <remap from="/detections" to="/spatial_visual_system/detections" />
+    </node>
+    <node pkg="world_model_kb" type="map_marker_sync_node.py" name="world_model_map_marker_sync" output="screen">
+        <param name="database_config_path" value="$(env HOME)/.ros/world_model_kb/database.ini" />
+    </node>
+</launch>

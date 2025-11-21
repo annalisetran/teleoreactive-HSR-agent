@@ -1,0 +1,2 @@
+string action_name
+bool action_result

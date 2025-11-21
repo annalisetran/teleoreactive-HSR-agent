@@ -1,0 +1,155 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>List Processing (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="List Processing (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="List Processing (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Term-Tests-and-Manipulation.html" rel="up" title="Term Tests and Manipulation">
+<link href="Testing-of-Terms.html" rel="prev" title="Testing of Terms">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="List-Processing">
+<div class="header">
+<p>
+Previous: <a href="Testing-of-Terms.html" accesskey="p" rel="prev">Testing of Terms</a>, Up: <a href="Term-Tests-and-Manipulation.html" accesskey="u" rel="up">Term Tests and Manipulation</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="List-Processing-1"></span><h4 class="subsection">7.3.3 List Processing</h4>
+<span id="index-List-Processing"></span>
+
+<p><code>append(L1, L2, L3)</code>
+<span id="index-append"></span>
+</p>
+<blockquote class="indentedblock">
+
+<p>Succeed if <code>L3</code> is the concatentation of <code>L1</code> and <code>L2</code>
+</p></blockquote>
+<div class="example">
+<pre class="example">rel append(!list(T), !list(T), ?list(T)),
+    append(?list(T), ?list(T), !list(T)),
+    append(!list(??T), !list(??T), ?list(??T)),
+    append(?list(??T), ?list(??T), !list(??T)),
+    append(??list(T), ??list(T), ??list(T))
+</pre></div>
+
+
+<p><code>reverse(L1, L2)</code>
+<span id="index-reverse"></span>
+</p>
+<blockquote class="indentedblock">
+
+<p>Succeed if list <code>L2</code> is the reverse of <code>L1</code>.
+</p></blockquote>
+<div class="example">
+<pre class="example">rel reverse(!list(T), ?list(T)),
+    reverse(?list(T), !list(T)),
+    reverse(!list(??T), ?list(??T)),
+    reverse(?list(??T), !list(??T))
+</pre></div>
+
+
+
+<p><code>sort(L1, L2, Order)</code>
+<span id="index-sort"></span>
+</p>
+<blockquote class="indentedblock">
+
+<p>Will match the second argument against the first argument sorted by the
+transitive order relation given as the third argument, without instantiating 
+variables in the first argument. If the relation is asymmetric, duplicate terms 
+will be removed.
+</p><div class="example">
+<pre class="example">rel sort(!list(!T), ?list(T), !rel(!T, !T)),
+    sort(!list(??T), ?list(??T), !rel(??T, ??T))
+</pre></div>
+
+</blockquote>
+
+
+<p><code>member(X, L)</code>
+<span id="index-member"></span>
+</p>
+<blockquote class="indentedblock">
+
+<p>Succeed if <code>X</code> is in <code>L</code>.
+</p>
+<div class="example">
+<pre class="example">rel member(?T, !list(T)),
+    member(??T, ??list(T))
+</pre></div>
+</blockquote>
+
+
+<p><code>X in L</code>
+<span id="index-in"></span>
+</p>
+<blockquote class="indentedblock">
+
+<p>Succeed if <code>X</code> is in complete list of terms <code>L</code>.
+</p>
+<p>It almost has the same uses as <code>member</code> except that it it must be given a complete list of possibly non-ground terms.
+</p>
+<p>As its type indicates, <code>in</code> can also be used to access single character substrings of a string, a tuple and the ground elements of a set. 
+</p></blockquote>
+<div class="example">
+<pre class="example">rel ?T in !list(T),
+    ??T in !list(??T),
+    ?T in !set(T),
+    ?string in !string
+</pre></div>
+
+</div>
+
+
+
+</body>
+</html>

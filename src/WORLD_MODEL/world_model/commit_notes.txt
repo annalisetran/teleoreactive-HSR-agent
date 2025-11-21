@@ -1,0 +1,194 @@
+4/11/2024
+world_model_kb
+- add view v_recent_scene
+  this view shows the distinct objects and the object class in the most recent 3 scenes
+
+- add function can_see
+  this function takes a string containing the object class and returns true/flase whether 
+  the object class can be seen in the current/recent scene
+
+
+26/09/2024
+New database version 2.1.17
+- updated robot_state columns
+- split the agent_location to it's own table so that we can keep a history of where they have been
+
+17/07/2024
+docs
+- updated database schema diagram
+
+16/07/2024
+New Database Version 2.1.16
+- add sub class and sub class features
+
+object_class_api.py
+- add functions
+  - insert_object_sub_class
+  - get_object_sub_class
+
+
+09/06/2024
+agent.api
+- added function:
+  - delete_agent
+
+22/05/2024
+agent_api.py
+- add functions:
+  - get_agent_attribute_type_id
+  - insert_agent_attribute
+  - attribute_exists
+  - update_agent_attribute
+  - get_agent_attribute
+
+10/05/2024
+agent_api.py
+- add bbox_head parameter for creating Peson functions
+
+12/03/2024
+agent_api.py
+- add colour to the functions:
+  - insert_agent_features
+  - insert_agent_feature
+  - get_agent_features
+  - update_agent_features
+  - update_agent_feature
+
+25/02/2024
+agent_api.py
+- fix bug in update_agent_last_seen function
+
+24/02/2024
+world_model_kb
+  object.py
+  - added occlusion attribute
+
+  scene_utils.py
+  - new file containing some helper functions for determining whether an object is occluded
+
+  tracker.py
+  - added print_cost function to print the association cost_threshold
+  - added occlusion checking and flag to induicate if an object is occluded
+
+  tracks.py
+  - added some temp functions for testing the adjustment of the cost calculation for occluded objects
+    these methods can be removed if deemed not needed (mahalanobis_dist_of_tmp, )
+
+21/02/2024
+world_model_kb
+  database
+  - updated setup_reference_data_2.1.4 to include head as a feature type
+
+
+20/02/2024
+world_model_kb
+  - Remove custom msgs.
+  - remove unused C++ files.
+  - Modify CmakeLists to satisfied the changes made.
+
+13/02/2024
+world_model_kb
+  Database
+  - updated setup_reference_data_2.1.14 to make all text items stored in database lower case
+  - add utility_queries file with some utility sql commands
+  - update setup_create_tables_2.1.14 change order of create trigger function to remove error
+  scripts
+  - agent_api
+    - bug fixes for the insert agent, update agent insert agent features, update agent features and related functions. 
+    - remove references to json structures
+    - add references to person and feature classes to make it easier when inserting, updating and returning data
+    - remove some old functions that hang around as backup
+
+10/02/2024
+world_model_kb
+ database
+ - fix bug in setup create tables 2.1.14 script
+
+08/02/2024
+world_model_kb
+  Database
+  - added database version 2.1.14 which contains enhancements to the agent data structures 
+  - added scripts for database 2.1.14
+  - added image of database schema
+  agent_api
+  - updated the insert, update, agent features and related agent methods to align with database version 2.1.14
+
+08/01/2024 - 1.20pm
+- scene_manager_node
+  - replaced dist_threshold parameter with cost_threshold
+
+- tracker
+  - updated variable self.new_object_association_cost_threshold to be parameter (cost_threshold)
+  - removed some obsolete code (previously commented out)
+  - added comments to various parts of the code
+
+- tracks
+  - added some comments to the code
+
+14-12-2023
+world_model_kb
+- Database
+  - bug fix setup_schema_2.1.12
+- object_api
+  - bug fix insert_object
+- tracker
+  - fixed import objects from database on initialisation
+
+README
+- updated note to explain this code is using 2d bounding boxes from unsw_vision_msg (BoundingBox bbox)
+
+
+13-12-2023
+Database
+- object table
+  - updated schema to fix v_scene
+  - added last_seen column
+ 
+ - object_api
+  - updated queries to refelct last_seen
+
+- tracker
+  - removed reference to bbox3d and replaced with original position.x, possition.y, position.z 
+
+02-12-2023
+Database
+- object table
+  - changed colour -> mean_colour
+  - mean_colour - > change datatype to double precision []
+  - texture  -> changed datatype to double precision []
+- agent_feature
+  - changed ave_colour -> mean_colour
+  - mean_colour - > change datatype to double precision []
+  - changed texture to encoding
+  - encoding -> changed datatype to double precision []
+- add view v_cur_objects (the list of current objects)
+- added folder for database versions
+  - 2.1.11
+  - 2.1.12
+ - setup_drop_tables_2.1.12.sql
+ - setup_reference_data_2.1.12.sql (Yolov8 same as YoloV7)
+ - setup_schema_2.1.12.sql 
+scripts:
+- update tracker.update, and tracker.extract_detection_objects params to take in img size(width and height) to adapter to new yolov8 version
+- modified tracker.extract_detection_objects to correct initilise tracker base on new vision msg.
+
+Nightly update 28-10-2023
+Database
+- Added database views
+ - v_cur_object (queries only the current objects, i.e. is_current = 1, includes descriptive information e.g. class name)
+ - v_scene (queries all of the scenes includes class names)
+- removed old database scripts and regenerated version 2.1.11 database scripts
+ - setup_drop_tables_2.1.11.sql
+ - setup_reference_data_2.1.11.sql (updated class names to reflect the coco.txt file from Yolov7)
+ - setup_schema_2.1.11.sql (also fixed pk issue with scene_object)
+
+scripts
+- update scene_api.py 
+
+04-10-2023
+Database
+- removed is_removed flag from object table
+
+scripts
+- Added wm_timer_node.py to handle the location confidence decay of objects
+- updated object_api.py to fix update_location_confidence_all_objects method

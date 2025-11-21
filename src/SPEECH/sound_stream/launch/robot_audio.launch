@@ -1,0 +1,4 @@
+<launch>
+  <node name="sound_capture_stream" pkg="sound_stream" type="sound_stream.py" respawn="true" output="screen" />
+  <node name="pytext_to_speech" pkg="sound_stream" type="tts_engine.py" respawn="true" output="screen" />
+</launch>

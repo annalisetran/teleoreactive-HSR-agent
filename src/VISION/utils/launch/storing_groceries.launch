@@ -1,0 +1,6 @@
+<launch>
+
+  <include file="$(find yolov8_ros)/launch/tracker_storing_grocery.launch"/>
+
+  
+</launch>

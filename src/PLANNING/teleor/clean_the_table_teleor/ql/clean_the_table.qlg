@@ -1,0 +1,246 @@
+% Main TeleoR program with "clean the table behaviour"
+
+% Load in the foreign function interface
+?- pconsult(clean_the_table_interface)
+
+% Load in the knowledge layer
+?- consult(world_knowledge)
+
+%% Defining object term structures
+def object_term ::= object(int, int, position_term, atom)
+def position_term ::= position(num, num, num)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% TeleoR declarations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% percept declarations - direct percepts from sensors
+tel_percept
+	robot_base_x(num),
+	robot_base_y(num),
+	robot_base_z(num),
+	robot_base_r(num),
+	robot_base_p(num),
+	robot_base_yw(num),
+	driveable_state(atom),
+	holding_object_id(int),
+	region_id(int),
+	scene_objects(list(object_term))
+
+% TeleoR action declarations
+tel_action
+    pickup(atom, int),
+    place(atom, atom),
+    goto_region(atom),
+	goto_object(atom),
+	log_output(list(term))
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% QuProlog interface declarations
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Qulog interface declarations (lower level actions)
+act start_node_thread(list(tel_percept_term), tel_percept_term)
+act goto_region_action(atom)
+act goto_pose_action(string, num, num, num, num, num, num, num)
+act pickup_action(atom, int)
+act place_action(atom, string, num, num, num)
+rel get_percepts(?list(tel_percept_term))
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Belief store declaration
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Dynamic belief Store
+dyn object_info(int, int, atom) 
+% Flag for tracking if the subgoal has been achieved
+dyn object_placed()
+% Dynamic belief store for objects
+dyn objects(object_term)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% QuProlog actions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+act clear_objects_store()
+clear_objects_store() ::
+    true ~> {}
+clear_objects_store() ::
+    objects(ObjId) ~>
+        forget([objects(ObjId)]) ;
+        clear_objects_store()
+
+act update_objects_store()
+update_objects_store() ::
+    scene_objects(Objects) & Objects \= [] ~>
+    clear_objects_store();
+    remember_objects_from_list(Objects)
+update_objects_store() ::
+    true ~> {}
+
+act remember_objects_from_list(list(object_term))
+remember_objects_from_list([]) ~> {}
+remember_objects_from_list([Obj|Rest]) ::
+    true ~>
+    remember([objects(Obj)]);
+    remember_objects_from_list(Rest)
+
+act pickup_with_memory(atom, int)
+pickup_with_memory(ClassName, ObjId) ::
+	objects(object(ObjId, ClassId, _, ClassName)) ~>
+	remember([object_info(ObjId, ClassId, ClassName)]) ;
+	pickup_action(ClassName, ObjId)
+
+act place_with_memory(atom)
+place_with_memory(Destination) ::
+	holding_object_id(ObjId) &
+	placement_coords(Destination, Frame, X, Y, Z) ~>
+	write_list(["Placing object ", ObjId, " at ", Destination, nl_]);
+	forget([object_info(ObjId, _, _)]);
+	place_action(down, Frame, X, Y, Z);
+	remember([object_placed()])
+
+act goto_object_with_memory(atom)
+goto_object_with_memory(ObjectName) ::
+	static_object_location(ObjectName, Frame, X, Y, Z) ~>
+	goto_pose_action(Frame, X, Y, Z, 0.0, 0.0, 0.0, 1.0)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Helper relations and functions
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Helper Relations for inferring guards - rather than using declarative percepts use relational variables
+rel holding(?atom)
+holding(Item) <=
+    holding_object_id(ObjId) & 
+    ObjId > 0 &
+    objects(object(ObjId, _, _, Item))
+
+rel holding_id(?int)
+holding_id(ObjId) <=
+	holding_object_id(ObjId) &
+	ObjId > 0
+
+rel not_holding()
+not_holding() <=
+	holding_object_id(ObjId) &
+	ObjId =< 0
+
+rel at(?atom)
+at(Location) <=
+	region_id(RegId) &
+	region_name(RegId, Location)
+
+rel near(!atom)
+near(Location) <=
+	robot_base_x(X) & robot_base_y(Y) & robot_base_z(Z) &
+	region_coords(Location, LocX, LocY, LocZ) &
+	Dist = distance_3d(X, Y, Z, LocX, LocY, LocZ) &
+	Dist < 1.5
+
+rel near_static(!atom)
+near_static(StaticObj) <=
+	robot_base_x(X) & robot_base_y(Y) & robot_base_z(Z) &
+	static_object_location(StaticObj, _, LocX, LocY, LocZ) &
+	Dist = distance_3d(X, Y, Z, LocX, LocY, LocZ) &
+	Dist < 1.2
+
+fun distance_3d(num, num, num, num, num, num) -> num
+distance_3d(X1, Y1, Z1, X2, Y2, Z2) ->
+	sqrt((X2-X1)*(X2-X1) + (Y2-Y1)*(Y2-Y1) + (Z2-Z1)*(Z2-Z1))
+
+rel can_see(??atom)
+can_see(ObjectName) <=
+	objects(object(_, _, _, ObjectName))
+
+rel can_see_id(?int)
+can_see_id(ObjId) <=
+	objects(object(ObjId, _, _, _))
+
+rel can_see_object(?atom, ?int)
+can_see_object(ObjectName, ObjId) <=
+	objects(object(ObjId, _, _, ObjectName))
+
+rel is_ooi(!atom)
+is_ooi(ClassName) <=
+	object_category_mapping(ClassName, _)
+
+fun goes_to(atom) -> atom
+goes_to(ClassName) ::
+	object_category_mapping(ClassName, Category) &
+	goes_to_location(Category, Destination) -> 
+	Destination
+
+rel placement_coords(!atom, ?string, ?num, ?num, ?num)
+placement_coords(Destination, FrameId, X, Y, Z) <=
+	static_object_location(Destination, FrameId, X, Y, Z)
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Embedded agent declarations for foreign function interface
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Map TeleoR actions to interface actions!
+init_percept_handler() ~>
+    start_node_thread([
+        robot_base_x(0.0),
+        robot_base_y(0.0),
+        robot_base_z(0.0),
+        robot_base_r(0.0),
+        robot_base_p(0.0),
+        robot_base_yw(0.0),
+        driveable_state(true),
+        holding_object_id(-1),
+        region_id(-1)
+    ], scene_objects([]));
+    thread_sleep(1)
+
+% Called at the beginning of the percept handling thread
+poll_sensors(P) ::
+	get_percepts(P) ~>
+	%write_list(["[PERCEPTS] ", P, nl_]);
+	update_objects_store()
+
+control_device(_OldActions, [pickup(ClassName, ObjId)]) ~>
+	write_list(["Executing pickup action for ", ClassName, " ID ", ObjId, nl_]);
+    pickup_with_memory(ClassName, ObjId)
+
+control_device(_OldActions, [place(_ObjName, Destination)]) ~>
+	write_list(["Executing place action to ", Destination, nl_]);
+    place_with_memory(Destination)
+
+control_device(_OldActions, [goto_region(Location)]) ~>
+	write_list(["Executing goto region action to ", Location, nl_]);
+    goto_region_action(Location)
+
+control_device(_OldActions, [goto_object(ObjectName)]) ~>
+	write_list(["Executing goto object action to ", ObjectName, nl_]);
+	goto_object_with_memory(ObjectName)
+
+control_device(_OldActions, [log_output(Message)]) ~>
+    write_list(Message)
+
+control_device(_OldActions, []) ~>
+    {}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% the clean the table TeleoR program
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+tel clean_the_table()
+clean_the_table(){
+	holding(ObjName) & Dest = goes_to(ObjName) & near_static(Dest) ~> place(ObjName, Dest)
+	holding(ObjName) & Dest = goes_to(ObjName)  ~> goto_object(Dest)
+	near_static(table) & can_see_object(ObjName, ObjId) & is_ooi(ObjName) ~> pickup(ObjName, ObjId)
+	true ~> goto_region(dining_area)
+}
+
+tel clean_the_table_coordinator()
+clean_the_table_coordinator(){
+    object_placed() & not_holding() ~> 
+        () ++ forget([object_placed()]); start_task(clean_the_table(), _)
+    true ~> 
+        () ++ start_task(clean_the_table(), _)
+}
+
+% A call to start the TR program
+act go()
+go() ~>
+	write_list(["Starting clean_the_table coordinator...", nl_]);
+	start_embedded_agent(0.1);
+	start_task(clean_the_table_coordinator(), _)

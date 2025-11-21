@@ -1,0 +1,7 @@
+<launch>
+    <node name="manip_approach" pkg="action_server" type="manip_approach.py" output="screen"/>
+    <node name="manip_grasp" pkg="action_server" type="manip_grasp.py" output="screen"/>
+    <node name="manip_place" pkg="action_server" type="manip_placing.py" output="screen"/>
+    <node name="manip_retract" pkg="action_server" type="manip_retract.py" output="screen"/>
+    <node name="manip_gaze" pkg="action_server" type="manip_gaze.py" output="screen"/>
+</launch>

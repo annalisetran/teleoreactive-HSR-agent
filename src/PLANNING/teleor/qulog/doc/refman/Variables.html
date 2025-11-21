@@ -1,0 +1,101 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Variables (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Variables (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Variables (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Syntax.html" rel="up" title="Syntax">
+<link href="Compound-Terms.html" rel="next" title="Compound Terms">
+<link href="Data-constants.html" rel="prev" title="Data constants">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Variables">
+<div class="header">
+<p>
+Next: <a href="Compound-Terms.html" accesskey="n" rel="next">Compound Terms</a>, Previous: <a href="Data-constants.html" accesskey="p" rel="prev">Data constants - the atomic term values</a>, Up: <a href="Syntax.html" accesskey="u" rel="up">Syntax</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Variables-1"></span><h3 class="section">4.3 Variables</h3>
+<span id="index-Variables"></span>
+
+
+<p>Variables are available in three syntactic forms.
+</p>
+<ol>
+<li> An upper case letter followed by any sequence consisting of &quot;<code>_</code>&quot; and alphanumeric characters.
+<br>
+For example:
+<div class="example">
+<pre class="example">List_nums  Head
+</pre></div>
+
+</li><li> &quot;<code>_</code>&quot;, followed by an upper case letter, and then any sequence consisting of &quot;<code>_</code>&quot; and alphanumeric characters.
+<br>
+For example:
+<div class="example">
+<pre class="example">_Dictionary   _X_1
+</pre></div>
+
+
+</li><li> &quot;<code>_</code>&quot; alone denotes an anonymous variable. Repeated occurrences of underscore in a query or rule denote different unnamed variables.
+</li></ol>
+
+
+<p>Variables beginning with an underscore should be used when there is just a single occurrence of a variable in a rule. It suppresses the &quot;single occurrence of variable&quot; warning which is given otherwise,  which is useful for picking up mis-typed variable names. 
+</p>
+
+</div>
+
+
+
+</body>
+</html>

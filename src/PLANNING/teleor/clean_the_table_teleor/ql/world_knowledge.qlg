@@ -1,0 +1,56 @@
+% ============================================================
+% WORLD KNOWLEDGE LAYER
+% Static information about the environment
+% ============================================================
+
+% ============================================================
+% TYPE DEFINITIONS
+% ============================================================
+def static_object ::= dishwasher | bin | table
+def object_category ::= dish | utensil | waste
+
+% ============================================================
+% REGION DEFINITIONS
+% ============================================================
+rel region_name(!int, ?atom)
+region_name(0, unknown).
+region_name(1, kitchen).
+region_name(2, dining_area).
+region_name(3, counter_area).
+region_name(4, dishwasher_area).
+region_name(5, bin_area).
+
+rel region_coords(!atom, ?num, ?num, ?num)
+region_coords(kitchen, 0.0, 0.0, 0.0).
+region_coords(dining_area, 2.0, 1.0, 0.0).
+region_coords(counter_area, 3.0, 1.0, 0.0).
+region_coords(dishwasher_area, 1.5, -1.0, 0.0).
+region_coords(bin_area, -1.0, 1.0, 0.0).
+
+% ============================================================
+% STATIC OBJECT DEFINITIONS
+% ============================================================
+rel static_object_location(!atom, ?string, ?num, ?num, ?num)
+static_object_location(dishwasher, "map", -0.88, -1.56, 0.75). 
+static_object_location(bin, "map", 1.08, -2.58, 0.5).
+static_object_location(table, "map", 2.72, 0.37, 0.75).
+
+% ============================================================
+% OBJECT CATEGORISATION
+% ============================================================
+rel object_category_mapping(!atom, ??atom)
+object_category_mapping(bowl, dish).
+object_category_mapping(cup, dish).
+object_category_mapping(utensil, utensil).
+object_category_mapping(utensil, utensil).
+object_category_mapping(utensil, utensil).
+object_category_mapping(drink_can, waste).
+object_category_mapping(drink_bottled, waste).
+
+% ============================================================
+% DISPOSAL RULES
+% ============================================================
+rel goes_to_location(?atom, ?atom)
+goes_to_location(dish, dishwasher).
+goes_to_location(utensil, dishwasher).
+goes_to_location(waste, bin).

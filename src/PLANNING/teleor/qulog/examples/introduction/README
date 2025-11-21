@@ -1,0 +1,15 @@
+This directory contains some simple examples to start with.
+
+qlexamples.qlg contains examples of qulog type declarations and definitions of
+relations and actions. The code is interspersed with comments that contain
+example queries for the interpreter.
+
+lift_eg.qlg and lift_eg_support.ql give some simple examples of how to lift
+Qu Prolog definitions to the Qulog level.
+
+tr_eg.qlg is a simple TR program. Details about how to experiment with this
+file are given in the Teleor user guide. The history files history_all.txt and
+history_updates.txt give examples of interactions using robot_shell.py and can
+be loaded into robot_shell.py to test tr_eg.qlg (one for each interface).
+
+info_broker is a subdirector that contains a simple example of remote querying.

@@ -1,0 +1,1129 @@
+% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+% To run (need 4 terminals):
+% In terminal 1:
+%     python3 rooms.py
+%    (default: auto charging and path replaning)
+%  or 
+%     python3 rooms.py -m
+%    (no auto charging - must click on robot to change battery status)
+%  or
+%     python3 rooms.py -n
+%    (no path replaning)
+%  (python3 rooms -h for options)
+
+% In terminal 2:
+%  teleor -Anavigator1
+%     [navigate].
+%     go().
+% In terminal 3:
+%  teleor -Anavigator2
+%     [navigate].
+%     go().
+% In terminal 4:
+%  teleor -Anavigator3
+%     [navigate].
+%     go().
+
+% When the agent starts the simuator asks the user to choose an initial
+% activity room.
+% Click on doors to open/close
+% click on robot in activity room - set battery to low
+% click on robot in charger room - set battery to high
+% SHIFT-CLICK on robot in charger room asks the user to click on a new
+% activity room.
+% 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Program overview
+%
+% The robots start in their activity room and when they detect that their 
+% batteries are low they try to find a path to a free charger room using
+% the map of the rooms and the status of doors. 
+%
+% The goal directed part of the robot agent is to move from one room to the
+% next on its path following the tracks and turning at the centre of each
+% room to point in the required direction in order to get to the next room.
+%
+% When a robot is fully charged it then tries to get to its activity room.
+%
+% The belief store (BS) is updated in three ways:
+%
+% New percepts arrive causing the percept part of the BS to be updated
+%   e.g. a close_doorway percept is remembered or forgotten
+%
+% Post processing of percepts uses the current state of the BS and the
+% updates to deduce extra information that, in this program, notifies
+% all robots of this information
+%  e.g. when the my_position percept changes the robot might notify all robots
+% about room changes or on what side of a room the robot is on.
+%
+% Messages (notifications in this case) are used to transfer information
+% between robots (and thus update the BS)
+%  e.g. on receiving a new_loc message(generated as in the above example) 
+% the loc fact about that robot will
+%  be updated - note this is how the robot that sends this info also
+%  updates its own loc fact
+
+% Note that, when a robot is moving it uses it's my_position fact as it is 
+% most up to date. On the other hand, when deciding if it is conflict with 
+% another robot it uses positional information sent to all robots (including
+% itself) and this information in much more consistent across all robots.
+
+% In this application robots have 3 'resources' they need sole access to:
+% 1. One of the two chargers to they can move to and then use the charger
+% 2. The centre area (near or at) of a room so that the robot can move to
+%    the centre without being in conflict with another robot that also
+%    wants to move to the centre
+% 3. A door between rooms so that a robot can follow a path by moving through
+%    a door from one room to the next room on the path.
+%
+% In each case, when the robot decides it needs a resource it broadcasts a
+% message bidding for the resource. If, at the same time, another robot also 
+% wants the resource it will also broadcast a bidding message. The pedro server
+% forwards these notification in some order to each robot (in the same order).
+% The first notification received will be for the robot that wins the bid.
+% This means that at most one robot has sole access to a given resource.
+% When the robot has finished with the resource it broadcasts a message to 
+% let the other robots know that the resource is free.
+%
+% 1. When the robot is finished charging it frees the charger
+% 2. When the robot reaches the far side of a room from the centre then
+%    it frees the centre
+% 3. When the robot passes through a door it frees the door.
+%
+% Note that at any point a robot might change its mind about what it wants
+% to do: a conflict is detected and the robot needs to reposition itself; or
+% a door on its path is closed and a new path is created.
+% This means that the resources that the robot has aquired have to be correctly
+% managed. For example, if the robot has aquired the centre resource in order
+% to move from one side of the room to another  then it has to keep that 
+% resource until it moves to the update side of the room even if that side
+% is the side it was moving from.
+%
+% Conflict Resolution
+%
+% Conflicts can arise in two ways:
+% 1. Robots in adjacent rooms want to use the same door, i.e. each robot
+%    wants to move into the others room.
+% 2. When robots are in the same room and one is blocking the exit of
+%    another robot
+%
+% In order to manage conflicts we maintain two constraits:
+% a. A robot can only move from one room to another if that robot has booked 
+%    the connecting door - this booking actually includes the sides of 
+%    both rooms adjacent to the door to allow space for the robot to enter
+%    the room (and to stop a robot following too closly behind an exiting robot)
+% b. A robot can only move to the centre of a room if that robot has booked
+%    the centre part of the room (i.e.near or at centre). This prevents
+%    robots of colliding at the room centre.
+%
+% Conflict resolution takes two forms: stay put and wait for another
+% robot to get out of the way; and move to a side of a room where it does not
+% block another robot from moving.
+% It's possible for, say, navigator2 to be in conflict with navigator1
+% without the reverse being true - typically navigator1 has a open
+% path through a room as long as navigator2, in the same room, stays put.
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Consult the file containing the  path finding code
+?- [graphPath]
+
+
+%% direction is the side of a room the robot is on
+def direction ::= north | south | east | west
+%% rail_line is used to determine if a robot at the centre has turned enough
+%% to be able to move to the required side of the room
+def rail_line ::= ns | ew
+%% distance is how close to the centre the robot is on. A robot can only turn
+%% if at centre and, if the robot has booked the centre it will be typically
+%% be either at or near centre and will only be at side_of_room if it
+%% is far from centre
+def distance ::= at | near | far 
+
+%def position_info_t ::= position_info(robot, room, direction, distance)
+        
+def room ::= 1..16
+def robot ::= navigator1 | navigator2 | navigator3
+%% the status of a door
+def door_state ::= open | shut
+%% the status of the robot battery
+def hilo ::= high | low
+%% The path that a robot follows is represented as a list of doors
+def door_path == list(room) % macro type def. 
+
+%% Purely for sending a message to the visualizer so it can display 
+%% conflict moves
+def conflict_message_t ::= conflict_message(term)
+%% to support this we add the following to support conflict messages
+def idle_t ::= idle(robot)
+
+
+%% A my_position(Room, Side, Dist) fact says that this robot
+%% is in Room on Side of the room and Dist from centre. If Dist = at
+%% then Side should be ignored as it is meaningless in this case.
+tel_percept 
+    my_position(room, direction, distance), 
+    on_line(rail_line), 
+    battery_status(hilo)
+
+tel_action 
+    turn_to(rail_line), %% turn at centre until lined up with the given rail
+    move(direction)     %% move in the given direction (must be on rail
+                        %% consistent with the given direction)
+
+def message ::= 
+        %% a flag sent as a message from rooms.py
+        no_replan() |
+        %% We assume smart doors that announce changes to their status
+        door_status(direction,room,door_state) |
+        %% A robot announces a path it would like to take where the room
+        %% is the destination room
+        path(robot,door_path,room) |
+        %% When a robot reaches its destination or when a door closes 
+        %% that blocks its path then it announces that it is no
+        %% longer following a path
+        no_path(robot) |
+        %% Attempt to reserve a charger room - if two robots attempt
+        %% to reserve the same room at virtually the same time then
+        %% the first reserve message received by all the robots is
+        %% the winner
+        reserve_room(robot, room, door_path) |
+        %% When a robot is finished charging it broadcasts this
+        %% and all robots respond to this by removing the charger reservation
+        finished_charging(robot) | 
+        %% When a robot gets a new my_position percept it might announce
+        %% one of the following 3 messages
+        new_loc(robot,room) |   %% moved into a new room
+        room_side(robot, direction) | %% at the side of a room
+        end_room_side(robot) | %% no longer at a side (near or at centre)
+        %% try to book centre
+        book_centre(robot, room) | 
+        %% cancel a centre booking (even if attempted booking wasn't successful)
+        cancel_book_centre(robot, room) |
+        %% try to book a door
+        book_door(robot, room, room)  | 
+        %% cancel door booking (even if attempted booking wasn't successful)
+        cancel_book_door(robot) |
+        %% These two messages are sent from the simulator 
+        joining(agent_handle) | %% a new robot joins the simulator
+        new_activity_room(robot, room) %% a new activity room is chosen
+
+def pending_type ::=  book_centre(robot, room) | book_door(robot, room, room)
+
+dyn 
+    %% Each robot keepts track of its own name
+    my_name(robot), 
+    %% Doors that are closed are remembered (for path finding)
+    closed(direction, room),
+    %% All the facts below are remembered/forgotten in response to 
+    %% messages 
+    following(robot,door_path,room), 
+    reserved(robot,room), 
+    centre_booking(robot, room),
+    door_booking(robot, room, room), 
+    loc(robot, room), 
+    side_of_room(robot, direction),
+    pending(pending_type)
+
+%% Used to determine if path replaning should happen - default is to replan
+dyn do_replan()
+do_replan()
+
+%% Used for conflict resolution - we don't include a robot on a side
+%% of a room if it has booked the centre as it will shortly be moving to the 
+%% centre
+rel at_side(?robot, ?room, ?direction)
+at_side(Robot, Rm, Dir) <= 
+    loc(Robot, Rm) &
+    side_of_room(Robot, Dir) & not centre_booking(Robot, Rm)
+
+% Rooms to which they should return when fully charged
+dyn activity_room(robot, room)
+
+% The rooms containing chargers and the side of the room the robot should 
+% move to in  order to be over the charger
+rel charger_room(?room, ?direction)
+charger_room(13, west)
+charger_room(16,east)
+
+%% A robot that's on a given side of a room and moves through a door then
+%% it will be on the reverse side of the new room
+fun rev_dir(direction) -> direction
+rev_dir(north) -> south
+rev_dir(south) -> north
+rev_dir(east) -> west
+rev_dir(west) -> east
+
+%% Facts esentially giving the map of the rooms
+rel direction_door(?room, ?room, ?direction)
+direction_door(1,2,east)
+direction_door(3,4,east)
+direction_door(6,7,east)
+direction_door(10,11,east)
+direction_door(13,14,east)
+direction_door(15,16,east)
+direction_door(2,6,south)
+direction_door(3,7,south)
+direction_door(9,13,south)
+direction_door(11,12,east)
+direction_door(5,6,east)
+direction_door(9,10,east)
+direction_door(7,8,east)
+direction_door(10,14,south)
+direction_door(11,15,south)
+direction_door(5,9,south)
+direction_door(4,8,south)
+direction_door(6,10,south)
+direction_door(7,11,south)
+direction_door(12,16,south)
+
+
+rel connected(?room,?room, ?direction)
+"Symmetric version of direction_door relations"
+connected(Rm1,Rm2,Side) <= direction_door(Rm1,Rm2, Side)
+connected(Rm1,Rm2,Side) <= direction_door(Rm2,Rm1,RevSide) & 
+    Side = rev_dir(RevSide)
+
+%% Converting between rails and directions
+rel rail_direction(?rail_line, ?direction)
+rail_direction(ns, north)
+rail_direction(ns, south)
+rail_direction(ew, east)
+rail_direction(ew, west)
+
+
+rel open_connected(?room,?room)
+"Same as connected but also requires the door between the rooms to be open"
+open_connected(Rm1,Rm2) <=
+    connected(Rm1,Rm2,Side) &
+    not closed(Side,Rm1)
+
+
+% The robots have a priority order used to resolve conflicts
+rel higher_priority(?robot, ?robot)
+higher_priority(navigator1, navigator2)
+higher_priority(navigator1, navigator3)
+higher_priority(navigator2, navigator3)
+
+rel has_higher_priority(robot, robot)
+%% a robot in its activity room has low priority
+has_higher_priority(R1, _R2) ::
+    loc(R1, Rm) & activity_room(R1, Rm) <= false
+has_higher_priority(_R1, R2) ::
+    loc(R2, Rm) & activity_room(R2, Rm)
+%% a robot in its charger room has high priority
+has_higher_priority(R1, _R2) ::
+    loc(R1, Rm) & reserved(R1, Rm)
+has_higher_priority(_R1, R2) ::
+    loc(R2, Rm) & reserved(R2, Rm) <= false
+%% following robots have priority over non-following ones
+has_higher_priority(R1, R2) ::
+    following(R1, _, _) & not following(R2, _, _) <= false
+has_higher_priority(R1, R2) ::
+    not following(R1, _, _) & following(R2, _, _)
+%% a robot in a room with another robot has priority over robot
+%% in another room
+has_higher_priority(R1, R2) ::
+    loc(R1, Rm1) & loc(R2, Rm) & Rm1 \= Rm & loc(R3, Rm) & R2 \= R3
+has_higher_priority(R1, R2) ::
+    loc(R1, Rm) & loc(R2, Rm1) & Rm1 \= Rm & loc(R3, Rm) & R1 \= R3 <= false
+%% The default is to use higher_priority order
+has_higher_priority(R1, R2) <= higher_priority(R1, R2)
+
+
+
+%% sides robots can move to that  will not be in conflict with 
+%% other robots as this is a deadend side
+rel room_deadend_dir(room, ?direction)
+room_deadend_dir(1, north)
+room_deadend_dir(1, south)
+room_deadend_dir(1, west)
+room_deadend_dir(2, north)
+room_deadend_dir(2, east)
+room_deadend_dir(3, north)
+room_deadend_dir(3, west)
+room_deadend_dir(4, north)
+room_deadend_dir(4, east)
+room_deadend_dir(5, north)
+room_deadend_dir(5, west)
+room_deadend_dir(8, east)
+room_deadend_dir(8, south)
+room_deadend_dir(9, west)
+room_deadend_dir(12, north)
+room_deadend_dir(12, east)
+room_deadend_dir(13, south)
+room_deadend_dir(14, east)
+room_deadend_dir(14, south)
+room_deadend_dir(15, south)
+room_deadend_dir(15, west)
+room_deadend_dir(16, south)
+
+rel other_robots(robot, ?list(robot))
+other_robots(navigator1, [navigator2, navigator3])
+other_robots(navigator2, [navigator1, navigator3])
+other_robots(navigator3, [navigator1, navigator2])
+
+%% Find bad sides so that a robot (re)positioning in a room
+%% can move to a side to avoid these bad sides. If all robots together
+%% contribute to 4 bad sides then we try with fewer robots (removing
+%% robots in lower priority order until we get at least one free side).
+%% This is typically used in combination with pick_a_good_idle_side
+%% to find a good side for the robot to move to.  It is possible
+%% that pick_a_good_idle_side could fail for a given choice below but,
+%% because failure will cause a new rule to be chosen below. If a good
+%% side is finally found it will typically the side that avoids as much
+%% conflict as possible.
+rel get_path_dirs_in_room(list(robot), room, ?list(direction))
+
+get_path_dirs_in_room(Others, Room, Dirs) <=
+    get_path_dirs_in_room_aux(Others, Room, Dirs) &
+    #Dirs < 4
+get_path_dirs_in_room([Other, _], Room, Dirs) <=
+    get_path_dirs_in_room_aux([Other], Room, Dirs)
+get_path_dirs_in_room([_, Other], Room, Dirs) <=
+    get_path_dirs_in_room_aux([Other], Room, Dirs)
+
+
+%% This collects all the bad directions for each robot
+rel get_path_dirs_in_room_aux(list(robot), room, ?list(direction))
+get_path_dirs_in_room_aux([], _, [])
+get_path_dirs_in_room_aux([Robot,..Rest], Room, AllDirs) <=
+    get_a_path_dirs(Room, Robot, RDirs) &
+    get_path_dirs_in_room_aux(Rest, Room, RestDirs) &
+    append(RDirs, RestDirs, AllDirs)
+
+%% This collected the bad directions related to a specific robot
+rel get_a_path_dirs(room, robot, ?list(direction))
+%% If you want to consider robots that are two rooms away from reaching 
+%% the given room then uncomment the following 2 rules
+/*
+get_a_path_dirs(Room, Robot, Dirs) <=
+    following(Robot,Path,_) &
+    Path =? _ <>? [Previous1, Previous2, Room, Next] <>? _  &
+    loc(Robot, Previous1) &
+    %% Robot, two rooms away, wants to pass through Room
+    connected(Room, Previous2, InSide) &
+    connected(Room, Next, OutSide) &
+    Dirs = [InSide, OutSide]
+get_a_path_dirs(Room, Robot, Dirs) <=
+    following(Robot,Path,_) &
+    Path =? _ <>? [Previous1, Previous2, Room]   &
+    loc(Robot, Previous1) &
+    %% Robot, two rooms away, wants to end its path in Room
+    connected(Room, Previous2, InSide) &
+    Dirs = [InSide]
+*/
+get_a_path_dirs(Room, Robot, Dirs) ::
+    following(Robot,Path,_) &
+    Path =? _ <>? [Previous, Room, Next] <>? _  &
+    loc(Robot, Previous) <=
+        %% Robot is in an adjacent room and wants to pass through Room
+        connected(Room, Previous, InSide) &
+        connected(Room, Next, OutSide) &
+        Dirs = [InSide, OutSide]
+get_a_path_dirs(Room, Robot, Dirs) ::
+    following(Robot,Path,_) &
+    Path =? _ <>? [Previous, Room] &
+    loc(Robot, Previous) <=
+        %% Robot is in an adjacent room and wants to end its path in Room
+        connected(Room, Previous, InSide) &
+        Dirs = [InSide]
+get_a_path_dirs(Room, Robot, Dirs) ::
+    following(Robot,Path,_) &
+    Path =? _ <>? [Room, Next] <>? _  &
+    loc(Robot, Room) <=
+        %% Robot, in Room, wants to exit
+        connected(Room, Next, OutSide) &
+        Dirs = [OutSide]
+get_a_path_dirs(Room, Robot, Dirs) ::
+    reserved(Robot, Room) &
+    charger_room(Room, Dir) <=
+        %% Robot is in its reserved charger room
+        Dirs = [Dir]
+get_a_path_dirs(_, _, [])
+%% otherwise there are no bad sides
+
+%% Find the best side to wait at 
+rel get_best_idle_side(robot, room, ?direction)
+get_best_idle_side(Me, MyRm, Side) ::
+    centre_booking(Rob, MyRm) & Rob \= Me <=
+        %% can't get to centre so stay
+        my_position(MyRm, Side, _)
+get_best_idle_side(Me, MyRm, Side) ::
+    other_robots(Me, Others) &
+    get_path_dirs_in_room(Others, MyRm, BadDirs) &
+    pick_a_good_idle_side(Me, MyRm, BadDirs, Side)
+
+
+    
+%% Get a good Side for Me in MyRm to move to
+rel pick_a_good_idle_side(robot, room, list(direction), ?direction)
+%% I am in my reserved charger room - backup over charger
+pick_a_good_idle_side(Me, MyRm, _BadDirs, Dir) ::
+    reserved(Me, MyRm) &
+    charger_room(MyRm, Dir)
+%% I am already on a good side
+pick_a_good_idle_side(_Me, MyRm, BadDirs, Dir) ::
+    my_position(MyRm, Dir, Dist) & Dist \= at &
+    not Dir in BadDirs 
+%% There is a deadend in my room with no robot 
+pick_a_good_idle_side(Me, MyRm, _, Dir) ::
+    isa(Dir, direction) &
+    room_deadend_dir(MyRm, Dir) &
+    not charger_room(MyRm, Dir) &
+    not exists Rob (loc(Rob, MyRm) & side_of_room(Rob, Dir) & Rob\=Me)
+%% There is a closed door in my room with no robot 
+pick_a_good_idle_side(Me, MyRm, _, Dir) ::
+    isa(Dir, direction) &
+    closed(Dir, MyRm) &
+    not charger_room(MyRm, Dir) &
+    not exists Rob (at_side(Rob, MyRm, Dir) & Rob\=Me)
+%% I am on a path and my exit dir doesn't contain a robot
+%% nor is booked by a robot in my next room
+pick_a_good_idle_side(Me, MyRm, BadDirs, OutSide) ::
+    following(Me,Path,_) &
+    Path =? _ <>? [MyRm, Next] <>? _  &
+    connected(MyRm, Next, OutSide) &
+    not exists R (has_door_booking(R, MyRm, Next) & R \= Me) & 
+    not OutSide in BadDirs &
+    not exists R (side_of_room(R, OutSide) & R \= Me )
+%% Pick a side not containing a robot or that is booked
+pick_a_good_idle_side(Me, MyRm, BadDirs, Dir) ::
+    isa(Dir, direction) &
+    not exists R, Next (connected(MyRm, Next, Dir) & 
+                        has_door_booking(R, MyRm, Next) & R \= Me) & 
+    not charger_room(MyRm, Dir) &
+    not Dir in BadDirs &
+    not exists R (at_side(R, MyRm, Dir) & R \=Me)
+
+
+
+
+    
+rel another_following_in_room(robot, room)
+"There is another robot in my room that is following"
+another_following_in_room(Me, MyRm) <=
+    loc(Robot, MyRm) & Robot \= Me &
+    following(Robot, _, _)
+
+%% Robot's battery is high and so wants to go to its activity room and
+%% there is no other robot in Room that's following a path.
+rel battery_high_and_free_to_follow(robot, room)
+battery_high_and_free_to_follow(Robot, MyRm) <=
+    battery_status(high) &
+    not following(Robot, _, _) & 
+    not another_following_in_room(Robot, MyRm)
+
+
+%% The top-level TR procedure    
+tel activity(robot)
+activity(Me) {
+        
+    battery_status(high) &  my_position(MyRm, _, _) & 
+    activity_room(Me,MyRm) ~> 
+        %% I am in my activity room and so I should try to move to
+        %% centre - when this rule is first fired it should
+        %% announce that it no longer following a path
+        move_to_activity_room_centre(Me, MyRm) ++ unset_path(Me)
+
+    battery_status(low) & my_position(MyRm, _, _)  & reserved(Me, MyRm) & 
+    charger_room(MyRm, Dir) ~>
+        %% I have reached my charger room try to move to the side
+        %% where the charge is - when this rule is first fired it should
+        %% announce that it no longer following a path
+        go_to_side(Me, MyRm, Dir) ++ unset_path(Me)
+    
+    following(Me, Path, LastRm) ~> follow_path(Me, Path, LastRm)
+    % I have path to follow. Follow it. 
+    
+    loc(Me, MyRm) & get_best_idle_side(Me, MyRm, Side) ~> 
+         go_to_side(Me, MyRm, Side)
+    %% Typically messages need to be processed before a different rule 
+    %% above can be chosen - wait
+    }
+
+
+tel move_to_activity_room_centre(robot, room)
+move_to_activity_room_centre(Me, MyRm) {
+    
+    %% Conflict avoidance
+    other_robots(Me, Others) &
+    get_path_dirs_in_room(Others, MyRm, BadDirs) &
+    BadDirs \= [] &
+    pick_a_good_idle_side(Me, MyRm, BadDirs, Side) ~>
+        %% I need to get out of the way of at least one robot
+        go_to_side(Me, MyRm, Side) ++ 
+            %% For the visualizer so that conflict messages can be displayed
+            conflict_message(go_to_side(Me, MyRm, Side)) to pedro
+    
+    true ~> move_to_centre(Me, MyRm)
+    %% There is no conflict so I can move to the centre of my activity room
+    }
+
+
+tel go_to_side(robot, room, direction)
+go_to_side(Me, MyRm, Side) {
+    
+    my_position(MyRm, Side, far) ~>
+        %% I have reached Side so I can cancel my centre booking
+        () ++ poss_cancel_centre_booking(Me, MyRm)
+    
+    my_position(MyRm, Side, near) ~>
+        %% I need to move further towards Side
+        move(Side)
+    
+    on_line(Dir) & rail_direction(Dir, Side) &
+    my_position(MyRm, _, at) ~> move(Side)
+    %% I am at the centre on the correct rail so I can move
+    
+    my_position(MyRm, _, at) & rail_direction(Line, Side) ~>  turn_to(Line)
+    %% I am at centre so I need to turn to the correct rail
+    
+    true ~> move_to_centre(Me, MyRm)
+    %% I am on the wrong side - I need to move to the centre
+    }
+
+tel follow_path(robot, door_path,room)
+follow_path(Me, Path, LastRm) {
+    
+    my_position(LastRm, _, _) ~> () ++ unset_path(Me) 
+    %% I have arrived at my destination room
+    
+    my_position(MyRm, _, _) & 
+    Path =? _ <>? [MyRm, NextRm] <>? _Rest &
+    connected(MyRm,NextRm,Dir) ~> 
+        move_to_next_room(Me, Dir, MyRm, NextRm)
+    %% I need to move to the next room on my path
+
+    %%true ~> () ++ unset_path(Me)
+    %% my path is closed so I should wait
+    
+    }
+
+
+tel move_to_centre(robot, room)
+move_to_centre(Me, MyRm) {
+    
+    my_position(MyRm, _, at) ~> ()
+    %% I am at the centre
+    
+    centre_booking(Me, MyRm) & my_position(MyRm, Dir, _Dist)  ~>
+        move(rev_dir(Dir))
+    %% I have the booking so I can move
+    
+    centre_booking(Rob, MyRm) & Rob \= Me ~> ()
+    %% someone else has the booking so I need to wait
+    
+    true ~> () ++ remember([pending(book_centre(Me, MyRm))]);
+            book_centre(Me, MyRm) to pedro
+    %% attempt to book centre
+    }
+ 
+
+tel move_to_next_room(robot, direction, room, room)
+move_to_next_room(Me, MyExitDir, MyRm, NextRm) {
+
+    my_position(NextRm, _, _) ~> () ++ poss_cancel_door_booking(Me)
+    %% I have moved to the next room - I no longer need the door booking
+    
+    %% Conflict resolution
+    room_change_conflict(Me, MyExitDir, MyRm, NextRm, Resolution) ~>
+        %% I need to do something to avoid conflict while changing rooms
+        resolve(Me, Resolution) 
+    
+    %% Conflict resolution
+    has_door_booking(Rob, MyRm, NextRm) & Rob \= Me &
+    get_best_idle_side(Me, MyRm, Side) ~>
+        %% Another robot in my room has booked my exit door
+        %% I need to give way
+        go_to_side(Me, MyRm, Side) 
+    
+    has_door_booking(Me, MyRm, NextRm) &
+    my_position(MyRm, MyExitDir, far) ~>
+        %% I have booked my exit door and am near my exit door.
+        %% I can exit room. I have finished with my centre booking
+        move(MyExitDir) ++ poss_cancel_centre_booking(Me, MyRm)
+    
+    has_door_booking(Me, MyRm, NextRm) &
+    my_position(MyRm, MyExitDir,near) ~>
+        %% I have booked my exit door and am on that side of the room
+        %% I move towards my exit door
+        move(MyExitDir)
+    
+    has_door_booking(Me, MyRm, NextRm) &
+    centre_booking(Me, MyRm) &
+    on_line(Rail) & rail_direction(Rail, MyExitDir) ~> 
+        %% If I have the centre booked and I am on the correct rail
+        %% then I can move
+        move(MyExitDir)
+   
+    has_door_booking(Me, MyRm, NextRm) &
+    my_position(MyRm, _, at) & on_line(Rail) & 
+    rail_direction(Rail, MyExitDir) or_while 
+        my_position(MyRm, MyExitDir, _) ~> 
+            %% I have booked my exit door and I am on the correct rail
+            go_to_side(Me, MyRm, MyExitDir)
+
+    has_door_booking(Me, MyRm, NextRm) &
+    my_position(MyRm, _, at) & rail_direction(Rail, MyExitDir) ~>
+        %%  I have booked my exit door and am at centre - turn
+        %% to the correct rail
+        turn_to(Rail)
+    
+    
+    my_position(MyRm, MyExitDir, Dir) & Dir \= at &
+    not has_door_booking(_, MyRm, NextRm) ~> 
+        %% I am on the exit side of my room and the door hasn't been booked
+        () ++ book_door(Me, MyRm, NextRm) to pedro
+    
+    my_position(MyRm, _, at) ~> 
+        %% I am at the centre of my room and the door hasn't been booked
+        %% I don't have the required door booked but I might have
+        %% booked a different door - my path has now changed
+        () ++ poss_cancel_door_booking(Me); book_door(Me, MyRm, NextRm) to pedro
+
+    true ~> 
+        %% try to move to centre.
+        %% Note that I will not try to book the door until I get to the
+        %% centre. I might have booked a different door
+        move_to_centre(Me, MyRm) ++ poss_cancel_door_booking(Me)
+    
+    }
+      
+tel resolve(robot, conflict_term)
+resolve(Me, Resolve) {
+    Resolve = do_idle() ~> 
+        %% I resolve the conflict by waiting
+        %% which includes waiting for another robot to clear a 
+        %% path for me
+        () ++ conflict_message(idle(Me)) to pedro
+    
+    Resolve = avoid_side(MyRm, Side) ~>
+        %% I resolve the conflict by moving to a side that
+        %% allows another robot to move through the room
+         go_to_side(Me, MyRm, Side) ++ 
+            conflict_message(go_to_side(Me, MyRm, Side)) to pedro;
+            poss_cancel_door_booking(Me)
+    }
+
+
+rel at_centre_of_my_activity_room(robot) 
+at_centre_of_my_activity_room(Me) <= 
+    my_position(MyRm, _, at) &
+    activity_room(Me,MyRm) 
+
+
+act unset_path(robot)
+unset_path(Me) :: following(Me, _, _) ~>  no_path(Me) to pedro
+unset_path(_) ~> {}
+
+
+
+      
+% Function that returns a relation for testing if a room is the
+% activity location for robot Me. Used as an argument for path finding.
+fun activity_room_for(robot) -> rel(?room)
+activity_room_for(Me)(MyRm) <= 
+    activity_room(Me,MyRm)
+
+% Function that returns a relation for testing if a charger room is available
+% for use of robot Rob. It is if no other robot has a current reservation 
+% for it. Used as an argument for path finding.
+fun free_charger_for(robot) -> rel(?room)
+free_charger_for(Rob)(ChgrRm) <=
+    charger_room(ChgrRm, _) &
+    not exists OthrRob (reserved(OthrRob,ChgrRm) & OthrRob\=Rob)
+
+
+
+def conflict_term ::= do_idle() | avoid_side(room, direction)
+
+    
+rel room_change_conflict(robot, direction, room, room, ?conflict_term)
+%% I am on a path to NextRm.
+%% I am in conflict if I am on MyExitDir side and there
+%% is a robot in NextRm on the other side of the door
+%% Note: I am free to move to NextRm otherwise even if robots in
+%% that room are moving to/at centre
+room_change_conflict(Me, MyExitDir, MyRm, NextRm, Resolution) ::
+    side_of_room(Me, MyExitDir) &
+    loc(Rob, NextRm) &
+    side_of_room(Rob, rev_dir(MyExitDir)) &
+    %% Rob is close to the other side of my exit door
+    room_change_conflict_aux(Me, MyExitDir, MyRm, NextRm, Rob, Resolution) 
+room_change_conflict(Me, MyExitDir, MyRm, _NextRm, Resolution) ::
+    loc(Rob, MyRm) & Rob \= Me &
+    side_of_room(Rob, MyExitDir) & 
+    get_best_idle_side(Me, MyRm, Side) &
+    %% Rob is in my room on my exit side so I need to get out of the way
+    Resolution = avoid_side(MyRm, Side)
+
+rel room_change_conflict_aux(robot, direction, room, room, robot, 
+                             ?conflict_term)
+
+%% Rob is on the side of my entrance door in NextRm
+room_change_conflict_aux(Me, _MyExitDir, MyRm, NextRm, Rob, Resolution) ::
+    has_door_booking(Rob,  NextRm, MyRm) <=
+        %% Rob has booked the door - get out of the way so that I am 
+        %% not blocking Rob
+        get_best_idle_side(Me, MyRm, Side) &
+        Resolution = avoid_side(MyRm, Side)
+room_change_conflict_aux(Me, _MyExitDir, MyRm, NextRm, _Rob, Resolution) ::
+    has_door_booking(Me,  MyRm, NextRm) <=
+        %% I have booked the door so I wait until Rob has got out of my way
+        %% Rob will choose the rule above
+        Resolution = do_idle()
+
+        
+
+rel has_door_booking(?robot, ?room, ?room)
+has_door_booking(Rob, Rm1, Rm2) :: door_booking(Rob, Rm1, Rm2)
+has_door_booking(Rob, Rm1, Rm2) <= door_booking(Rob, Rm2, Rm1)
+
+% handle_message has system type decl act handle_message(message,agent_handle)
+% where message is a program defined type and agent_handle is a system type
+handle_message(Mess,Addr) ~>
+    write_list(["Received: ", Mess, nl_]);
+    handle_this_message(Mess,Addr)
+
+handle_invalid_message(Message,_) ~>
+    write_list(["Received: ", Message, " not ground term of type message", nl_])
+% This action will be called by agent shell message handling thread
+% if received message term is not a ground term of type message
+
+act handle_this_message(message,agent_handle)
+handle_this_message(no_replan(), _) ~>
+    forget([do_replan()])
+%% A notification about a closed door is received - remember the door is closed
+handle_this_message(door_status(Quad,Rm,shut),_) :: 
+    direction_door(Rm,OthrRm, Quad) &
+    my_name(Rob) &
+    has_door_booking(Rob, Rm, OthrRm) ~>
+        %% if the door is booked then the booking should be cancelled
+        remember([closed(Quad,Rm), closed(rev_dir(Quad),OthrRm)]);
+        cancel_book_door(Rob) to pedro;
+        try_find_path(Rob)
+handle_this_message(door_status(Quad,Rm,shut),_) :: 
+    my_name(Rob) &
+    direction_door(Rm,OthrRm, Quad) ~>
+        remember([closed(Quad,Rm), closed(rev_dir(Quad),OthrRm)]);
+        try_find_path(Rob)
+%% A notification about an open door is received - forget the door is closed
+handle_this_message(door_status(Quad,Rm,open),pedro) :: 
+    my_name(Rob) &
+    direction_door(Rm,OthrRm, Quad) ~>
+        forget([closed(Quad,Rm), closed(rev_dir(Quad),OthrRm)]);
+        try_find_path(Rob)
+%% A reserve_room notification is received - if the charger is free then
+%% remember that this Room is reserved by Rob
+handle_this_message(reserve_room(Rob, Room, []), _) :: 
+    free_charger_for(Rob)(Room) ~>
+        forget_remember([reserved(Rob,_)], 
+                        [reserved(Rob,Room)])
+handle_this_message(reserve_room(Rob, Room, Path), _) :: 
+    free_charger_for(Rob)(Room) ~>
+        forget_remember([reserved(Rob,_)], 
+                        [reserved(Rob,Room)]);
+        case {
+            my_name(Rob) ~> path(Rob, Path, Room) to pedro
+            %% I win the bid for the charger room so announce my path
+            true ~> {}
+            }
+handle_this_message(reserve_room(Rob, _Room, _Path), _) ::
+    my_name(Me) & Rob \= Me & battery_status(low) &
+    not reserved(Me, _) ~>
+        try_find_path(Me)
+    
+handle_this_message(reserve_room(_Rob, _Room, _Path), _) ~> {} 
+
+handle_this_message(new_loc(Rob, Rm), _) ~>
+    forget_remember([loc(Rob,_)], [loc(Rob,Rm)])
+handle_this_message(room_side(Rob, Side), _) ~>
+    forget_remember([side_of_room(Rob,_)], [side_of_room(Rob,Side)])
+handle_this_message(end_room_side(Rob), _) ~>
+    forget([side_of_room(Rob,_)])
+
+handle_this_message(cancel_book_centre(Rob, Rm), _) ~>
+    forget([centre_booking(Rob, Rm), pending(book_centre(Rob, Rm))])
+handle_this_message(book_centre(Rob, Rm), _) ::
+    centre_booking(_, Rm) ~> forget([pending(book_centre(Rob, Rm))])
+handle_this_message(book_centre(Rob, Rm), _) ::
+    % Rob no longer wants to book centre
+    my_name(Rob) & not pending(book_centre(Rob, Rm)) ~> 
+        cancel_book_centre(Rob, Rm) to pedro
+handle_this_message(book_centre(Rob, Rm), _) ~>
+    forget_remember([pending(book_centre(Rob, Rm))], [centre_booking(Rob, Rm)])
+
+handle_this_message(cancel_book_door(Rob), _) ~>
+    forget([door_booking(Rob, _, _)])
+handle_this_message(book_door(_Rob, Rm1, Rm2), _) ::
+    %% another robot won the bid
+    has_door_booking(_, Rm1, Rm2) ~> {}
+handle_this_message(book_door(Rob, Rm1, Rm2), _) ~>
+    %% Rob won the bid
+    forget_remember([door_booking(Rob, _, _)],
+                    [door_booking(Rob, Rm1, Rm2)])
+
+
+%% A path notification to a room is remembered
+handle_this_message(path(Rob,Path,Room),_) ~>    
+    forget_remember([following(Rob,_,_), door_booking(Rob, _, _)], 
+                    [following(Rob,Path,Room)])
+
+
+%% a notification that there is no longer a path for Rob 
+handle_this_message(no_path(Rob),pedro) :: following(Rob,_,LastRm) ~>
+        forget([following(Rob, _, LastRm), door_booking(Rob, _, _)]) ;
+        poss_forget_reserved(Rob,LastRm) ;
+        poss_find_path_to_charger()
+%% a notification that Rob is finished charging - 
+%% forget that Rob has reserved the room
+handle_this_message(finished_charging(Rob),pedro) ::
+    my_name(Me) & Rob \= Me & battery_status(low) &
+    not reserved(Me, _) ~>
+        forget([reserved(Rob, _)]);
+        try_find_path(Me)
+handle_this_message(finished_charging(Rob),pedro)  ~>
+    forget([reserved(Rob, _)])
+
+handle_this_message(new_activity_room(Rob,Rm),pedro)::loc(Rob, _) ~>
+    forget_remember([activity_room(Rob,_)], [activity_room(Rob,Rm)])
+handle_this_message(new_activity_room(Rob,Rm),pedro) ~>
+    forget_remember([activity_room(Rob,_)], [activity_room(Rob,Rm)])
+
+%% A robot agent is joining the system
+%% Notify this robot of my state
+handle_this_message(joining(RobHandle), pedro) :: 
+    my_name(Me) ~>
+        send_path_state(Me, RobHandle);
+        send_position_state(Me, RobHandle);
+        send_reserved_state(Me, RobHandle)
+%% other messages ignored
+handle_this_message(M,A) ~>
+    write_list(["Message ",M," from ",A," ignored",nl_]) 
+
+act send_path_state(robot, agent_handle)        
+send_path_state(Me, Handle) :: Me \= Handle & following(Me,Path,Room) ~>
+            path(Me,Path,Room) to Handle
+send_path_state(_Me, _Handle) ~> {}
+
+act send_position_state(robot, agent_handle)        
+send_position_state(Me, Handle) :: Me \= Handle & 
+    my_position(Rm,_Dir,at) ~>
+        new_loc(Me, Rm)  to Handle
+send_position_state(Me, Handle) :: Me \= Handle & 
+    my_position(Rm,Dir,_) ~>
+        new_loc(Me, Rm)  to Handle;
+        room_side(Me, Dir) to Handle
+
+send_position_state(_Me, _Handle) ~> {}
+
+act send_reserved_state(robot, agent_handle)        
+send_reserved_state(Me, Handle) :: Me \= Handle & reserved(Me,Room) ~>
+        reserve_room(Me, Room, []) to Handle
+send_reserved_state(_Me, _Handle) ~> {}
+
+
+
+% This is called when no_path(Rob) has been received because
+% Rob is either at the end of its path or cannot find a path
+% of open doors to LastRm
+act poss_forget_reserved(robot,room)
+poss_forget_reserved(Rob,LastRm) :: 
+    reserved(Rob,LastRm) & not loc(Rob,LastRm) ~>
+        forget([reserved(Rob,LastRm)])
+poss_forget_reserved(_Rob,_Rm) ~> {}
+
+rel path_closed(door_path)
+path_closed(Path) <=
+    Path =? _ <>? [Rm1, Rm2,..] &
+    not open_connected(Rm1, Rm2)
+
+rel shorter_path(robot, door_path)
+shorter_path(Me, Path) ::
+    following(Me, OldPath, _) &
+    loc(Me, MyRm) & 
+    OldPath =? _ <>? [MyRm] <>? Rest &
+    not path_closed([MyRm,..Rest]) <=
+        #Path < #Rest + 1
+shorter_path(_Me, _Path)    
+
+act try_find_path(robot)
+try_find_path(Me) ::
+    not do_replan() &
+    following(Me, OldPath, _) &
+    loc(Me, MyRm) & 
+    OldPath =? _ <>? [MyRm] <>? Rest &
+    not path_closed([MyRm,..Rest]) ~>
+        %% I am not replaning and my current path is still open
+        {}
+try_find_path(Me) ::
+    battery_status(high) & 
+    loc(Me, MyRm) & 
+    activity_room(Me,ActRm) & ActRm \= MyRm &
+    graph_path(MyRm, LastRm, Path, open_connected, 
+               activity_room_for(Me)) ~> 
+        case {
+            shorter_path(Me, Path) ~> path(Me, Path, LastRm) to pedro
+            true ~> {}
+            }
+try_find_path(Me) ::
+    battery_status(low) &
+    loc(Me, MyRm) & 
+    not reserved(Me, MyRm) & 
+    graph_path(MyRm, LastRm, Path, open_connected, 
+               free_charger_for(Me)) ~>
+        case {
+            shorter_path(Me, Path) ~>reserve_room(Me, LastRm, Path) to pedro
+            true ~> {}
+            }
+try_find_path(Me) ~> unset_path(Me)
+
+act  poss_cancel_centre_booking(robot, room)
+poss_cancel_centre_booking(Me, MyRm) ::
+    centre_booking(Me, MyRm) ~>
+        cancel_book_centre(Me, MyRm) to pedro
+poss_cancel_centre_booking(Me, MyRm) ::
+    pending(book_centre(Me, MyRm)) ~>
+        forget([pending(book_centre(Me, MyRm))]);
+        cancel_book_centre(Me, MyRm) to pedro
+poss_cancel_centre_booking(_Me, _MyRm) ~> {}
+
+act  poss_cancel_door_booking(robot)
+poss_cancel_door_booking(Me) ::
+    door_booking(Me, _, _) ~>
+        cancel_book_door(Me) to pedro
+poss_cancel_door_booking(_Me) ~> {}
+
+
+ 
+act  poss_find_path_to_charger()
+poss_find_path_to_charger() ::
+    battery_status(low) &
+    my_name(Me) & 
+    not reserved(Me, _) ~>
+        try_find_path(Me)
+poss_find_path_to_charger() ~> {}
+
+act check_for_to_charge(!list(tel_percept_term), !list(tel_percept_term))
+check_for_to_charge(_Forgets, Remembers) ::
+    battery_status(low) in Remembers &
+    my_name(Me)  ~>
+        try_find_path(Me)
+check_for_to_charge(_, _) ~> {}    
+
+
+
+% post_process_percepts has system defined type 
+% act post_process_percepts(!list(tel_percept_term), 
+%                           !list(tel_percept_term)) 
+% If defined in user program this is called by percept handler immediately
+% after it has done the normal percept updates. This allows appl specific 
+% inferred perceptions to be made and possibly communicated to other agents.
+
+post_process_percepts(Forgets, Remembers) ~>
+    check_for_finished_charging(Forgets, Remembers);
+    check_for_to_charge(Forgets, Remembers);
+    check_for_position_change(Forgets, Remembers)
+
+act check_for_finished_charging(!list(tel_percept_term), 
+                                !list(tel_percept_term))
+check_for_finished_charging(_Forgets, Remembers) ::
+    battery_status(high) in Remembers &
+    my_position(ChgrRm, Dir, far) &
+    my_name(Me) &
+    reserved(Me, ChgrRm) &
+    charger_room(ChgrRm, Dir) ~>
+        finished_charging(Me) to pedro;
+        try_find_path(Me)
+check_for_finished_charging(_, _) ~> {}    
+
+act check_for_position_change(!list(tel_percept_term), 
+                              !list(tel_percept_term))
+
+
+check_for_position_change(_Forgets, Remembers) ::
+    my_position(Room, _Dir, at) in Remembers &
+    my_name(Me) &
+    not centre_booking(Me, Room) ~>
+        %% Special case for when a new robot is added
+        book_centre(Me, Room) to pedro;
+        end_room_side(Me)  to pedro;
+        new_loc(Me, Room) to pedro
+check_for_position_change(Forgets, Remembers) ::
+    my_position(Room, _, at) in Forgets &
+    my_position(Room, Side, Dist) in Remembers & Dist \= at &
+    my_name(Me)  ~>
+        %% I was a the centre but I have moved to a side - announce
+        room_side(Me, Side)  to pedro
+check_for_position_change(Forgets, Remembers) ::
+    %% initialization
+    my_name(Me) & not loc(Me, _) &
+    not my_position(_, _, _) in Forgets &
+    my_position(Room, _, at) in Remembers ~>
+        book_centre(Me, Room) to pedro;
+        new_loc(Me, Room) to pedro
+check_for_position_change(Forgets, Remembers) ::
+    my_position(Room0, _, _) in Forgets &
+    my_position(Room1, Side, _) in Remembers &
+    Room0 \= Room1 &
+    my_name(Me) ~>
+        %% move through a door
+        new_loc(Me, Room1) to pedro;
+        room_side(Me, Side)  to pedro
+        %%cancel_book_door(Me) to pedro
+check_for_position_change(_,_) ~> {}
+
+
+
+%% System declared user defined (if required) action to initialize the
+%% message handler thread - in this case subscribing to various notifications
+init_message_handler() ~>
+    subscribe("door_status(D,Rm,S)", _);
+    subscribe("finished_charging(Rb)", _);
+    subscribe("path(Rb,Path,Rm)", _);
+    subscribe("no_path(Rob)", _);
+    subscribe("reserve_room(Rob, Rm, Path)", _);
+    subscribe("new_activity_room(Rom, Rm)", _);
+    subscribe("joining(_)", _);
+    subscribe("new_loc(Rob, Rm)", _);
+    subscribe("room_side(Rob, Dir)", _);
+    subscribe("end_room_side(Rob)", _);
+    subscribe("book_centre(Rob, Rm)", _);
+    subscribe("cancel_book_centre(Rob, Room)", _);
+    subscribe("book_door(Rob, Rm1, Rm2)", _);
+    subscribe("cancel_book_door(Rob)", _);
+    write_list(["All Pedro subscriptions lodged",nl_]);
+    ?(my_name(Me));
+    joining(Me) to pedro
+
+%% Action to start the agent
+act go()
+go() :: this_process_name(R) & type(R, robot) ~> 
+        remember([my_name(R)]); 
+        start_agent(rooms_env@localhost, updates) ;
+        % The above starts the percept and message handling threads of 
+        % the agent R and sends an initialise_ message to the Python simulated
+        % environment with Pedro registed name rooms_env@localhost. updates
+        % means that the env will send a list of r_(percept), f_(percept),
+        % fa_(percept) and u_(percept) terms
+        % indicating changes to what the agent can now perceive in the env.    
+        wait(activity_room(R, _Room));
+        %remember([loc(R,Room)]);
+        start_task(activity(R), _)
+        % The above starts a task for R with the initial call to activity proc. 
+go() :: this_process_name(R) ~>
+        write_list([R, ", this agent's name, is not of type robot", nl_])

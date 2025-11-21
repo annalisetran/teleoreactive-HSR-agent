@@ -1,0 +1,188 @@
+%% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+%% A close-to direct translation of towerBuilder.qlg using two arms and
+%% three tables.
+
+%% To run:
+%% Start the Python simulator in one terminal:
+%% python twoArmSim.py
+%% Start the Teleor interpreter in another terminal:
+%% teleor -Atower2arms
+%% In interpreter:
+%% [twoArmTowerBuilder].
+%% go().
+
+%% See README for how to interact with simulator
+
+def arm ::= arm1 | arm2
+def table ::= table1 | shared | table2
+def block ::= (1 .. 16)
+
+def loc == table || block
+
+fun other(arm) -> arm
+other(arm1) -> arm2
+other(arm2) -> arm1
+
+tel_percept holding(arm, block), on(block, block), 
+    on_table(block,table), over_home(arm), tracking(arm)
+
+tel_action pickup(arm, block, table), put_on_table(arm, table), 
+        put_on_block(arm,block,table) 
+
+
+rel tower(list(block), ?table) 
+tower([B,..Bs],Tbl) <= not on(_,B) & stack([B,..Bs],Tbl)
+
+rel clear(block)
+clear(B) <= not holding(_,B) & not on(_,B)
+
+rel stack(?list(block),?table)
+stack([B], T) :: on_table(B,T) 
+stack([B1,B2|Bs], T) :: on(B1, B2) & stack([B2|Bs], T)
+
+rel over_table(arm, ?table)
+over_table(Arm, Table) :: over_home(Arm) <= Table = home_table(Arm) 
+over_table(_, shared)
+
+fun home_table(arm) -> table
+home_table(arm1) -> table1
+home_table(arm2) -> table2
+
+
+rel can_reach_block(arm,block,?table)     
+can_reach_block(Arm,Block,Tab) <=
+    somewhere_on(Block,Tab) & can_reach_table(Arm,Tab) 
+
+rel can_reach_table(arm,?table)
+can_reach_table(_Arm,shared)
+can_reach_table(Arm,Tab) <= Tab=home_table(Arm)  
+
+rel somewhere_on(block,?table)     
+somewhere_on(Block,Tab) :: on_table(Block,Tab)
+somewhere_on(Block,Tab) <=
+    on(Block,BellowBlock) & somewhere_on(BellowBlock,Tab)
+
+rel above(?block, block)
+above(Above, Block) <= on(Above, Block)
+above(Above, Block) <= on(On, Block) & above(Above, On)
+
+rel top_block_above(?block, block)
+top_block_above(TopBlock, Block) <=
+    above(TopBlock, Block) & not on(_, TopBlock)
+
+rel safe_to_try_to_use(arm,table)
+safe_to_try_to_use(_, Table) :: Table \= shared
+safe_to_try_to_use(Arm,shared) :: over_home(other(Arm))
+safe_to_try_to_use(Arm,shared) <= tracking(other(Arm))
+
+
+tel makeTower(arm,list(block),table)
+makeTower(Arm,Blocks,TowerTab){
+    tower(Blocks,TowerTab)  ~> () 
+    % finished building Blocks tower on TowerTab 
+    
+    stack(Blocks,TowerTab) & Blocks = [Block,.._Rest]  ~>                   
+                unpile(Arm,Block,TowerTab)
+    % Blocks form a stack on TowerTab - unpile blocks above Block
+        
+    Blocks = [Block, TopTowerBlock,..Rest] & 
+    tower([TopTowerBlock,..Rest],TowerTab) ~>                   
+        move_across_to_block(Arm,Block,TopTowerBlock)  
+        
+    Blocks=[Block] ~> move_across_to_table(Arm,Block,TowerTab)      
+    % Base case of recursion - make a single block tower on TowerTab
+    % by clearing Block and moving across to TowerTab, possibly 
+    % using the other arm and shared table. 
+    
+    Blocks = [_,..Rest] ~> makeTower(Arm,Rest,TowerTab)
+    % recursive call to construct sub tower and achieve guard of rule 4
+    }
+
+
+tel unpile(arm,block,table)  
+unpile(Arm,Block,Tab){
+    clear(Block)  ~> ()  
+        
+    on(OnBlock, Block) ~> 
+        move_across_to_table(Arm, OnBlock, Tab)
+    }
+ 
+
+tel move_across_to_table(arm,block,table)
+move_across_to_table(Arm,Block,ToTab){
+    % Only called when Arm can reach ToTab, its home table
+    on_table(Block,ToTab) ~> ()
+        
+    holding(Arm,Block) ~>  put_on_table(Arm,ToTab)
+    
+    holding(Arm, _) & over_table(Arm, Table) ~>
+        put_on_table(Arm, Table)
+   
+    holding(other(Arm),Block) ~> put_on_table(other(Arm), shared)
+    
+    clear(Block) & can_reach_block(Arm,Block,BlockTab) ~>  
+        pickup(Arm,Block, BlockTab)
+    
+    clear(Block) & somewhere_on(Block,OtherTable) ~> 
+        pickup(other(Arm), Block, OtherTable)
+
+    can_reach_block(Arm,Block,BlockTab) ~>
+        pickup(Arm,Block, BlockTab)
+
+    can_reach_block(Arm,Block,BlockTab) ~>  unpile(Arm,Block,BlockTab)
+    
+    OtherArm = other(Arm) ~> unpile(OtherArm,Block,home_table(OtherArm))
+
+}
+
+tel move_across_to_block(arm,block,block)
+move_across_to_block(Arm,Block,ToBlock){
+    % For tower building tasks only called whilst ToBlock is on 
+    % TowerTab and clear and TowerTab is Arm's home table
+    on(Block,ToBlock) ~> ()
+    
+    holding(Arm,Block) ~> 
+        put_on_block(Arm,ToBlock, home_table(Arm))
+
+    holding(Arm, _) & over_table(Arm, Table) ~>
+        put_on_table(Arm, Table)
+    
+    holding(other(Arm),Block) ~> put_on_table(other(Arm), shared)
+
+    holding(other(Arm), _) & over_table(other(Arm), Table) ~>
+        put_on_table(other(Arm), Table)
+      
+    clear(Block) & can_reach_block(Arm,Block,BlockTab) ~>  
+        pickup(Arm,Block, BlockTab)
+    
+    clear(Block) & somewhere_on(Block,OtherTable) ~> 
+        pickup(other(Arm), Block, OtherTable)
+    
+    can_reach_block(Arm,Block,BlockTab) ~>  unpile(Arm,Block,BlockTab)
+    
+    OtherArm = other(Arm) ~> unpile(OtherArm,Block,home_table(OtherArm))
+
+}
+        
+
+def task_desc ::= task_data(atom, arm, list(block), table)
+
+act go()
+go() ~>
+            start_agent(twoArmSim, updates);
+            task_data(t1, arm1, [2,5,10,6], table1) to twoArmSim;
+            start_named_task(makeTower(arm1, [2,5,10,6], table1), t1)
+        

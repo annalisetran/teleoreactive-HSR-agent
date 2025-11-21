@@ -1,0 +1,45 @@
+Installing Qu-Prolog 10.10
+
+Execute the following
+
+./configure
+source PROFILE_CMDS
+make
+
+This should have build the system.
+
+The config files have been pre-built using LINUX Ubuntu and
+so you may need to run autoconf before configure if you are using
+different versions of LINUX or UNIX.
+
+If you have any problems please let us know.
+
+Look in PROFILE_CMDS or LOGIN_CMDS to see how to set up your environment.
+
+NOTES
+-----
+
+Command editing, completion and history can be used if rlwrap is installed.
+You may need at least version 0.37.
+
+If configure does not find some files then paths may need to be changed.
+Changing PATH or LD_LIBRARY_PATH may be enough. 
+
+On some machines the paths for the includes for the STL libraries are 
+not automatically set by gcc. If you get a compiler error saying that it 
+can't find sstream then try
+locate sstream
+to find the path to the STL include directory.
+Then try
+./configure --with-gcclib=PATH
+where PATH is the path to the STL library includes.
+
+For regular expressions we use the pcre2-8 library and so that needs to be
+installed in order to be able to process regular expressions via re_match. 
+
+
+Installing on MacOSX
+--------------------
+The system should install on MacOSX without problems.
+
+

@@ -1,0 +1,137 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Semantics of Relations (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Semantics of Relations (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Semantics of Relations (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Semantics.html" rel="up" title="Semantics">
+<link href="Semantics-of-Actions.html" rel="next" title="Semantics of Actions">
+<link href="Semantics-Introduction.html" rel="prev" title="Semantics Introduction">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Semantics-of-Relations">
+<div class="header">
+<p>
+Next: <a href="Semantics-of-Actions.html" accesskey="n" rel="next">Actions</a>, Previous: <a href="Semantics-Introduction.html" accesskey="p" rel="prev">Introduction</a>, Up: <a href="Semantics.html" accesskey="u" rel="up">Semantics</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Relations"></span><h3 class="section">6.2 Relations</h3>
+<span id="index-Semantics-of-Relations"></span>
+<p>Below is a simple example of using <code>=?</code> on lists.
+</p>
+<pre class="verbatim">| ?? [a,b] =? X &lt;&gt; Y::(#Y=1) &lt;&gt; Z.
+
+X = [] : list(_)
+Y = [a] : list(atom)
+Z = [b] : list(atom)
+...
+X = [a] : list(atom)
+Y = [b] : list(atom)
+Z = [] : list(_)
+</pre><p>The query is asking to split the list <code>[a,b]</code> into 3 lists with the middle being of length 1. There are 2 solutions to this query and both are shown.
+</p>
+<p>Semantically, QuLog tries all ways of splitting up the list into sublists that
+match the patterns and for which the tests are true.
+</p>
+<p>Below is an example  using <code>=?</code> on strings from <code>examples/introduction/qlexamples.qlg</code>.
+</p>
+<div class="example">
+<pre class="example">rel words2(string, ?list(string))
+words2(Str,[WStr]) :: Str  =? WStr/&quot;\\w*&quot; ++ _End/&quot;[.?!]&quot;    
+words2(Str,[W|Words]) :: 
+    Str =? 
+        W/&quot;\\w*&quot; ++ 
+        _Seps/&quot;([,;:]?\\s+)|(\\s+)&quot; ++ 
+        RStr::words2(RStr,Words)  
+</pre></div>
+<p><code>words2</code> is a relation that takes an English sentence terminated by <code>., ?, !</code> and unifies its second argument with the strings representing the words of the sentence, ignoring punctuation.
+</p>
+<p>The first rule deals with the word at the end of the sentence - the first substring must match the RE <code>&quot;\\w*&quot;</code> and the second substring must match the RE
+<code>&quot;[.?!]&quot;</code>.
+</p>
+<p>The second rule extracts the first word, consumes spaces and punctuation, and
+recursively calls <code>words2</code> to process the rest of the sentence.
+</p>
+<p>Semantically, QuLog tries all ways of splitting up the string into substring
+that match the patterns and for which the regular expressions match (if present) and the tests are true.
+</p>
+<p>Note that each RE does a maximal length match (although we could have used lazy matching to get the shortest match) and so we get
+</p><div class="example">
+<pre class="example">| ?? &quot;abc&quot; =? A/&quot;.*&quot; ++ B/&quot;.*&quot;.
+
+A = &quot;abc&quot; : string
+B = &quot;&quot; : string
+
+| ?? &quot;abc&quot; =? A/&quot;.*&quot; ++ B/&quot;.&quot;.
+
+no
+</pre></div>
+<p>In both cases <code>&quot;.*&quot;</code> matches the entire list. Also note that in
+</p><div class="example">
+<pre class="example">| ?? &quot;abc&quot; =? A/&quot;.*&quot;::(#A=1) ++ B/&quot;.*&quot;.
+
+no
+</pre></div>
+<p>the RE matches the entire list, making <code>A = &quot;abc&quot;</code>, which is not of length 1.
+</p>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Semantics-of-Actions.html">Actions</a>, Previous: <a href="Semantics-Introduction.html">Introduction</a>, Up: <a href="Semantics.html">Semantics</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

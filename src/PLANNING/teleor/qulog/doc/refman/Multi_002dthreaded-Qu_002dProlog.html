@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Multi-threaded Qu-Prolog (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Multi-threaded Qu-Prolog (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Multi-threaded Qu-Prolog (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="History-of-QuLog_002fTeleoR.html" rel="up" title="History of QuLog/TeleoR">
+<link href="High-level-inter_002dprocess-communication-using-Pedro.html" rel="next" title="High level inter-process communication using Pedro">
+<link href="The-Qu_002dProlog-Ancestor.html" rel="prev" title="The Qu-Prolog Ancestor">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Multi_002dthreaded-Qu_002dProlog">
+<div class="header">
+<p>
+Next: <a href="High-level-inter_002dprocess-communication-using-Pedro.html" accesskey="n" rel="next">High level inter-process communication using Pedro</a>, Previous: <a href="The-Qu_002dProlog-Ancestor.html" accesskey="p" rel="prev">The Qu-Prolog Ancestor</a>, Up: <a href="History-of-QuLog_002fTeleoR.html" accesskey="u" rel="up">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Multi_002dthreaded-Qu_002dProlog-1"></span><h3 class="section">2.2 Multi-threaded Qu-Prolog</h3>
+<span id="index-Multi_002dthreaded-Qu_002dProlog"></span>
+
+
+
+<p>Our first major extension in the early 1990s was to make a
+Qu-Prolog process
+multi-threaded, with each thread having a different atom name evaluating a different Qu-Prolog query, but sharing and accessing the same static and
+dynamic relation definitions.  
+The multi-threading was added to extend the interactive theorem proving application to allow
+the spawning a threads to construct proofs of straightforward lemmas whilst the main interactive theorem proving activity continued. 
+</p>
+<p>Co-ordination
+of the activity of the separate threads was initially achieved  by
+atomic updates of the shared <i>Belief Store</i> of dynamic relation facts, with some threads waiting for an update
+by another thread. 
+</p>
+<p>We then added inter-thread communication via messages. Each thread had one linked message buffer into which messages sent
+to the thread  were put. The messages were  ordered by
+time of arrival with the most recent being the last message.
+The receiving thread periodically &rsquo;pattern match reads&rsquo; and optionally removes
+a message  term from its message buffer using message read primitives.  It could search the buffer
+looking for a message that matches a given pattern, or is from a specific
+thread, or both. 
+ If there was no message that satisfied
+the given  constraints the reading thread suspended, with an optional
+timeout on the suspension, until a  message satisfying the constraints was received  
+</p>
+<p>The threads were time-shared by a run-time scheduler
+with each thread being given a 2 millisecond
+evaluation slot. The slot of a thread <code>Th</code> is automatically extended to complete an
+atomic call sequence, say one that needs to do several updates to one or more
+dynamic relations. 
+The slot is shortened if the <code>Th</code> thread suspends waiting for a particular
+message to arrive,  or for one or more other threads to update the dynamic
+relations so that some suspended query succeeds. 
+</p>
+<p>When the application of the multi-threaded Qu-Prolog is an agent
+application, each thread is an agent sub-task and the dynamic relations
+defined solely by facts comprise the agent&rsquo;s <i>Belief Store</i>. Task
+co-ordination  
+is achieved either by inter-thread communication, or by atomic updates of
+the <i>Belief Store</i>, used as a shared blackboard. 
+</p>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="High-level-inter_002dprocess-communication-using-Pedro.html">High level inter-process communication using Pedro</a>, Previous: <a href="The-Qu_002dProlog-Ancestor.html">The Qu-Prolog Ancestor</a>, Up: <a href="History-of-QuLog_002fTeleoR.html">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

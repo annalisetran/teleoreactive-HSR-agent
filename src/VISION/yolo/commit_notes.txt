@@ -1,0 +1,4 @@
+09/05/2024
+detect_ros.py
+- add new inferencing for person head after detecting a person
+- generated new wights file for head class

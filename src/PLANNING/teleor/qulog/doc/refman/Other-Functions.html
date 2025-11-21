@@ -1,0 +1,209 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Other Functions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Other Functions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Other Functions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Built_002dIns.html" rel="up" title="Built-Ins">
+<link href="Other-Relations.html" rel="next" title="Other Relations">
+<link href="Arithmetic-Functions-and-Relations.html" rel="prev" title="Arithmetic Functions and Relations">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Other-Functions">
+<div class="header">
+<p>
+Next: <a href="Other-Relations.html" accesskey="n" rel="next">Other Relations</a>, Previous: <a href="Arithmetic-Functions-and-Relations.html" accesskey="p" rel="prev">Arithmetic Functions and Relations</a>, Up: <a href="Built_002dIns.html" accesskey="u" rel="up">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Other-Functions-1"></span><h3 class="section">7.5 Other Functions</h3>
+<span id="index-Other-Functions"></span>
+
+
+<p><code> now()</code>
+<span id="index-now"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the current time.
+<br>
+<code> fun now() -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> exec_time()</code>
+<span id="index-exec_005ftime"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the lapsed time in seconds since this qulog process was started
+<br>
+<code> fun exec_time() -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> start_time()</code>
+<span id="index-start_005ftime"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the time at which this qulog process was started
+<br>
+<code> start_time: () -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> random_num()</code>
+<span id="index-random_005fnum"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns a random number in <code>[0,1)</code>.
+<br>
+<code> fun random_num() -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> random_int(Lower, Upper)</code>
+<span id="index-random_005fint"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns a random integer in the interval <code>[Lower, Upper]</code>.
+<br>
+<code> fun random_int(int, int) -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> S1 union S2</code>
+<span id="index-union"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the union of sets <code>S1</code> and <code>S2</code>.
+<br>
+<code> fun union(set(T), set(T)) -&gt; set(T)</code>
+</p></blockquote>
+
+
+<p><code> S1 inter S2</code>
+<span id="index-inter"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the intersection of sets <code>S1</code> and <code>S2</code>.
+<br>
+<code> fun inter(set(T), set(T)) -&gt; set(T)</code>
+</p></blockquote>
+
+
+<p><code> S1 diff S2</code>
+<span id="index-diff"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the set difference of sets <code>S1</code> and <code>S2</code>.
+<br>
+<code> fun diff(set(T), set(T)) -&gt; set(T)</code>
+</p></blockquote>
+
+
+<p><code> L1 &lt;&gt; L2</code>
+<span id="index-_003c_003e"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the concatination of lists <code>L1</code> and <code>L2</code>.
+<br>
+<code> fun list(T) &lt;&gt; list(T) -&gt; list(T)</code>
+</p></blockquote>
+
+
+<p><code> S1 ++ S2</code>
+<span id="index-_002b_002b"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the concatination of strings <code>S1</code> and <code>S2</code>.
+<br>
+<code> fun string ++ string -&gt; string</code>
+</p></blockquote>
+
+
+<p><code>#L</code>
+<span id="index-size"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the length of the list, set, or string <code>L</code>.
+<br>
+<code>fun #list(T) -&gt; nat, #set(T) -&gt; nat, #string -&gt; nat</code>
+</p></blockquote>
+
+
+
+<p><code>$Name</code>
+<span id="index-_0024"></span>
+</p><blockquote class="indentedblock">
+
+<p>Here <code>Name</code> is an atom that must have been initialised with a statement
+<br>
+<code>int Name:=Integer</code>, e.g. <code>int count:=0</code> or
+<br>
+<code>num Name:=Number</code>, e.g. <code>num savings:=678.50</code>
+<br>
+</p>
+<p>in the program. It returns the current value associated with <code>Name</code>
+</p>
+<p>which can be updated by primitive actions 
+(see <a href="Other-Actions.html">:=</a>).
+</p></blockquote>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Other-Relations.html">Other Relations</a>, Previous: <a href="Arithmetic-Functions-and-Relations.html">Arithmetic Functions and Relations</a>, Up: <a href="Built_002dIns.html">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,218 @@
+%% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+%% A multi-task tower builder using 2 arms, arm1 and arm2, and 3 tables, 
+%% table1, shared, table2 with blocks distributed over all three tables. 
+%% arm1 can reach table1 and shared, arm2 can reach table2 and shared.
+%% If next block needed for a tower being built by arm1 on table1
+%%  is on  table 2, arm2 has to be used to  clear the block, 
+%% if need be, and then move it to shared. It can then be picked up by 
+%% arm1 to put on the partial tower on table1. There is no multi-tasking. 
+%% It is a generalisation of single task towerBuilder which has just 
+%% one arm and one table. Here the primitive actions have two extra 
+%% arguments: the arm to be used and the table it will access. 
+%% There is no task co-operation in this version, just as there is 
+%% no co-operation in oneArmTowerBuilders.qlg
+
+
+% To run:
+% In one terminal:
+% python twoArmSim.py
+% In another terminal:
+% teleor -Atowers
+% In interpreter:
+% [twoArmTowerBuilders].
+% go().
+
+% In the simulation press the space bar and then drag blocks around - press
+% the space again to continue.
+
+def arm ::= arm1 | arm2
+def table ::= table1 | shared | table2
+def block ::= (1 .. 16)
+
+def loc == table || block
+
+fun other(arm) -> arm
+other(arm1) -> arm2
+other(arm2) -> arm1
+
+tel_percept holding(arm, block), on(block, block), 
+    on_table(block,table), over_home(arm), tracking(arm)
+
+tel_action pickup(arm, block, table), put_on_table(arm, table), 
+        put_on_block(arm,block,table) 
+
+def resource ==  arm || table
+
+def resources_message_ ::= locked_resources(term) | waiting_resources(term)
+
+resources_hook() :: 
+    get_active_resources(Resources) &
+    get_waiting_resources(WResources)
+        ~> 
+            locked_resources(Resources) to twoArmSim ;
+            waiting_resources(WResources) to  twoArmSim
+% Called by evaluator, when defined, to send info to the simulator
+
+rel tower(list(block), ?table) 
+tower([B,..Bs],Tbl) <= not on(_,B) & stack([B,..Bs],Tbl)
+
+rel clear(block)
+clear(B) <= not holding(_,B) & not on(_,B)
+
+rel stack(?list(block),?table)
+stack([B], T) :: on_table(B,T) 
+stack([B1,B2|Bs], T) :: on(B1, B2) & stack([B2|Bs], T)
+
+fun home_table(arm) -> table
+home_table(arm1) -> table1
+home_table(arm2) -> table2
+
+rel can_reach_block(arm,block,?table)     
+can_reach_block(Arm,Block,Tab) <=      
+    somewhere_on(Block,Tab) & can_reach_table(Arm,Tab) 
+
+rel can_reach_table(arm,?table)
+can_reach_table(_Arm,shared)
+can_reach_table(Arm,Tab) <= Tab=home_table(Arm)  
+
+
+rel somewhere_on(block,?table)     
+somewhere_on(Block,Tab) :: on_table(Block,Tab)
+somewhere_on(Block,Tab) <=
+    on(Block,BellowBlock) & somewhere_on(BellowBlock,Tab)
+
+
+tel_atomic move_to_block(arm,block,table,block,table)
+% Moves Block1 from wherever to be on Block2
+move_to_block(Arm,Block1,Tab1,Block2,Tab2){ 
+    % Only called if Arm can reach both Tab1 and Tab2
+    % Only active if Block2 is clear and on Tab2
+    on(Block1,Block2) ~> ()         
+    % The goal is achieved
+    
+    holding(Arm,Block1) ~> put_on_block(Arm,Block2,Tab2)
+    
+    holding(Arm,_) ~> put_on_table(Arm,Tab1)
+    % Put any other held block directly on table Tab1
+    
+    clear(Block1)  ~> pickup(Arm,Block1,Tab1) 
+
+    true  ~> unpile(Arm,Block1,Tab1)
+     % Need to clear  Block1 to pick it up
+    } 
+
+
+tel_atomic move_to_table(arm,block,table,table)
+move_to_table(Arm,Block,BlockTab,ToTab){
+    % Only called if Arm can reach both BlockTab and ToTab
+    on_table(Block,ToTab) ~> ()  % Goal is achieved
+    
+    holding(Arm,Block)  ~> put_on_table(Arm,ToTab)
+
+    holding(Arm,_)  ~> put_on_table(Arm,BlockTab)
+    
+    clear(Block) ~> pickup(Arm,Block,BlockTab)
+    
+    true  ~>  unpile(Arm,Block,BlockTab)
+    }
+
+
+tel unpile(arm,block,table)
+unpile(Arm,Block,BlockTab){
+    clear(Block) ~> ()
+    
+    on(OnBlock,Block) commit_while holding(Arm, _) ~> 
+        move_to_table(Arm,OnBlock,BlockTab,BlockTab) 
+    }
+
+tel_start makeTower(arm,list(block),table)
+makeTower(Arm,Blocks,TowerTab){
+    tower(Blocks,TowerTab) ~> ()   
+    
+    stack(Blocks,TowerTab) & 
+    Blocks = [Block,.._Rest] 
+        commit_while holding(Arm,_) ~>                   
+                unpile(Arm,Block,TowerTab)   
+    
+    Blocks = [Block, TopBlock,..Rest] & 
+    tower([TopBlock,..Rest],TowerTab) ~> 
+        move_across_to_block(Arm,Block,TopBlock,TowerTab)  
+    
+    Blocks=[Block] ~> 
+        move_across_to_table(Arm,Block,TowerTab)      
+    
+    Blocks = [_,..Rest] ~> makeTower(Arm,Rest,TowerTab)
+    }
+
+tel move_across_to_table(arm,block,table)
+move_across_to_table(Arm,Block,ToTab){
+    on_table(Block,ToTab) ~> ()
+    
+    can_reach_block(Arm,Block,BlockTab) 
+        or_while holding(Arm,Block) ~>
+                move_to_table(Arm,Block,BlockTab,ToTab)
+    
+    holding(Arm,Block) ~> 
+        move_to_table(Arm,Block,ToTab,ToTab)
+    
+    OtherArm=other(Arm) & on_home_table_or_holding(OtherArm,Block) ~>
+        move_to_table(OtherArm,Block,home_table(OtherArm),shared)
+    % Move it to shared table so as to be reachable by Arm
+        }
+
+rel on_home_table_or_holding(arm,block)
+on_home_table_or_holding(Arm,Block) <= 
+    somewhere_on(Block,home_table(Arm))
+on_home_table_or_holding(Arm,Block) <= 
+    holding(Arm,Block)
+
+tel move_across_to_block(arm,block,block,table)
+move_across_to_block(Arm,Block,ToBlock,TowerTab){
+    % Will only be active whilst ToBlock is on TowerTab and clear
+    on(Block,ToBlock) ~> ()
+    
+    can_reach_block(Arm,Block,BlockTab)  
+        or_while holding(Arm,Block) ~> 
+                move_to_block(Arm,Block,BlockTab,ToBlock,TowerTab)
+    
+    holding(Arm,Block) ~> 
+        move_to_block(Arm,Block,TowerTab,ToBlock,TowerTab)
+    
+    OtherArm=other(Arm) & on_home_table_or_holding(OtherArm,Block)  ~>
+        move_to_table(OtherArm,Block,home_table(OtherArm),shared)
+    % Move it to shared table so as to be reachable by Arm
+    }
+
+
+fun other_table(table) -> table
+other_table(table1) -> table2
+other_table(table2) -> table1
+
+def task_desc ::= task_data(atom, arm, list(block), table)
+
+act go()
+go() :: Tasks = [task_data(t1, arm1, [2,5,9,6], table1),
+                 task_data(t2, arm1, [3,4,10,7], table1),
+                 task_data(t3, arm2, [1,8,11,15], table2)]
+        ~>
+            start_agent(twoArmSim@localhost, updates);
+            forall TDescr 
+                   {TDescr in Tasks ~> TDescr to twoArmSim} ; 
+            forall T,Arm, Tower,Table 
+                   {task_data(T, Arm, Tower, Table) in Tasks  ~>
+                        start_named_task(makeTower(Arm, Tower, Table), T)
+                    }
+        

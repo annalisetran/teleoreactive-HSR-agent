@@ -1,0 +1,194 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Testing of Terms (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Testing of Terms (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Testing of Terms (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Term-Tests-and-Manipulation.html" rel="up" title="Term Tests and Manipulation">
+<link href="List-Processing.html" rel="next" title="List Processing">
+<link href="Comparison-of-Terms.html" rel="prev" title="Comparison of Terms">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Testing-of-Terms">
+<div class="header">
+<p>
+Next: <a href="List-Processing.html" accesskey="n" rel="next">List Processing</a>, Previous: <a href="Comparison-of-Terms.html" accesskey="p" rel="prev">Comparison of Terms</a>, Up: <a href="Term-Tests-and-Manipulation.html" accesskey="u" rel="up">Term Tests and Manipulation</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Testing-of-Terms-1"></span><h4 class="subsection">7.3.2 Testing of Terms</h4>
+<span id="index-Testing-Terms"></span>
+
+<p>These testing predicates are used to determine various properties of the data objects, or apply constraints to the data objects.
+</p>
+
+<p>Relations:
+</p>
+
+<p><code>type(Term, Type)</code>
+<span id="index-type"></span>
+</p>
+<blockquote class="indentedblock">
+
+<p>Succeed if <code>Term</code> is a non-variable of type <code>Type</code>.
+<br>
+<code>type : rel(@term, !typeE(_))</code>
+</p>
+
+<p>Example:
+</p><div class="example">
+<pre class="example">| ?? type(a, atomic).
+
+yes
+
+| ?? type(a, int).
+
+no
+</pre></div>
+
+<p>The type can also have a mode as in the following examples.
+</p>
+<div class="example">
+<pre class="example">| ?? type([X], !list(?int)).
+
+yes
+
+| ?? type([X], !list(!int)).
+
+no
+
+</pre></div>
+
+</blockquote>
+
+
+<p><code>ground(Term)</code>
+<span id="index-ground"></span>
+</p>
+<blockquote class="indentedblock">
+
+<p>Succeed if <code>Term</code> is ground.
+<br>
+<code>ground: rel(@term) </code>
+</p>
+</blockquote>
+
+<p><code>isa(Term, Type)</code>
+<span id="index-isa"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeed if <code>Term</code> is of type <code>Type</code> and <code>Type</code> is a finite type.
+<br>
+<code>isa: (?term, !typeE(_))</code>
+</p>
+<p>The type cannot include a mode but otherwise, when used as a test, is the same
+as using <code>type</code>. However, <code>isa</code> can also be used to generate all
+elements of the finite type as below.
+</p>
+<p>Example:
+For this example we assume the following type declarations.
+</p>
+
+<div class="example">
+<pre class="example">name ::= &quot;Alice&quot; | &quot;Bob&quot; | &quot;Carol&quot;
+status ::= good(name) | bad(name)
+</pre></div>
+
+
+
+
+<div class="example">
+<pre class="example">| ?? isa(X, status).
+
+X = good(&quot;Alice&quot;)
+...
+X = good(&quot;Bob&quot;)
+...
+X = good(&quot;Carol&quot;)
+...
+X = bad(&quot;Alice&quot;)
+...
+X = bad(&quot;Bob&quot;)
+..
+X = bad(&quot;Carol&quot;)
+
+| ?? isa(good(&quot;Bob&quot;), status).
+
+yes
+
+| ?? isa(2, nat).
+
+Error: nat is not a finite type in isa(2, nat) of
+isa(2, nat)
+
+</pre></div>
+
+
+</blockquote>
+
+
+<p><code>template(Term)</code>
+<span id="index-template"></span>
+</p>
+<blockquote class="indentedblock">
+
+<p>Succeed if <code>Term</code> is atomic or a compound term with a ground functor.
+<br>
+<code>template :rel(@term)</code>
+</p></blockquote>
+
+
+</div>
+
+
+
+</body>
+</html>

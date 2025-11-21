@@ -1,0 +1,19 @@
+echo "**** aclocal ***"
+aclocal
+echo "**** automake ****"
+automake --add-missing
+echo "****autoconf  ****"
+autoconf
+
+echo "**** configure *****"
+./configure
+echo "**** make ****"
+make
+
+echo "**** build docs ****"
+cd doc
+make pdf
+make html
+cd ..
+
+mv README README.txt

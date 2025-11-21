@@ -1,0 +1,8 @@
+# Define the goal
+uint32 action_id  # Specify duration of dummy action
+---
+# Define the result
+bool action_success
+---
+# Define a feedback message
+uint32 feedback

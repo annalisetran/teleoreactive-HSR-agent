@@ -1,0 +1,30 @@
+<launch>
+    <include file="$(find speech_to_text)/launch/speech_to_text.launch"/>
+    <node name="DoorChecker" pkg="utility" type="DummyDoorCheck.py" output="screen"/>
+    
+    <!--Front end object viewer-->
+    <node name="ObjectFrames" pkg="unsw_vision_utils" type="ObjectFrames.py" output="screen"/>
+
+    <include file="$(find yolov8_ros)/launch/tracker_clean_up_the_table.launch"/>
+
+    <!-- <include file="$(find yolov8_ros)/launch/tracker_clean_up_the_table.launch"/> -->
+
+    <!-- <include file="$(find action_server)/launch/manip_action_servers.launch"/> -->
+
+    <node name="manip_client" pkg="action_client" type="manip_client_smach.py" />
+    <node name="navigation_client" pkg="action_client" type="navigation_client_smach.py"/>
+
+    <include file="$(find world_model_kb)/launch/wm_manager.launch"/>
+
+    <node name="plane_detector" pkg="unsw_vision_utils" type="PlaneDetector"/>
+
+    <node name="store_groceries_controller" pkg="store_groceries" type="store_groceries_smach_2025.py" output="screen">
+        <param name="action_topic" type="str" value="/actions"/>
+        <param name="action_results_topic" type="str" value="/actions/result"/>
+        <param name="vision_topic" type="str" value="/unsw_vision/detections/objects/positions"/>
+        <param name="tts_topic" type="str" value="/tts/phrase"/>
+        <param name="object_frames_service_topic" type="str" value="/unsw_vision/object_frame_srv"/>
+        <!--Check if this is the correct topic for markers-->
+        <param name="plane_detection_topic" type="str" value="/detected_plane"/>
+    </node>
+</launch>

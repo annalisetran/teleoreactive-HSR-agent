@@ -1,0 +1,158 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>What is QuLog? (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="What is QuLog? (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="What is QuLog? (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Overview-of-QuLog_002fTeleoR.html" rel="up" title="Overview of QuLog/TeleoR">
+<link href="What-is-TeleoR_003f.html" rel="next" title="What is TeleoR?">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="What-is-QuLog_003f">
+<div class="header">
+<p>
+Next: <a href="What-is-TeleoR_003f.html" accesskey="n" rel="next">What is TeleoR?</a>, Up: <a href="Overview-of-QuLog_002fTeleoR.html" accesskey="u" rel="up">Overview of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="What-is-QuLog_003f-1"></span><h3 class="section">1.1 What is QuLog?</h3>
+
+<p><i>QuLog</i> is a flexibly typed multi-paradigm rule based language for programming 
+AI applications, particularly distributed applications comprising communicating and reasoning multi-threaded software agents. It
+has three forms of rule: 
+</p><ul>
+<li> Relation rule form: <code>RelCallPtn :: Guard &lt;= RelCallQuery</code> 
+</li><li> Function rule form: <code>FunCallPtn :: Guard -&gt; FunCallExpression</code> 
+</li><li> Action rule form: <code>ActCallPtn :: Guard ~&gt; ActCallSeq</code>
+<br>
+using primitive actions that may:
+<ul>
+<li> update the dynamic facts of the agent&rsquo;s <i>Belief Store</i>  
+</li><li> update and access host file store
+</li><li> do intra-agent thread-to-thread message communication 
+</li><li> do inter-agent and inter-process communication
+</li></ul>
+</li></ul>
+<p>In each rule form  the <i>guard</i>, <code>Guard</code>, which is a  <code>RelCallQuery</code> like the <i>body</i> of a relation rule, is optional.  If there is no guard the <code>::</code> is dropped. 
+</p>
+<p>A <code>RelCallQuery</code> is a single <code>RelCond</code>, or an <code>&amp;</code> conjunction of <code>RelCond</code>s.  A <code>RelCond</code> is a single <code>RelCall</code>, or a negated possibly existentially quantified  <code>RelCallQuery</code>, or a universally quantified implication of possibly existentially quantified  <code>RelCallQuery</code>s.  
+</p>
+<p>The following are alternative ways of defining the concept of a father who has no non-adult children. 
+</p>
+<div class="example">
+<pre class="example">rel a_father_with_only_adult_children(?atom)
+a_father_with_only_adult_children(P) &lt;= 
+         male(P) &amp; child_of(_,P) &amp; 
+         forall C (child_of(C,P) =&gt; exists A age(C,A) &amp; A &gt; 17)
+         
+rel a_father_with_only_adult_children(?atom)
+a_father_with_only_adult_children(P) &lt;= 
+         male(P) &amp; child_of(_,P) &amp; 
+         not exists C,A (child_of(C,P) &amp; age(C,A) &amp; A &lt;18)
+ </pre></div>
+<p>The variable <code>P</code> is implicitly universally quantified for each <code>&lt;=</code> implication. The <code>_</code> is an anonymous variable and is implicitly existentially quantified. 
+ Notice how the rules are quite close to how the concept would need to be defined in predicate logic.  
+</p> 
+<p>The annotated type expression <code>?atom</code> is a <i>moded type declaration</i> that tells us that the rules may be used to test or to find values for <code>P</code>, which will be atoms - the alphanumeric symbolic data of QuLog and Prolog. 
+</p>                                                                  
+<p>A relation rule with no guard or body is an unconditional rule. Such a rule with no variables is a <i>fact</i>. 
+</p> 
+<p>Here is a one rule definition of a function to return the number of recorded children of a named person. In function calls all arguments must be <i>ground</i> - i.e.  given as variable free terms.  
+</p> 
+<div class="example">
+<pre class="example">fun num_children(atom) -&gt; nat      
+num_children(P) -&gt;  #{C :: child_of(C,P)}
+</pre></div>
+
+<p><code>{C :: child_of(C,P)}</code> is a QuLog set expression and 
+<code>#</code> is a primitive function for finding the number of elements of a set or list which can be used as a prefix operator.
+</p>
+<p>Below is a definition of a <code>birthday</code>  action that updates the dynamic fact recording a person&rsquo;s age, if it exists. 
+Otherwise it displays a message.   
+</p>
+<div class="example">
+<pre class="example">act birthday(!atom)
+birthday(P) :: age(P, A) ~&gt; 
+        forget([age(P, A)]); remember([age(P, A+1)])
+birthday(P) ~&gt; 
+        write_list([P,&quot; does not have a recorded age to update&quot;])
+</pre></div>
+<p>The <code>!</code> annotation signals that the atom argument <code>P</code> must  be given in any <code>birthday</code> call. This is the default mode for an unannotated argument, so the declaration  <code>act birthday(atom)</code> is equivalent to the given declaration. <code>age</code> must have been declared as a <i>dynamic</i> relation with a declaration <code>dyn age(atom,int)</code>. 
+</p>
+
+ 
+ 
+<p>In order for a relation rule to be used to evaluate a relation call,  the call must unify with the <code>RelCallPtn</code> of the rule <i>head</i>.  If the rule has a <code>Guard</code> which  succeeds, the call&rsquo;s evaluation will not try to use later rules for the same relation to find more solutions to the call.  So in relation rules the <code>::</code> has the role similar to  the <code>!</code> <i>cut</i> of Prolog. 
+</p>
+<p>For function and action calls only one rule is ever used to evaluate the call.  For a function call it  is the first rule with a head that  <i>matches</i> the call and for which the guard, if given, succeeds.  For an action call it  is the first rule with a head that  <i>unifies</i> with the call and for which the guard, if given, succeeds.  In effect, function and action rules without a given guard implicitly have the guard <code>true</code>, which always succeeds. If no rule can be used to evaluate a function or action call this is a runtime error. 
+</p>
+<p>The agent&rsquo;s <i>Belief Store</i>  comprises a set a facts for the special class of <i>dynamic</i> relations, declared using the <code>dyn</code> type operator,  that are disjoint from the rule defined <i>static</i> relations, declared using the <code>rel</code> type operator.   Dynamic relations may only be defined by facts. Static relations may be defined by a mixture of rules and facts. 
+</p>
+<p>The relation and function rules are for programming the agent&rsquo;s <i>deliberation</i>, the action rules for programming its <i>behaviour</i>.  
+</p>
+<p>Relation rules may 
+query relations and call functions in arguments of relation calls in the rule body.  They may also call actions wrapped in parentheses (as in <code>{A}</code>). Function rules may call functions,  and may query relations in their guards, or in set expressions in arguments of function calls. Action rules may  call actions and call functions in arguments of action calls. They may also call relations in set expressions in arguments of  action calls, and directly as a <code>?</code>  query action <code>?(Q)</code>. If the query  <code>Q</code> has no solutions this is a runtime error. 
+</p>
+<p>QuLog is higher order in the functional programming sense, but    only program defined code, identified by its unique program assigned name, 
+may be given as an argument or returned as a value. Name overloading is not allowed. Each relation, function  and action must have its own unique alphanumeric name, beginning with a lower case letter.  
+</p>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="What-is-TeleoR_003f.html">What is TeleoR?</a>, Up: <a href="Overview-of-QuLog_002fTeleoR.html">Overview of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

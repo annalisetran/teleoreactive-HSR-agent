@@ -1,0 +1,81 @@
+?- pconsult(clean_the_table_interface)
+?- consult(world_knowledge)
+
+def object_term ::= object(int, int, position_term, atom)
+def position_term ::= position(num, num, num)
+
+tel_percept
+	robot_base_x(num),
+	robot_base_y(num),
+	robot_base_z(num),
+	robot_base_r(num),
+	robot_base_p(num),
+	robot_base_yw(num),
+	driveable_state(atom),
+	holding_object_id(int),
+	region_id(int),
+	scene_objects(list(object_term))
+
+% Declare log_output as a TeleoR action
+tel_action
+    log_output(list(term))
+
+act start_node_thread(list(tel_percept_term), tel_percept_term)
+
+rel get_percepts(?list(tel_percept_term))
+
+fun goes_to(atom) -> atom
+goes_to(ClassName) :: 
+	object_category_mapping(ClassName, Category) &
+	goes_to_location(Category, Destination) -> 
+	Destination
+
+init_percept_handler() ~>
+    start_node_thread([
+        robot_base_x(0.0),
+        robot_base_y(0.0),
+        robot_base_z(0.0),
+        robot_base_r(0.0),
+        robot_base_p(0.0),
+        robot_base_yw(0.0),
+        driveable_state(true),
+        holding_object_id(-1),
+        region_id(-1)
+    ], scene_objects([]));
+    thread_sleep(1)
+
+poll_sensors(P) ::
+	get_percepts(P) ~> {}
+
+% Map log_output to write_list
+control_device(_OldActions, [log_output(Message)]) ~>
+    write_list(Message)
+
+control_device(_OldActions, []) ~> {}
+
+tel test_goes_to()
+test_goes_to() {
+    Dest = goes_to(bowl) ~> 
+        log_output(["PASS: bowl goes_to ", Dest, nl_])
+    Dest = goes_to(cup) ~>
+        log_output(["PASS: cup goes_to ", Dest, nl_])
+    Dest = goes_to(utensil) ~>
+        log_output(["PASS: utensil goes_to ", Dest, nl_])
+    Dest = goes_to(drink_can) ~>
+        log_output(["PASS: drink_can goes_to ", Dest, nl_])
+    Dest = goes_to(drink_bottled) ~>
+        log_output(["PASS: drink_bottled goes_to ", Dest, nl_])
+    true ~> 
+        log_output(["FAIL: no destination mappings", nl_])
+}
+
+tel test_coordinator()
+test_coordinator() {
+    true ~> () ++ start_task(test_goes_to(), _)
+}
+
+act go()
+go() ~>
+    write_list(["Testing goes_to(Item) function...", nl_]);
+    start_embedded_agent(1.0);
+    start_task(test_coordinator(), _)

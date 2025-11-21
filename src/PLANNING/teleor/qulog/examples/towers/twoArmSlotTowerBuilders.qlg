@@ -1,0 +1,395 @@
+%% Copyright 2015 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either
+%% express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
+
+%% Two arms, one table containing slots with the
+%% middle set of slots reachable by both arms (similar to the shared table).
+%% Each tower is to be built on a specified slot.
+%% Each resource is a combination of an arm and a slot.
+
+%% To run:
+%% Start the Python simulator in one terminal:
+%% python slotsEnv.py
+%% Start the Teleor interpreter in another terminal:
+%% teleor -Atowers
+%% In interpreter:
+%% [twoArmSlotTowerBuilders].
+%% go().
+
+%% See README for how to interact with simulator
+
+def block ::= "1" | "2" | "3" | "4" |  "5" | "6" | "7" | "8" | "9" | "10" | 
+        "11" | "12" | "13" | "14" | "15" | "16"
+
+def slot ::= 1 .. 36
+
+
+def arm ::= arm1 | arm2
+
+
+tel_percept holding(arm, block), on(block, block), in_slot(block,slot),
+    over_home(arm), tracking(arm)
+
+tel_action pickup(arm, slot,block, resource), 
+        putdown(arm, slot, block, resource)
+
+%% each resource is a combination of the arm being used and a slot range
+%% represented by the slot closest to the other arm's home
+%% EG res(arm1, 15) means that arm1 is being used together with the slot range
+%% 1 .. 15 while res(arm2, 19) meas that arm 1 is being used together
+%% the slot range 19 .. 36
+
+def resource ::=  res(arm, slot)
+
+
+%% system declared and (optionally) user defined test for resource overlap
+%% for resources needed by two tasks
+
+%% overlapping if the same arm is in both resources lists
+overlapping_resources(Res1, Res2) <=
+    res(A, _) in Res1 & res(A, _) in Res2
+
+%% if there are no arms in common then the only possible overlap is
+%% because both resources have overlapping slot ranges and require different 
+%% arms so below we check that slot ranges overlap.
+overlapping_resources(Res1, Res2) <=
+    res(arm1, Slot1) in Res1 &
+    res(arm2, Slot2) in Res2 &
+    Slot1 >= Slot2
+overlapping_resources(Res2, Res1) <=
+    res(arm1, Slot1) in Res1 &
+    res(arm2, Slot2) in Res2 &
+    Slot1 >= Slot2
+
+rel clear_block(block)                  
+clear_block(B) <= not on(_,B)
+
+rel clear_slot(slot)
+clear_slot(Slot) <= not in_slot(_, Slot)        
+
+
+rel aboveSlot(?block,?slot)
+aboveSlot(B,Slot) <= in_slot(B, Slot)
+aboveSlot(B,Slot) <= on(B, B1) & aboveSlot(B1,Slot)
+
+rel top_block_above(?block,?slot)
+top_block_above(B,Slot) <= aboveSlot(B,Slot) & clear_block(B)
+
+rel not_used(slot)
+not_used(Slot) <= not  task(_,makeTower(_,Slot)) 
+
+% Slot does not contain any blocks needed by some tower
+rel no_needed_block_in_slot(slot)
+no_needed_block_in_slot(Slot) :: not in_slot(_, Slot)
+no_needed_block_in_slot(Slot) <=
+    forall B (aboveSlot(B,Slot) => not needed(B))
+
+rel needed(block)
+needed(B) <= task(_,makeTower(Tower,_)) & B in Tower 
+
+% Slot is free to be used to put down a block - i.e. Slot
+% is not a slot in which a tower is to be built and does not contain a block
+% needed for a tower
+rel can_use_slot(slot)
+can_use_slot(Slot) <= not_used(Slot) & no_needed_block_in_slot(Slot)
+
+
+rel tower(list(block),?slot) 
+tower([B,..Bs],Slot) <= clear_block(B) & stack([B,..Bs],Slot)
+
+% like tower except also succeeds if the tower is empty and the slot is clear
+rel tower_on_slot(list(block),slot)
+tower_on_slot([], Slot) <= clear_slot(Slot)
+tower_on_slot(Blocks, Slot) <= tower(Blocks, Slot)
+
+rel stack(list(block),?slot)
+stack([B], Slot) :: in_slot(B, Slot)
+stack([B1,B2|Bs],Slot) :: on(B1, B2) & stack([B2|Bs],Slot)
+
+% like stack except also succeeds if the stack is empty
+rel stack_on_slot(list(block), slot)
+stack_on_slot([], _)
+stack_on_slot(Blocks, Slot) <= stack(Blocks, Slot)
+
+rel canReach(?arm, slot)
+canReach(arm1, N) :: N =< 12
+canReach(arm2, N) :: N >= 25
+canReach(arm1, N) <= N > 12 & N =<24
+canReach(arm2, N) <= N > 12 & N =<24
+
+
+%% that furthest slot for the arm for use in calculating slot ranges (resources)
+fun far_slot(arm) -> slot
+% if the arm is over home then the result is the home slot closest to the 
+% shared area
+far_slot(arm1) :: over_home(arm1) -> 12
+far_slot(arm2) :: over_home(arm2) -> 25
+% otherwise the result is the farthest shared slot
+far_slot(arm1) -> 24
+far_slot(arm2) -> 13
+
+% Computing the resouces term from the arm and the from and to slots
+fun slot_resources(arm,slot,slot) -> resource
+slot_resources(arm1,FromSlot,ToSlot) ->
+    res(arm1, maxOf(12, maxOf(FromSlot,ToSlot)))
+slot_resources(arm2,FromSlot,ToSlot) ->
+    res(arm2, minOf(25, minOf(FromSlot,ToSlot)))
+
+% Test to see if the given arm and slot is being used by a running task
+rel being_used_by(arm,slot)
+being_used_by(arm1,SSlot) <=
+    resources(_, Res) &
+    res(arm1, To) in Res &
+    SSlot =< To
+being_used_by(arm2,SSlot) <=
+    resources(_, Res) &
+    res(arm2, From) in Res &
+    From =< SSlot
+
+
+fun other(arm) -> arm
+other(arm1) -> arm2
+other(arm2) -> arm1
+
+rel get_a_good_move(block, ?arm, slot, ?slot, ?resource)
+% Find a good move for clear Block at FromSlot
+% First we deal with a block that is needed for a tower
+get_a_good_move(Block, Arm, FromSlot, ToSlot, Resource) ::
+    task(_,makeTower(Blocks, ToSlot)) &
+    Blocks =? _ <>? [Block] <>? Rest &
+    tower_on_slot(Rest, ToSlot) &
+    canReach(Arm,FromSlot) & canReach(Arm, ToSlot) <=
+        % Arm can move Block to add to Block's tower
+        Resource = slot_resources(Arm,FromSlot,ToSlot)
+get_a_good_move(Block, Arm, FromSlot, ToSlot, Resource) ::
+    task(_,makeTower(Blocks, Slot)) &
+    Blocks =? _ <>? [Block] <>? _ &
+    canReach(Arm,FromSlot) & canReach(Arm, Slot) <=
+        % Arm can move Block to Block's home table
+        nearest_home_slot(Arm, FromSlot,ToSlot) &
+        Resource = slot_resources(Arm,FromSlot,ToSlot)
+get_a_good_move(Block, Arm, FromSlot, ToSlot, Resource) ::
+    task(_,makeTower(Blocks, _Slot)) &
+    Blocks =? _ <>? [Block] <>? _ &
+    canReach(Arm,FromSlot)  <=
+        % Block needs to be moved to the shared area
+        nearest_useable_in_range(13,24,1,18,ToSlot) &
+        not being_used_by(other(Arm),ToSlot) &
+        Resource = slot_resources(Arm,FromSlot,ToSlot)
+% Now we deal with an unwanted block
+get_a_good_move(_Block, Arm, FromSlot, ToSlot, Resource) ::
+    a_home_slot(Arm, FromSlot) <=
+        % Block is on Arm's home
+        nearest_home_slot(Arm, FromSlot,ToSlot) &
+        Resource = slot_resources(Arm,FromSlot,ToSlot)
+get_a_good_move(_Block, Arm, FromSlot, ToSlot, Resource) <=
+    % Block is in the shared area
+    resources(_, Res) &
+    res(arm1, _) in Res &
+    % arm1 is being used by a task - use arm2
+    Arm = arm2 &
+    nearest_useable_in_range(13,24,1,19,ToSlot) &
+    not being_used_by(arm1,ToSlot) &
+    Resource = slot_resources(Arm,FromSlot,ToSlot)
+get_a_good_move(_Block, Arm, FromSlot, ToSlot, Resource) <=
+    % Block is in the shared area - use arm1
+    Arm = arm1 &
+    nearest_useable_in_range(13,24,1,18,ToSlot) &
+    not being_used_by(arm2,ToSlot) &
+    Resource = slot_resources(Arm,FromSlot,ToSlot)
+
+rel nearest_home_slot(arm, slot, ?slot)
+nearest_home_slot(arm1, TargetSlot, Nearest) <=
+    nearest_useable_in_range(1,12,1,TargetSlot,Nearest)
+nearest_home_slot(arm2, TargetSlot, Nearest) <=
+    nearest_useable_in_range(25,36,1,TargetSlot,Nearest)
+
+
+rel a_home_slot(?arm, ?slot)
+a_home_slot(arm1, 12)
+a_home_slot(arm1, 11)
+a_home_slot(arm1, 10)
+a_home_slot(arm1, 9)
+a_home_slot(arm1, 8)
+a_home_slot(arm1, 7)
+a_home_slot(arm1, 6)
+a_home_slot(arm1, 5)
+a_home_slot(arm1, 4)
+a_home_slot(arm1, 3)
+a_home_slot(arm1, 2)
+a_home_slot(arm1, 1)
+
+a_home_slot(arm2, 25)
+a_home_slot(arm2, 26)
+a_home_slot(arm2, 27)
+a_home_slot(arm2, 28)
+a_home_slot(arm2, 29)
+a_home_slot(arm2, 30)
+a_home_slot(arm2, 31)
+a_home_slot(arm2, 32)
+a_home_slot(arm2, 33)
+a_home_slot(arm2, 34)
+a_home_slot(arm2, 35)
+a_home_slot(arm2, 36)
+
+
+fun minOf(slot,slot)->slot
+minOf(M,N) :: M=<N -> M
+minOf(M,N) :: M>N -> N
+
+fun maxOf(slot,slot)->slot
+maxOf(M,N) :: M >=N -> M
+maxOf(M,N) :: M < N -> N
+
+
+rel nearest_useable_in_range(slot, slot, nat,slot, ?slot)
+nearest_useable_in_range( Min, Max,OffSet,TargetSlot,NUSlot) <=
+    generate_poss_slot(TargetSlot,OffSet,NUSlot) &
+    NUSlot >= Min & NUSlot =< Max &
+    %type(NUSlot,slot) & 
+    can_use_slot(NUSlot)
+nearest_useable_in_range( Min, Max,OffSet,TargetSlot,NUSlot) <=
+    OffSet =< 10 &
+    nearest_useable_in_range( Min, Max,OffSet+1,TargetSlot,NUSlot) 
+
+rel generate_poss_slot(slot,nat,?slot)
+generate_poss_slot(Target,OffSet,NewToSlot) <=
+    Slot = Target + OffSet &
+    type(Slot,slot) &
+    NewToSlot = Slot
+generate_poss_slot(Target,OffSet,NewToSlot) <=
+    Slot = Target - OffSet &
+    type(Slot,slot)  &
+    NewToSlot = Slot 
+
+
+%%% The TeleoR Control Program %%%%%%
+%---------------------------------
+tel_start makeTower(list(block), slot)
+
+makeTower(Blocks,Slot){
+    tower(Blocks,Slot)  ~> ()
+    
+    % The tail of Blocks is a tower at Slot and Block is clear
+    % Also deals with the tail being empty and slot clear (base case)
+    Blocks = [Block,..Rest] & tower_on_slot(Rest, Slot) & not on(_, Block) ~>
+        move_across_to_slot(Block, Slot)
+    
+    % The tail of Blocks is a tower at Slot and Block is covered - remove
+    % covering blocks
+    Blocks = [Block,..Rest] & tower(Rest, Slot) &
+    aboveSlot(Block,BlockSlot) &
+    top_block_above(TopBlock, BlockSlot)
+        commit_while holding(_, TopBlock) ~>
+                move_block_from_above_slot(TopBlock, BlockSlot)
+
+    % The tail of Blocks is a stack at Slot so remove a covering block
+    % also covers the case where Rest = [] (base case)
+    Blocks = [_,..Rest] & stack_on_slot(Rest,Slot) & 
+    top_block_above(TopBlock, Slot) 
+        commit_while holding(_, TopBlock) ~>  
+                move_block_from_above_slot(TopBlock, Slot)
+
+    % recursive call to construct sub tower
+    % the tail of Blocks is not a stack at Slot
+    Blocks = [_,..Rest] ~> makeTower(Rest, Slot)
+
+    }
+
+
+tel move_across_to_slot(block, slot)
+% Call move_across_to_slot(B,ToSlot) assumes that destination slot ToSlot 
+% is ready for B to be put above that slot and B is clear or being held
+
+move_across_to_slot(B,ToSlot){    
+    aboveSlot(B,ToSlot) ~> ()   % Goal has been achieved
+    
+    %% Arm is holding B 
+    holding(Arm, B) &
+    FromSlot = far_slot(Arm) &
+    %% pick the "worst" FromSlot for resource overlap calculations
+    get_a_good_move(B, Arm, FromSlot, ToSlot, Resource) ~>
+        move_to_slot(Arm,Resource,B,FromSlot,ToSlot)
+
+    top_block_above(B,BSlot) 
+        commit_while holding(_, B) ~>
+               move_block_from_above_slot(B, BSlot) 
+    
+    }
+
+%% The point about the following procedure is that it is called from
+%% a rule in the parent that has an attached commit_while. By using
+%% a sub procedure rather than essentially using the rule directly in
+%% the parent we "hide" get_a_good_move from the commit_while so that,
+%% if the environment changes the blocks then we can refire this rule
+%% to change where to put the block.
+tel move_block_from_above_slot(block, slot)
+move_block_from_above_slot(Block, FromSlot) {
+    get_a_good_move(Block, Arm, FromSlot, ToSlot, Resource) ~>
+        move_to_slot(Arm,Resource,Block,FromSlot,ToSlot)
+    
+    true ~> () ++
+            log_list(["Cannot find slot to move ", Block, " to", nl_]) 
+    }
+
+tel_atomic move_to_slot(arm,resource,block,slot,slot)
+% move_to_slot(Arm,B,FromSlot,ToSlot) only active whilst B and ToSlot, 
+% or the block above ToSlot on which B  is to be put, remain clear
+
+move_to_slot(Arm,Resource,B,FromSlot,ToSlot){ 
+
+    aboveSlot(B,ToSlot)   ~> ()
+    
+    holding(Arm,B) ~> putdown(Arm, ToSlot, B, Resource)
+
+    not holding(Arm,_) ~> pickup(Arm, FromSlot, B, Resource)
+    
+    holding(Arm, OB) & 
+    Resource = res(Arm, FarSlot) &
+    get_a_good_move(OB, Arm, FarSlot, OBToSlot, _) ~>
+        putdown(Arm, OBToSlot, OB, Resource)
+
+    holding(Arm, OB) ~> () ++ 
+            log_list(["Cannot find slot for ",OB," in ", Resource,nl_])
+
+    } 
+
+ 
+                            
+def resources_message_ ::= locked_resources(term) | waiting_resources(term)
+
+resources_hook() :: 
+    get_active_resources(Resources) &
+    get_waiting_resources(WResources) ~> 
+        locked_resources(Resources) to slotEnv ;
+        waiting_resources(WResources) to slotEnv 
+
+def task_desc ::= task_data(atom, list(block), slot) 
+
+act go() 
+
+go() ::
+    Tasks = [task_data(task1,["5","3","15","2"],2),
+             task_data(task2,["1","6","4","10"],10),
+             task_data(task3,["9","14","13","16"],26),
+             task_data(task4, ["12","7","8","11"],35)]
+        ~>
+            start_agent(slotEnv, updates) ;
+            forall T { T in Tasks ~>  T to slotEnv}; 
+            forall T,Tower,Slot {
+                    task_data(T, Tower, Slot) in Tasks  ~>
+                        start_named_task(makeTower(Tower,Slot), T)}
+               
+

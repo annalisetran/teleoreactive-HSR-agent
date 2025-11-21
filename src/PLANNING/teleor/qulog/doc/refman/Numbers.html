@@ -1,0 +1,132 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Numbers (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Numbers (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Numbers (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Data-constants.html" rel="up" title="Data constants">
+<link href="Strings.html" rel="next" title="Strings">
+<link href="Atoms.html" rel="prev" title="Atoms">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Numbers">
+<div class="header">
+<p>
+Next: <a href="Strings.html" accesskey="n" rel="next">Strings</a>, Previous: <a href="Atoms.html" accesskey="p" rel="prev">Atoms</a>, Up: <a href="Data-constants.html" accesskey="u" rel="up">Data constants - the atomic term values</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Numbers-1"></span><h4 class="subsection">4.2.2 Numbers</h4>
+<span id="index-Numbers"></span>
+
+
+<p>The available range of integers is <code>-(2^31-1)</code> to <code>2^31-1</code>
+on a 32 bit machine and <code>-(2^63-1)</code> to <code>2^63-1</code> on a 64 bit machine.  Integers can be represented in any of the following ways.
+</p>
+<ol>
+<li> Any sequence of numeric characters.  This method denotes the number in decimal, or base 10.  
+
+<p>For example:
+</p>
+<div class="example">
+<pre class="example">123
+</pre></div>
+
+</li><li> <code>Base</code>&rsquo;<code>Number</code>, where <code>Base</code> ranges from 2 to 36 and <code>Number</code> can have any sequence of alphanumeric characters. Both upper and lower case alphabetic characters in <code>Number</code> are used to represent the appropriate digit when <code>Base</code> is greater than 10.  
+<br>
+For example, integer value 10 can be written as:
+
+<div class="example">
+<pre class="example">2'1010
+16'A
+16'a
+</pre></div>
+
+</li><li> Binary numbers can also be represented in the form <code>0b</code> followed
+by binary digits. Similarly octal and hexadecimal numbers can be represented
+by <code>0o</code> or <code>0x</code> followed by digits.
+<br>
+ For example
+<div class="example">
+<pre class="example">0b1011
+0o3170
+0x3afd
+</pre></div>
+
+</li><li> 0&rsquo;<code>Character</code> gives the character code of <code>Character</code>.
+<br>
+For example,
+
+<div class="example">
+<pre class="example">0'A
+</pre></div>
+
+
+<p>gives the ASCII character code 65.
+</p></li></ol>
+<p>A natural number is a non-negative integer.
+</p>
+<p><code>num</code> type numbers include double precision floating point numbers. They are represented
+using either a decimal point or scientific e notation. Examples:
+</p>
+
+<div class="example">
+<pre class="example">27.8
+1.896e4
+</pre></div>
+
+
+</div>
+
+
+
+</body>
+</html>

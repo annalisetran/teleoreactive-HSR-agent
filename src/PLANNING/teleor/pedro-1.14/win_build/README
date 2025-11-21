@@ -1,0 +1,12 @@
+This is for building in Windows.
+
+(Might have to pacman -S mingw-w64-x86_64-glib2)
+
+cp * /home/pjr/vbox_shared/pedro_win
+cd /home/pjr/vbox_shared/pedro_win
+./init_port 6.9   (whatever the version number is)
+Then go to virtualbox and then double click on cp2win.bat
+Then start msys2 (64) cd  /home/pjr/pedro6.9  (or whatever)
+Then sh prepare_rel
+
+Now double click on build_pedro - installer in Output

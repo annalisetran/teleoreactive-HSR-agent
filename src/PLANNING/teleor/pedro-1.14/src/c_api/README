@@ -1,0 +1,18 @@
+This folder contains a C Pedro API that does not use glib and four example 
+programs.
+
+client_api.c client_api.h pedro_token.c pedro_token.h:
+   Defines the API
+
+producer.c consumer.c:
+   A pair of programs that use subscriptions and notifications
+
+ping.c pong.c:
+   A pair of programs that use peer-to-peer messages
+
+Makefile:
+   To build all programs
+
+build.bat:
+   To build all programs for Windows users who have mingw installed. This
+   file should provide the information required to build using another compiler.

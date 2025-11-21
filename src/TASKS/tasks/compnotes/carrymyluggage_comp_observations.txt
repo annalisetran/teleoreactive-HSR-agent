@@ -1,0 +1,36 @@
+wrist press for bag confirmation and confirmation of arriving at position
+static in following, ask for confirmation if robot reached destination
+small object 
+audio/visual feedback for judge to see what's happening
+
+visual view on a remote desktop
+following needs to be closer
+navigation fail behaviour
+
+guess
+
+build the map at the beginning by rotating the whole body
+
+wave to regain attention
+
+test with coatrack, narrow objects
+
+test with different orientation of bags
+    rotate hand approach from the top, then try from the front
+
+wrist press to stop following
+
+when writing tasks look at scoresheet to see what the big scoring things are to decide what to prioritise in development
+
+vision training for bag detection
+
+usb hub for external microphone and speaker
+
+test changes before running them!!!
+
+move back until it can see a skeleton at the beginning
+
+for Annalise - BE AT MORE TESTING!!!
+
+when testing in the lab make sure to try and break it, don't just run it with perfect conditions
+

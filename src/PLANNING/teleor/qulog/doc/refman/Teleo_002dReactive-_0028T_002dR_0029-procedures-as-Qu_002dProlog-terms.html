@@ -1,0 +1,79 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Teleo-Reactive (T-R) procedures as Qu-Prolog terms (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Teleo-Reactive (T-R) procedures as Qu-Prolog terms (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Teleo-Reactive (T-R) procedures as Qu-Prolog terms (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="History-of-QuLog_002fTeleoR.html" rel="up" title="History of QuLog/TeleoR">
+<link href="Types-and-modes-for-compile-time-guarantee-of-correct-robot-actions.html" rel="next" title="Types and modes for compile time guarantee of correct robot actions">
+<link href="High-level-inter_002dprocess-communication-using-Pedro.html" rel="prev" title="High level inter-process communication using Pedro">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms">
+<div class="header">
+<p>
+Next: <a href="Types-and-modes-for-compile-time-guarantee-of-correct-robot-actions.html" accesskey="n" rel="next">Types and modes for compile time guarantee of correct robot actions</a>, Previous: <a href="High-level-inter_002dprocess-communication-using-Pedro.html" accesskey="p" rel="prev">High level inter-process communication using Pedro</a>, Up: <a href="History-of-QuLog_002fTeleoR.html" accesskey="u" rel="up">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms-1"></span><h3 class="section">2.4 Teleo-Reactive (T-R) procedures as Qu-Prolog terms</h3>
+<span id="index-Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms"></span>
+
+<p>In parallel with our use of high level communication servers to  facilitate the implementation of multi-agent applications using Qu-Prolog,  we began to explore syntactic extensions to facilitate the programming of agents controlling robotic devices.  This work was inspired by the 2001 paper by Nils Nilsson on Tele-Reactive Procedures using rules with preconditions that accessed percept facts using Prolog style inference rules. This use of Prolog style inference made T-R procedures an ideal application specific extension of Qu-Prolog.
+</p>
+<p>To achieve this,  we declared new Qu-Prolog operators which allowed us to include T-R  procedures in a Qu-Prolog source file using a syntax similar to Nilsson&rsquo;s.  To the Qu-Prolog system these procedures were just Qu-Prolog terms terminated with fullstops. We then &rsquo;compiled&rsquo; any T-R procedure terms in a source file, as it was being consulted, using Prolog&rsquo;s term expansion feature.  They were compiled into ordinary Qu-Prolog clauses.  T-R procedure call evaluation, with its unique operational semantics,   was then partially interpretively executed.  However, the checking of the pre-condition tests of the individual T-R action rules was a direct Qu-Prolog evaluation.  
+</p>
+</div>
+
+
+
+</body>
+</html>

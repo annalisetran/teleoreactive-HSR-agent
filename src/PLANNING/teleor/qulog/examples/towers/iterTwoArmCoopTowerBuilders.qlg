@@ -1,0 +1,375 @@
+% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+%% A multi-task tower builder with 2 arms and 3 tables.
+%% This is a completely iterative version of twoArmCoopTowerBuildersMod1.qlg
+%% This eliminates the problem discussed in the user manual in a different way 
+%% to twoArmCoopTowerBuildersMod2.qlg - simply because it is iterative and not
+%% recursive.
+%% This can also be considered as a two arm version of 
+%% iterOneArmTowerBuildersWithCoop.qlg
+
+%% To run:
+%% Start the Python simulator in one terminal:
+%% python twoArmSim.py
+%% Start the Teleor interpreter in another terminal:
+%% teleor -Atowers
+%% In interpreter:
+%% [iterTwoArmTowerBuilders].
+%% go().
+
+%% See README for how to interact with simulator
+
+def arm ::= arm1 | arm2
+def table ::= table1 | shared | table2
+def block ::= (1 .. 16)
+
+def loc == table || block
+
+fun other(arm) -> arm
+other(arm1) -> arm2
+other(arm2) -> arm1
+
+tel_percept holding(arm, block), on(block, block), 
+    on_table(block,table), over_home(arm), tracking(arm)
+
+teleor action pickup(arm, block, table), put_on_table(arm, table), 
+        put_on_block(arm,block,table) 
+
+def resource ==  arm || table
+
+%% system declared and (optionally) user defined test for resource overlap
+%% for resources needed by two tasks
+
+%% overlapping if the same arm is in both resources lists
+overlapping_resources(Res1, Res2) <=
+    arm1 in Res1 & arm1 in Res2
+overlapping_resources(Res1, Res2) <=
+    arm2 in Res1 & arm2 in Res2
+%% if there are no arms in common then the only possible overlap is
+%% because both resources included the shared table and require different arms
+%% so below we check that the shared table is required by both tasks.
+%% If both are over their home tables but require the shared table then
+%% there is an overlap
+overlapping_resources(Res1, Res2) <=
+    shared in Res1 & shared in Res2 &
+    over_home(arm1) & over_home(arm2)
+%% If one is over home and the other is over the shared table but is not
+%% tracking then that task is not finished with the shared table and so
+%% there is an overlap
+overlapping_resources(Res1, Res2) <=
+    shared in Res1 & shared in Res2 &
+    over_home(arm1) & not tracking(arm2) 
+overlapping_resources(Res1, Res2) <=
+    shared in Res1 & shared in Res2 &
+    over_home(arm2) & not tracking(arm1) 
+
+
+
+def resources_message_ ::= locked_resources(term) | waiting_resources(term)
+
+resources_hook() :: 
+    get_active_resources(Resources) &
+    get_waiting_resources(WResources)
+        ~> 
+            locked_resources(Resources) to twoArmSim ;
+            waiting_resources(WResources) to twoArmSim
+% Called by evaluator, when defined, to send info to the simulator
+
+rel tower(list(block), ?table) 
+tower([B,..Bs],Tbl) <= not on(_,B) & stack([B,..Bs],Tbl)
+
+rel clear(block)
+clear(B) <= not holding(_,B) & not on(_,B)
+
+rel stack(?list(block),?table)
+stack([B], T) :: on_table(B,T) 
+stack([B1,B2|Bs], T) :: on(B1, B2) & stack([B2|Bs], T)
+
+fun home_table(arm) -> table
+home_table(arm1) -> table1
+home_table(arm2) -> table2
+
+rel can_reach_block(arm,block,?table)     
+can_reach_block(Arm,Block,Tab) <=
+    somewhere_on(Block,Tab) & can_reach_table(Arm,Tab) 
+
+rel can_reach_table(arm,?table)
+can_reach_table(_Arm,shared)
+can_reach_table(Arm,Tab) <= Tab=home_table(Arm)  
+
+rel somewhere_on(block,?table)     
+somewhere_on(Block,Tab) :: on_table(Block,Tab)
+somewhere_on(Block,Tab) <=
+    on(Block,BellowBlock) & somewhere_on(BellowBlock,Tab)
+
+rel above(?block, block)
+above(Above, Block) <= on(Above, Block)
+above(Above, Block) <= on(On, Block) & above(Above, On)
+
+rel top_block_above(?block, block)
+top_block_above(TopBlock, Block) <=
+    above(TopBlock, Block) & not on(_, TopBlock)
+
+rel longest_stack(!list(block), !table, ?list(block))
+longest_stack(Blocks, Table, OutStack) ::
+    Blocks =? _ <> Stack & stack(Stack, Table) <=
+        OutStack = Stack
+
+rel block_needed_for_stack(list(block), table, ?block, ?block)
+block_needed_for_stack(Blocks, Table, Block, TopBlock) <=
+    longest_stack(Blocks, Table, Stack) &
+    Stack = [TopBlock,.._] & 
+    Blocks =? _ <> [Block] <> Stack
+
+rel block_needed_for_partial_tower(list(block), table, ?block, ?block)
+block_needed_for_partial_tower(Blocks, Table, Block, TopBlock) <=
+    block_needed_for_stack(Blocks, Table, Block, TopBlock) &
+    clear(TopBlock)
+                
+%% regression cost function
+%% rcf = #covering_needed_blocks - #in_tower
+%% Note: no action of makeTower raises the rcf for other tasks
+%% in fact some actions may reduce the rcf of another task
+%% (because of coop_move)
+
+%% We use commit_while for moving unwanted blocks as we want to complete the 
+%% move. On the other hand we use or_while to move a block we want to add to a 
+%% partial tower. We do this because if, when the block is picked up,
+%% the partial tower gets shuffled by the environment we need to change rules
+%% and put the block down on the table (firing rule 5). If we used
+%% commit_while the block would have been put on an out of order partial tower.
+%% We could have used commit_while by modifying the while part
+%% of the rule:
+%%      block_needed_for_partial_tower(Blocks, TowerTab, Block, TopBlock) &
+%%      not on(_, Block) &
+%%      can_reach_block(Arm,Block,BlockTab) 
+%%        commit_while holding(Arm, Block) & 
+%%            block_needed_for_stack(Blocks, TowerTab, Block, TopBlock) ~>
+%%                move_to_block(Arm, Block,BlockTab, TopBlock, TowerTab) 
+%% but that unnecessarily complicates the test and makes call stack
+%% re-evaluation less efficient.
+
+tel_start makeTower(arm,list(block),table)
+makeTower(Arm,Blocks,TowerTab){
+
+    %% 1. tower built
+    %% rcf = -len(tower)
+    tower(Blocks,TowerTab) ~> ()  
+    
+    %% --------------------------------------
+    %% rules for dealing with unwanted blocks
+    %% --------------------------------------
+    
+    %% 2. the partial tower is covered by bad block 
+    %% rcf' = rcf - 1
+    longest_stack(Blocks ,TowerTab, [Block,.._]) &
+    top_block_above(TopBlock, Block) 
+        commit_while holding(Arm, TopBlock) ~>
+                coop_move(Arm, TopBlock, TowerTab)
+    
+    %% 3. Block needed to extend the partial tower is covered
+    %% and the top covering block is reachable by Arm
+    %% rcf' = rcf - 1
+    block_needed_for_partial_tower(Blocks, TowerTab, Block, _) &
+    top_block_above(TopBlock, Block) &
+    can_reach_block(Arm,TopBlock,Tab) 
+        commit_while holding(Arm, _) ~>
+                coop_move(Arm, TopBlock, Tab)
+    
+    %% 4. Block needed to extend the partial tower is covered
+    %% and the top covering block is not reachable by arm
+    %% rcf' = rcf - 1
+    block_needed_for_partial_tower(Blocks, TowerTab, Block, _) &
+    top_block_above(TopBlock, Block) &
+    OtherArm = other(Arm) &
+    can_reach_block(OtherArm,TopBlock,Tab) 
+        commit_while holding(OtherArm, _) ~>
+                coop_move(OtherArm, TopBlock, Tab)
+    
+    %% 5. Arm is holding an unneeded block
+    %% doesn't reduce rcf but some other rule becomes active
+    %% after block put down
+    holding(Arm, Block) & 
+    not block_needed_for_partial_tower(Blocks, TowerTab, Block, _)
+        ~>
+            coop_move(Arm, Block, TowerTab)
+    
+    %% --------------------------------------
+    %% rules for moving a needed block
+    %% --------------------------------------
+    
+    %% 6. Block is needed to extend the partial tower, is free
+    %% and is reachable by Arm
+    %% rcf' = rcf - 1
+    block_needed_for_partial_tower(Blocks, TowerTab, Block, TopBlock) &
+    not on(_, Block) &
+    can_reach_block(Arm,Block,BlockTab) 
+        or_while holding(Arm, Block)~>
+                move_to_block(Arm, Block,BlockTab, TopBlock, TowerTab) 
+    
+    %% 7. Block is needed to extend the partial tower
+    %% and is held by Arm
+    %% rcf' = rcf - 1
+    block_needed_for_partial_tower(Blocks, TowerTab, Block, TopBlock) &
+    holding(Arm, Block) ~>
+        move_to_block(Arm, Block, TowerTab, TopBlock, TowerTab) 
+    
+    %% 8. Block is needed to extend the partial tower, is free
+    %% and is not reachable by Arm
+    %% doesn't reduce rcf but some other rule (other than rule 5)
+    %% becomes active after block transfered
+    block_needed_for_partial_tower(Blocks, TowerTab, Block,_) &
+    not on(_, Block) &
+    can_reach_block(other(Arm),Block,BlockTab) ~>
+        move_to_table(other(Arm),Block,BlockTab, shared)
+    
+    %% 9. Another task must be moving the needed block so wait
+    block_needed_for_partial_tower(Blocks, TowerTab, _,_) ~> ()
+    
+    %% --------------------------------------
+    %% start tower
+    %% --------------------------------------
+    %% 10. rcf' = rcf - 1
+    Blocks =? _ <> [BaseBlock] ~>
+        init_tower(Arm, BaseBlock, TowerTab)
+    }
+
+%% This procedure is used to make sure the base of the tower is on the correct 
+%% table and is clear
+tel init_tower(arm, block, table)
+init_tower(Arm, BaseBlock, TowerTab) {
+    
+    on_table(BaseBlock, TowerTab) & not on(_, BaseBlock) ~> ()
+    
+    %% Base block is reachable by Arm but covered
+    top_block_above(TopBlock, BaseBlock) &
+    can_reach_block(Arm,TopBlock,Tab) 
+        commit_while holding(Arm, _) ~>
+                coop_move(Arm, TopBlock, Tab)
+    
+    %% Base block is reachable by OtherArm but covered
+    top_block_above(TopBlock, BaseBlock) &
+    OtherArm = other(Arm) &
+    can_reach_block(OtherArm,TopBlock,Tab) 
+        commit_while holding(OtherArm, _) ~>
+                coop_move(OtherArm, TopBlock, Tab)
+
+    %% Base block is uncovered and reachable by home arm
+    can_reach_block(Arm,BaseBlock,BlockTab) 
+        commit_while holding(Arm, BaseBlock) ~>
+                move_to_table(Arm,BaseBlock,BlockTab,TowerTab)
+    
+    %% Base block is uncovered and reachable by oterh arm
+    can_reach_block(other(Arm),BaseBlock,BlockTab) ~>
+        move_to_table(other(Arm),BaseBlock,BlockTab, shared)
+    }
+
+tel_atomic move_to_block(arm,block,table,block,table)
+move_to_block(Arm,Block,BlockTab,ToBlock,TowerTab){
+    % Procedure will only be called when Block clear and somewhere on BlockTab 
+    % or held by Arm. Only active while ToBlock somewhere on TowerTab, and clear
+    on(Block,ToBlock) ~> ()
+    
+    holding(Arm,Block)  ~>  put_on_block(Arm,ToBlock,TowerTab)
+    
+
+    safe_to_try_to_use(Arm,BlockTab)  ~>  pickup(Arm,Block,BlockTab)
+    
+    true ~>()
+    
+    } 
+
+
+tel_atomic move_to_table(arm,block,table,table)
+move_to_table(Arm,Block,BlockTab,Tab){
+    % Procedure will only be called when Block is clear and somewhere 
+    % on BlockTab or held by Arm
+    on_table(Block,Tab) ~> ()
+    
+    holding(Arm,Block) & safe_to_try_to_use(Arm,Tab)  ~> 
+        put_on_table(Arm,Tab)
+    
+    holding(Arm,Block) ~> ()
+    
+    safe_to_try_to_use(Arm,BlockTab) ~>  pickup(Arm,Block, BlockTab)
+    
+    true ~> ()
+    } 
+
+
+rel safe_to_try_to_use(arm,table)
+safe_to_try_to_use(_, Table) :: Table \= shared
+safe_to_try_to_use(Arm,shared) :: over_home(other(Arm))
+safe_to_try_to_use(Arm,shared) <= tracking(other(Arm))
+
+fun other_table(table) -> table
+other_table(table1) -> table2
+other_table(table2) -> table1
+
+tel coop_move(arm,block,table)
+% remove Block from top of other block(s)
+coop_move(Arm,Block,BlockTab){
+    
+    %% >>>
+    holding(Arm, B) & B \= Block ~>
+        coop_move(Arm,B,BlockTab)
+    %% <<<
+
+    needed_by_task_using(Block,ToTab,Loc) & ToTab = home_table(Arm) ~>  
+        move_to_location(Arm,Block,BlockTab,Loc,ToTab) 
+    
+    needed_by_task_using(Block,_ToTab,_Loc) ~>
+        move_to_table(Arm,Block,BlockTab,shared)
+        
+    true ~>  move_to_table(Arm,Block,BlockTab,BlockTab)
+    
+    } 
+
+tel move_to_location(arm,block,table,loc,table)
+move_to_location(Arm,Block,BlockTab,Loc,ToTab){
+    Loc=ToTab ~> move_to_table(Arm,Block,BlockTab,ToTab)
+    
+    type(Loc,block) ~>  move_to_block(Arm,Block,BlockTab,Loc,ToTab)
+    }
+
+rel needed_by_task_using(block,?table,?loc)
+needed_by_task_using(OnBlock,Tab,Loc) <=
+    % Another task can be helped putting OnBlock on Loc on Tab
+    task(_,makeTower(_,BlocksList,Tab)) &
+    BlocksList =? _ <> [OnBlock] <> Blocks &
+    % The above splits BlockList at OnBlock if this block is on BlockList
+    % with Blocks the sub-list below Block. It fails if Block not on BlockList
+    Loc = location_for_the_removed_block(Blocks,Tab)
+    % Makes Loc the top block of Blocks if Blocks is a tower, else Loc=Tab  
+
+fun location_for_the_removed_block(list(block),table) -> loc
+location_for_the_removed_block([TopBlock,..MoreBlocks],Tab) ::
+      tower([TopBlock,..MoreBlocks],Tab) -> TopBlock
+location_for_the_removed_block(_,Tab) -> Tab
+
+
+def task_desc ::= task_data(atom, arm, list(block), table)
+
+act go()
+go() :: Tasks = [task_data(t1, arm1, [2,5,9,6], table1),
+                 task_data(t2, arm1, [3,4,10,7], table1),
+                 task_data(t3, arm2, [1,8,11,15], table2)]
+        ~>
+        start_agent(twoArmSim, updates);
+        forall T  {T in Tasks ~> T to twoArmSim} ; 
+        forall T,Arm, Tower,Table 
+               {task_data(T, Arm, Tower, Table) in Tasks  ~>
+                    start_named_task(makeTower(Arm, Tower, Table), T)}
+        

@@ -1,0 +1,117 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>High level inter-process communication using Pedro (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="High level inter-process communication using Pedro (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="High level inter-process communication using Pedro (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="History-of-QuLog_002fTeleoR.html" rel="up" title="History of QuLog/TeleoR">
+<link href="Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms.html" rel="next" title="Teleo-Reactive (T-R) procedures as Qu-Prolog terms">
+<link href="Multi_002dthreaded-Qu_002dProlog.html" rel="prev" title="Multi-threaded Qu-Prolog">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="High-level-inter_002dprocess-communication-using-Pedro">
+<div class="header">
+<p>
+Next: <a href="Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms.html" accesskey="n" rel="next">Teleo-Reactive (T-R) procedures as Qu-Prolog terms</a>, Previous: <a href="Multi_002dthreaded-Qu_002dProlog.html" accesskey="p" rel="prev">Multi-threaded Qu-Prolog</a>, Up: <a href="History-of-QuLog_002fTeleoR.html" accesskey="u" rel="up">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="High-level-inter_002dprocess-communication-using-Pedro-1"></span><h3 class="section">2.3 High level inter-process communication using Pedro</h3>
+<span id="index-High-level-inter_002dprocess-communication-using-Pedro"></span>
+
+<p>Initially, when using Qu-Prolog  to implement a multi-agent
+application, inter-agent communication was achieved using Qu-Prolog&rsquo;s TCP/IP
+communication primitives. But this inter-agent communication is quite
+low level.  It does not allow agents to be symbolically named with a
+directory service mapping these symbolic names to TCP/IP connections,
+as email domain name servers do, nor does
+it directly support publish/subscribe communication with subscriptions being tests
+on the content of message notifications. These  subscriptions, which could be updated at any time,   determine the messages of current
+interest to the subscribing agent.  
+</p>
+<p>In the late 1990s and early 2000s we added interfaces to  two  servers developed by research groups with whom we were associated to provide this functionality.  One offered peer-to-peer communication using email style addresses that identified a particular thread within a name registered agent process, the other offered publish/subscribe communication.  However, the two systems used different servers, and the first was no longer being supported and the second became commercial  software requiring an annual licence. We therefore decided around 2008 to support both name
+addressed peer-to-peer communication, and pub/sub communication, using our own a single message routing
+server process.  This server software is called Pedro.  It is distributed free with the QuLog/TeleoR software. 
+(http://staff.itee.uq.edu.au/pjr/HomePages/PedroHome.html).
+</p>
+<p>For peer-to-peer communication each Qu-Prolog process has to register with Pedro a
+symbolic name, such as <code>keith_agent</code>. It must be unique to the host on which
+the process  is
+running, but  other hosts can have processes with the same Pedro registered name.   A Qu-Prolog process with Pedro registered name <i>Agent</i> on a
+host <i>Host</i> has a public identity <i>Agent</i><code>@</code><i>Host</i>, for
+example <code>keith_agent</code><code>@</code><code>zeus.doc.ic.ac.uk</code>. 
+</p>
+<p>A message term sent may be sent from  any thread in one agent process, to a specific thread <i>Th</i> in another, using the
+destination identification  <i>Th:Agent</i><code>@</code><i>Host</i>. The message first goes to a Pedro
+ interface in the Qu-Prolog <i>Agent</i> process on <i>Host</i>.  It is then put as a new last
+ message in the message queue of the thread <i>Th</i>.  If no thread name is given, and the destination is just <i>Agent</i><code>@</code><i>Host</i>, the message is put at the back of the message queue of the default message handling thread.  This defaults to the initial thread of the process but a Qu-Prolog  primitive, <code>set_default_message_thread</code>,  allows this to be set to another thread. Unless explicitly set by a call to the 
+ primitive. 
+</p>
+<p>The publish/subscribe communication is very flexible. Subscriptions have the form:
+</p><div class="example">
+<pre class="example">MessageTermPattern::TestCondition
+</pre></div>
+<p>where <code>TestCondition</code> is a restricted Qu-Prolog query that uses a special set of Pedro supported relations for testing the content of any message that is an instance of <code>MessageTermPattern</code>. To use the pub/sub features a process just has to connect with the Pedro server and optionally lodge a set of subscription rules which may be updated at any time. If the process sends a notification, the server tests it against all the current subscriptions. It forwards the message  to all the processes that have a current subscription that covers the notification.  The message is then discarded. 
+</p>
+<p>Pedro has APIs for C/C++, Java and Python allowing hybrid distributed applications routing messages via a single Pedro server.  
+</p>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms.html">Teleo-Reactive (T-R) procedures as Qu-Prolog terms</a>, Previous: <a href="Multi_002dthreaded-Qu_002dProlog.html">Multi-threaded Qu-Prolog</a>, Up: <a href="History-of-QuLog_002fTeleoR.html">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

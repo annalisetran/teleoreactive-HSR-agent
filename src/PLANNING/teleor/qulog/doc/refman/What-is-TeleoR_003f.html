@@ -1,0 +1,131 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>What is TeleoR? (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="What is TeleoR? (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="What is TeleoR? (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Overview-of-QuLog_002fTeleoR.html" rel="up" title="Overview of QuLog/TeleoR">
+<link href="Unique-operational-semantics-of-a-TeleoR-procedure-call.html" rel="next" title="Unique operational semantics of a TeleoR procedure call">
+<link href="What-is-QuLog_003f.html" rel="prev" title="What is QuLog?">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="What-is-TeleoR_003f">
+<div class="header">
+<p>
+Next: <a href="Unique-operational-semantics-of-a-TeleoR-procedure-call.html" accesskey="n" rel="next">Unique operational semantics of a TeleoR procedure call</a>, Previous: <a href="What-is-QuLog_003f.html" accesskey="p" rel="prev">What is QuLog?</a>, Up: <a href="Overview-of-QuLog_002fTeleoR.html" accesskey="u" rel="up">Overview of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="What-is-TeleoR_003f-1"></span><h3 class="section">1.2 What is TeleoR?</h3>
+
+<p><i>TeleoR</i> is a syntactic extension of QuLog inspired by Nilsson&rsquo;s
+Teleo-Reactive procedures robotic programming language
+</p>
+<p>(<code>https://www.jair.org/index.php/jair/article/view/10112</code>)
+</p>
+<p>It adds another form of action rules:
+</p>
+<p>Robotic action rule: <code>Guard ~&gt; RAct ++ QAct</code>
+</p>
+<p>sequenced  inside named parameterised procedures.    Here <code>RAct</code> is a robotic action for devices external to the agent.  It could  be a  program defined action, i.e. a TeleoR procedure call.  It could even be a recursive call to the procedure in which the rule appears.   <code>QAct</code> is an optional QuLog action.  If absent the <code>++</code> is dropped. <code>QAct</code> is typically used to send messages to other agents, and/or to update the agent&rsquo;s <i>Belief Store</i>.
+</p>    
+<p>The <code>Guard</code> of a TeleoR rule, which is <i>not</i> optional, is a QuLog direct or indirect query to the agent&rsquo;s <i>Belief Store</i>, or the logical constant <code>true</code>.  <code>true</code> is  typically used as the guard of the last  rule inside a procedure when we want the last rule to cover all the cases not covered by earlier rules.  
+</p>
+<p>The <i>Belief Store</i> will be being frequently updated by percept facts recording external sensor readings, as well as facts that the agent has remembered or been told by other agents.  A percept handling thread atomically updates the <i>Belief Store</i> each time new sense data arrives, and a separate message handling thread likewise atomically updates the <i>Belief Store</i>  when a revision of beliefs is needed as a result of a received message. These handling threads are programmed in QuLog.
+</p>
+<p>Below is an example of two mutually recursive TeleoR procedure for controlling a robot arm manipulating blocks. <code>pickup(block)</code> and <code>put_on_table()</code> are primitive arm actions.  The second rule of <code>move_to_table</code> will normally be used to put the <code>Block</code> being moved to the table onto the table. But the rule has guard <code>holding(AnyBlock)</code> in case the procedure is called when the robot arm happens to be holding another block. 
+</p>
+<div class="example">
+<pre class="example">def block ::= (1 .. 16) 
+% each block has a unique identifying no. between 1 and 16
+
+tel_percept holding(block), on_table(block), on(block,block)        
+tel_action pickup(block),  put_on_block(block), put_on_table()
+% declaration of the primitive percepts and actions of the robot
+
+rel clear(block)  % a defined property of a block
+clear(Block) &lt;= not on(_,Block)
+
+tel make_clear(block)  
+make_clear(Block){
+    clear(Block)  ~&gt; ()   % The goal of the procedure is achieved
+    
+    on(OnBlock, Block) ~&gt;  move_to_table(OnBlock)
+    % Otherwise move OnBlock, immediately above Block, to the table
+    }
+    
+tel move_to_table(block)
+move_to_table(Block){
+    on_table(Block) ~&gt; ()  
+    % Goal is achieved, do nothing
+    
+    holding(AnyBlock) ~&gt; put_on_table()
+    % This rule puts any held block (which is typically Block) 
+    % onto the table
+    
+    clear(Block) ~&gt; pickup(Block)
+    
+    true ~&gt; make_clear(Block)
+    % Block needs to be made clear 
+    }
+</pre></div>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Unique-operational-semantics-of-a-TeleoR-procedure-call.html">Unique operational semantics of a TeleoR procedure call</a>, Previous: <a href="What-is-QuLog_003f.html">What is QuLog?</a>, Up: <a href="Overview-of-QuLog_002fTeleoR.html">Overview of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

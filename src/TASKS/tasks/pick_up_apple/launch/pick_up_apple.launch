@@ -1,0 +1,10 @@
+<launch>
+    <!-- <include file="$(find hsrb_rosnav_config)/launch/hsrb_nav.launch"/> -->
+    <include file="$(find speech_to_text)/launch/speech_to_text.launch"/>
+    <include file="$(find unsw_vision_utils)/launch/unsw_vision.launch"/>
+    <!-- <include file="$(find unsw_face_recognition)/launch/unsw_face_recognition_node.launch"/> -->
+    
+    <!-- <node name="wrist_press" pkg="utility" type="wrist_press.py"/> -->
+    <node name="pick_up_apple_controller" pkg="pick_up_apple" type="pick_up_apple_controller.py" output="screen"/>
+    <!-- <node name="manip_control" pkg="object_grasper" type="manip_control.py" output="screen"/> -->
+</launch>

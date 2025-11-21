@@ -1,0 +1,22 @@
+<launch>
+    <include file="$(find unsw_vision_utils)/launch/storing_groceries.launch"/>
+    
+    <node name="wrist_press" pkg="utility" type="wrist_press.py"/>
+    <node name="store_groceries_controller" pkg="store_groceries" type="/home/blinky/roboworkspace/src/TASKS/tasks/serve_breakfast/src/serve_breakfast_controller.py" output="screen">
+        <param name="start_topic" type="str" value="/start_task"/>
+        <param name="vision_topic" type="str" value="/unsw_vision/detections/objects/positions"/>
+        <param name="tts_topic" type="str" value="/tts/phrase"/>
+    </node>
+
+    <!-- <node name="store_groceries_controller_dummy" pkg="store_groceries" type="dummy_store_groceries_smach.py" output="screen">
+        <param name="start_topic" type="str" value="/start_task"/>
+        <param name="tts_topic" type="str" value="speech_recognition/vosk_result"/>
+    </node> -->
+    
+    <node name="point_follow" pkg="nav_utils" type="point_follow.py"/>
+    <node name="person_follow" pkg="nav_utils" type="person_follow.py"/>
+    <node name="manip_control" pkg="object_grasper" type="manip_control.py"/>
+    <node name="manip_server" pkg="object_grasper" type="manip_server.py"/>
+    <node name="view_objects" pkg="unsw_vision_utils" type="ViewObjects.py"/>
+    <node name="DoorChecker" pkg="utility" type="DummyDoorCheck.py" output="screen"/>
+</launch>

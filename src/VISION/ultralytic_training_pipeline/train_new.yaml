@@ -1,0 +1,7 @@
+
+train: /home/blinky/roboworkspace/src/VISION/ultralytic_training_pipeline/datasets/train/
+val: /home/blinky/roboworkspace/src/VISION/ultralytic_training_pipeline/datasets/train/
+test: /home/blinky/roboworkspace/src/VISION/ultralytic_training_pipeline/datasets/train/
+
+names: 
+  0: person

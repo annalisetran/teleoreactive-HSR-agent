@@ -1,0 +1,117 @@
+02/10/2024
+tracker.launch
+- modify topic names for input and output topics
+
+tracker_node.py
+- modify topic names for input and output topics
+- improve occlusion detection to use any part of bounding box overlapping instead of corners
+
+plotter.py
+- add feature to plot skeleton and bounding box of person and head. Can pass flag to toggle what to display.
+
+19/09/2024
+plotter.py
+- add new function plot_object_and_skeleton
+
+tracker_node.py
+- call plot_object_and_skeleton to draw the new skeleton and plot_object_and_skeleton
+
+tracker.launch
+- update parameters
+  - iou_thres = 0.30
+  - mask_expansion_pc = 0.02
+
+15/09/2024
+tracker_node
+- modify coocluded thresholds
+- add occlusion for head against other person bbox
+- improve occlusion checking using a map
+tracker.launch
+- modify mask_expansion_pct
+
+08/09/2024
+tracker_node.py
+- align head with person skeleton
+  - reorder the way person is processed
+- add vertical occlusion checking
+
+plotter.py
+- fix head plotting when touching edges
+
+.gitignore
+- add scripts/__pycache__/ to ignore vscode python cache files
+
+04/09/2024
+tracker_node.py
+- the following change has been tested
+- increase the bbox size on person by the threshold(the bbox in msg does not change but only increase the one used for masking image), so that it maintains more skeltons and body features when crop too tight.
+tracker.launch
+- add param to support the change above. It is a percentage in relation to original image size.
+
+
+27/08/2024
+tracker_node.py
+- add distance calculation(in 2d, relavent to the base link. Height of the object position is ignored)
+- add occulusion check for person and person head
+- add a sleep in init to make sure tf is catch up
+- increase the timeout for tf a little bit to decrease the chance of not getting tf and drop frame 
+- add a rospy.gettime() at the beginning so easier to other print statement in the middle to determine performance for debug purpose
+
+traker.launch
+- change some params for testing on the physical robot instead of bag file
+
+tracking_id_handler.py
+- remove the print statement
+
+plotter.py
+- add distance and occluded(turning red for bounding box edge)
+26/08/2024
+plotter.py
+- adjust font and size and round confidence
+
+23/08/2024
+tracker_node.py
+- instead of checbking conf score for skelton. Check its position being 0,0 because any skelton below thresh is set to 00
+- add offset so skelton in msg is correct
+20/08/2024
+tracker_node.py
+- remove some rospy.loginfo
+- add check for invalid skelton(0,0,0) to make sure it is definitely not transform into 3d points
+tracking_id_handler.py
+- add resetting not seen when object track gets redetected(implemented for both object and person tracking).
+custom_bytetturack.yaml
+- tune parameters.
+19/08/2024
+tracker_node.py
+- remove print statement
+- add the custom tracking for person
+tracking_id_handler.py
+- implement the logic for it
+custom_bytetrack.yaml
+- change some params
+
+17/08/2024
+tracker_node.py
+- fix the issue "local variable 'bbox3d' referenced before assignment" while 3d is off, by init it to be None
+tracker.launch
+- add threshold confidence score for bp detection
+- false association never happens when people crossing each other unless near edges
+- can be further tune to stop id switching on the same person.
+- I got ideas of what most of the config param is.
+15/08/2024
+tracker_node.py
+- update to use the latest msg
+- use a genrealised appraoch so can use a boolean in launchfile to indicate if we want to populate 3d msgs
+- everything in msg is populated in 3d mode, except for distance, need further discuss if needed 
+tracker_node_2d.py 
+- populate skeleton2d instead of skeleton
+
+tracker.launch
+- use arg for bp model
+14/08/2024
+tracker_conf\custom_bytetrack.yaml
+ - create custom tracker playing with parameters to get better tracking ids, less false associations
+
+tracker_2d.launch
+- change some parameters
+

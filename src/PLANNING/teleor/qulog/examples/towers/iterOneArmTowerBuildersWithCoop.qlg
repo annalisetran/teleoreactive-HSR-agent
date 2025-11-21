@@ -1,0 +1,265 @@
+%% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+% This is a completely iterative version of oneArmTowerBuildersWithCoop.qlg
+% It uses a generalized version of regression as discussed in the user guide.
+
+%% To run:
+%% Start the Python simulator in one terminal:
+%% python oneArmSim.py
+%% Start the Teleor interpreter in another terminal:
+%% teleor -Atowers
+%% In interpreter:
+%% [iterOneArmTowerBuildersWithCoop].
+%% go().
+
+%% See README for how to interact with simulator
+
+def block ::= (1 .. 16)
+
+tel_percept holding(block), on_table(block), on(block,block)        
+
+tel_action pickup(block),  put_on_block(block), put_on_table()
+
+def resources_message_ ::= locked_resources(term) | waiting_resources(term)
+
+resources_hook() :: 
+    get_active_resources(Resources) &
+    get_waiting_resources(WResources) ~> 
+        locked_resources(Resources) to oneArmSim ;
+        waiting_resources(WResources) to oneArmSim  
+% Called by evaluator, when defined, to send info to the simulator
+
+
+rel stack(?list(block))  
+% The  ? means list of labels may be given or generated     
+stack([Block]) <= on_table(Block)
+stack([Block1,Block2,..Blocks]) <=
+    on(Block1,Block2) & stack([Block2,..Blocks])
+
+rel tower(list(block))
+tower([Block,..Blocks]) <= 
+    not on(_,Block) & stack([Block,..Blocks])
+
+rel clear(block)
+clear(B) <= not on(_,B)
+
+rel longest_stack(!list(block), ?list(block))
+longest_stack(Blocks, OutStack) ::
+    Blocks =? _ <> Stack & stack(Stack) <=
+        OutStack = Stack
+
+rel block_needed_for_stack(list(block), ?block, ?block)
+block_needed_for_stack(Blocks, Block, TopBlock) <=
+    longest_stack(Blocks, Stack) &
+    Stack = [TopBlock,.._] & 
+    Blocks =? _ <> [Block] <> Stack
+
+rel block_needed_for_partial_tower(list(block), ?block, ?block)
+block_needed_for_partial_tower(Blocks, Block, TopBlock) <=
+    block_needed_for_stack(Blocks, Block, TopBlock) &
+    clear(TopBlock)
+
+tel_start makeTower(list(block))   
+%% regression cost function
+%% rcf = #covering_needed_blocks - #in_tower
+%% The regression cost function is used in a similar way to a function
+%% used to prove termination of a program except here instead of the decreasing
+%% function proving termination, the decreasing function proves we are getting
+%% closer to the overall goal of the procedure.
+makeTower(Blocks){
+    %% 1. tower built
+    %% rcf = -len(tower)
+    tower(Blocks) ~> ()  
+    
+    %% 2. block needed to extend partial tower is clear
+    %% regression: loop 2, 3, 1
+    %% rcf' = rcf - 1
+    block_needed_for_partial_tower(Blocks, Block, TopBlock) &
+    clear(Block) ~>
+        move_to_block(Block,TopBlock) 
+    
+    %% 3. the block needed to extend the partial tower is covered
+    %% regression: loop 3, 2
+    %% rcf' = rcf - #covering blocks   
+    block_needed_for_partial_tower(Blocks, Block, _TopBlock) ~>
+        unpile(Block) 
+    
+    %% 4. the longest stack is covered
+    %% regression: loop 4, 3, 2 
+    %% rcf' = rcf - #covering blocks  
+    longest_stack(Blocks, Stack) & Stack = [Block,..] ~>
+        unpile(Block)
+    
+    %% 5. the base of the tower is clear
+    %% regression: 2,3
+    %% rcf' = rcf - 1
+    Blocks =? _ <> [Block] & clear(Block) ~>
+        move_to_table_or_partly_built_tower(Block)
+    
+    %% 6. the base of the tower is covered
+    %% regression: loop 6,5
+    %% rcf' = rcf - #covering blocks  
+    Blocks =? _ <> [Block] ~>
+        unpile(Block)
+    
+    }
+
+rel above(?block, block)
+above(Above, Block) <= on(Above, Block)
+above(Above, Block) <= on(On, Block) & above(Above, On)
+
+rel top_block_above(?block, block)
+top_block_above(TopBlock, Block) <=
+    above(TopBlock, Block) & not on(_, TopBlock)
+
+tel unpile(block) 
+%% regression cost function
+%% rcf = #covering_blocks 
+unpile(Block){
+    %% 1. Block is clear
+    %% rcf = 0
+    clear(Block) ~> ()  
+    
+    %% 2. TopBlock is clear above Block
+    %% regression: loop 2, 1
+    %% rcf' = rcf - 1
+    top_block_above(TopBlock, Block) or_while holding(TopBlock) ~> 
+        move_to_table_or_partly_built_tower(TopBlock)      
+    }
+ 
+
+tel_atomic move_to_block(block, block) 
+% Moves Block1 from wherever to be on Block2
+move_to_block(Block1,Block2){   % Only called if Block1 and Block2 are clear
+    
+    on(Block1,Block2) ~> () 
+    
+    holding(Block1) ~>  put_on_block(Block2)
+    
+    holding(_) ~>  put_on_table() 
+    
+    true ~>  pickup(Block1) 
+
+    }
+
+tel_atomic move_to_table_or_partly_built_tower(block)
+move_to_table_or_partly_built_tower(Block){ % Only called if Block is clear
+    
+    on_table_or_top_of_partly_built_tower(Block) ~> ()  
+    % Goal is achieved. Block is now either on top of a partly built tower
+    % or sitting directly on the table and clear
+    
+    holding(Block) & 
+    needed_next_by_another_task(Block,TopBlockOtherTower) ~> 
+        put_on_block(TopBlockOtherTower)
+    
+    holding(_) ~> put_on_table()
+        
+    true ~> pickup(Block)
+    
+    }
+
+rel on_table_or_top_of_partly_built_tower(block)
+on_table_or_top_of_partly_built_tower(Block) <=
+    on_table(Block)
+on_table_or_top_of_partly_built_tower(Block) <=
+    task(_,makeTower(BlocksList)) & 
+    BlocksList =? _ <> [Block] <> Blocks &    
+    % The above splits BlockList at Block if this block is on BlockList
+    % with Blocks the sub-list below Block. It fails if Block not on BlockList 
+    tower([Block,..Blocks])
+
+
+rel needed_next_by_another_task(block,?block)
+needed_next_by_another_task(AnyBlock,TopBlockOtherTower) <=
+    % Another task can be helped by putting AnyBlock on top of 
+    % TopBlockOtherTower
+    
+    task(_,makeTower(BlocksList)) &
+    BlocksList =? _ <> [AnyBlock] <> [TopBlockOtherTower,..Blocks] &
+    
+    % The above splits BlockList at AnyBlock if this block is on BlockList
+    % with [TopBlock,..Blocks] the sub-list below AnyBlock. 
+    % It fails if AnyBlock not on BlockList
+    
+    tower([TopBlockOtherTower,..Blocks])
+
+    % where [TopBlockOtherTower,..Blocks] is a tower 
+
+
+rel being_used(list(block),?list(block))
+being_used(Blocks,InUse) <= 
+    InUse = [Block :: exists TBlocks (task(_,makeTower(TBlocks)) & 
+                                      Block in TBlocks & Block in Blocks)]
+
+def message ::=  
+        newTower(list(block)) | kill(atom)
+
+def msg_t_ ::= tel_started(atom, term) | 
+        task_rejected(term, term) |
+        task_killed(atom) |
+        remove_task(atom) |
+        in_use(term) |
+        not_a_current_task(atom) |
+        invalid(term)
+
+handle_message(newTower(Blocks),Agent) :: 
+    being_used(Blocks,[]) ~>
+        start_task(makeTower(Blocks), T, makeTower); 
+        task_data(T,Blocks) to oneArmSim;
+        tel_started(T,makeTower(Blocks)) to Agent
+handle_message(newTower(Blocks),Agent) :: 
+    being_used(Blocks,InUse) ~>
+        task_rejected(makeTower(Blocks),in_use(InUse)) to Agent
+handle_message(kill(TaskName),Agent) :: 
+    task(TaskName,_) ~>
+        kill_task(TaskName);
+        remove_task(TaskName) to oneArmSim;
+        task_killed(TaskName) to Agent
+handle_message(kill(TaskName),Agent)  ~>
+    not_a_current_task(TaskName) to Agent
+
+handle_invalid_message(Message,Agent)  ~>  
+    invalid(Message) to Agent
+
+def task_desc ::= task_data(atom, list(block)) 
+
+act go1()
+go1() ~>
+    start_agent(oneArmSim, updates);
+    task_data(t1, [2,5,9,6]) to oneArmSim;
+    start_task(makeTower([2,5,9,6]), _, t)
+
+act go2()
+go2() ~>
+    start_task(makeTower([12,15,8,1]), T1, t);
+    task_data(T1, [12,15,8,1]) to oneArmSim;
+    start_task(makeTower([14,13,7,16]), T2, t);
+    task_data(T2, [14,13,7,16]) to oneArmSim
+
+act go()
+go() :: 
+    Tasks = [task_data(t1, [2,5,9,6]),
+             task_data(t2, [12,15,8,1]),
+             task_data(t3, [14,13,7,16])] 
+            ~> 
+            start_agent(oneArmSim, updates);
+            forall T {T in Tasks ~> T to oneArmSim} ; 
+            forall Task,Tower {
+                    task_data(Task, Tower) in Tasks  ~>
+                        start_named_task(makeTower(Tower), Task)}
+            
+
+

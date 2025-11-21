@@ -1,0 +1,46 @@
+?- consult(ev3)
+
+def dir ::= left | right
+
+tel_percept touched(dir)
+
+tel_action move(int, int)
+
+tel frighten()
+
+frighten() {
+    
+    touched(left) & touched(right) while  min_time 2 ~> move(-50, -50)
+    
+    touched(left)  while min_time 2 ~> move(-50, -20)
+    
+    touched(right) while min_time 2 ~> move(-20, -50)
+    
+    true ~> ()
+    }
+
+%% start it off
+
+act go() 
+go() ~>
+    ev3_init();
+    start_embedded_agent(0.1) ; 
+    start_named_task(frighten(), ev3)
+
+act stop()
+stop() ~>
+    ev3_finish()
+    
+poll_sensors(P) :: 
+    P = [touched(Dir) :: Dir in [left,right] & is_touched(Dir)] 
+        ~> {}
+    
+rel is_touched(dir)
+%% for the first argument 0 is left and 1 is right
+is_touched(left) <= ev3_touch(0, 1)
+is_touched(right) <= ev3_touch(1, 1)
+
+control_device(OldActions, NewActions) ~>
+    forall L1, R1 { move(L1, R1) in OldActions ~> ev3_stop() };
+    forall L2, R2 { move(L2, R2) in NewActions ~> 
+                     ev3_run_forever(L2, R2) }

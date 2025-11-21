@@ -1,0 +1,3 @@
+<launch>
+    <node name="planner_node" pkg="tr" type="planner_ros1"/>
+</launch>

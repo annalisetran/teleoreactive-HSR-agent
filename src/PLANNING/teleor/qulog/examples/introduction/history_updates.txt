@@ -1,0 +1,7 @@
+r_(see(10, right))
+u_(see(10, centre))
+u_(see(10, dead_centre))
+u_(see(0, centre))
+r_(holding())
+u_(see(0, right))
+f_(holding())

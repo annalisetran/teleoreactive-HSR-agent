@@ -1,0 +1,25 @@
+
+Also see ROS/README.
+
+The file mqtt_pedro.c is an MQTT equivalent for providing an interface between
+Teleor agents and the robot side.
+
+We have included the required source code for the
+[Eclipse Paho](http://eclipse.org/paho) MQTT C client library.
+
+To run start up 3 terminals and :
+
+1. In terminal 1
+   ./mqtt_pedro
+
+2. In terminal 2
+   mqtt_robot_shell.py
+   
+3. In terminal 3
+   agent_shell.py agent robo
+
+Now in agent_shell enter some action terms - e.g. move(1), turn(left)
+and you should see that displayed in terminal 1 and in mqtt_robot_shell
+
+In mqtt_robot_shell enter some percepts  - e.g.
+see(bottle, left, 10), see(depot, centre, 5)

@@ -1,0 +1,103 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>List comprehension expressions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="List comprehension expressions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="List comprehension expressions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Syntax.html" rel="up" title="Syntax">
+<link href="Sets.html" rel="next" title="Sets">
+<link href="Lists.html" rel="prev" title="Lists">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="List-comprehension-expressions">
+<div class="header">
+<p>
+Next: <a href="Sets.html" accesskey="n" rel="next">Sets</a>, Previous: <a href="Lists.html" accesskey="p" rel="prev">Lists</a>, Up: <a href="Syntax.html" accesskey="u" rel="up">Syntax</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="List-comprehension-expressions-1"></span><h3 class="section">4.7 List comprehension expressions</h3>
+<span id="index-List-comprehension-expressions"></span>
+
+
+<p>Lists of ground terms can also be denoted by a list comprehension expression. Examples are:
+<br>
+</p><div class="example">
+<pre class="example">[X**2::X in L &amp; not X in [0,1]]
+% Squares of numbers other than 0,1 in nums list L
+
+[C :: exists A (child_of(C,tom) &amp; age_of(C,A) &amp; A&lt;18)]
+% Non-adult children of tom in order found
+</pre></div>
+<br>
+<p>The general form of a list comprehension is:
+<br>
+</p><div class="example">
+<pre class="example">[Expression :: exists VarSequence Condition]
+</pre></div>
+<br>
+<p>where the <code>exists VarSequence</code> is optional.
+</p>
+
+<p>There are constraints on the variables that can be used in such a comprehension. Each variable in <code>Expression</code> must either appear in <code>Condition</code> and be such that it will be given a ground value by some call in the conjunction, or it must appear before the comprehension expression in a query or rule and will have been given a ground value. Every variable in <code>Condition</code> must either be underscore, appear in <code>Expression</code> or in <code>VarSequence</code>, or  must appear before the comprehension expression in a query or rule and will have been given a ground value. This ensures that the value of a list comprehension is always a list of ground terms. 
+</p>
+
+<p><code>VarSequence</code> is a single variable or a comma separated sequence of variables such as <code>X,Y,Z</code>
+</p>
+
+<p>The syntax for <code>Condition</code> is given below. 
+</p>
+</div>
+
+
+
+</body>
+</html>

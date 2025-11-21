@@ -1,0 +1,195 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Action Sequences (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Action Sequences (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Action Sequences (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Programs.html" rel="up" title="Programs">
+<link href="Relation-Definitions.html" rel="next" title="Relation Definitions">
+<link href="Complex-Conjunctions.html" rel="prev" title="Complex Conjunctions">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Action-Sequences">
+<div class="header">
+<p>
+Next: <a href="Relation-Definitions.html" accesskey="n" rel="next">Relation Definitions</a>, Previous: <a href="Complex-Conjunctions.html" accesskey="p" rel="prev">Complex Conjunctions</a>, Up: <a href="Programs.html" accesskey="u" rel="up">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Action-Sequences-1"></span><h4 class="subsection">4.10.4 Action Sequences</h4>
+<span id="index-Action-Sequences"></span>
+
+<p>An <i>Action Sequence</i> can be entered as an interpreter command. It has the form 
+</p>
+<div class="example">
+<pre class="example"><code>{}</code> (the empty action sequence)
+
+or 
+
+<i>Act1</i> ; <i>Act2</i> ; ... ; <i>Actn</i>, n&gt;1
+</pre></div>
+<p>with each <i>Acti</i> one of:
+</p><ul>
+<li> an <i>action call</i>: <i>ActExp</i>(<i>Exp1</i>,...,<i>Expk</i>), k&gt;=0, where each <i>Expi</i> is an expression 
+- a term that may contain function calls - and
+ <i>ActExp</i> is an expression returning a <i>k</i>-ary action <i>a&rsquo;</i>.   
+</li><li> a <i>query action call</i>:   <code>?(</code><i>Cond</i><code>)</code> - find at most one solution to the relation query <i>Cond</i> and raises an exception if no solution exists.
+</li><li> an  <i>iterated action</i> (an action <code>forall</code>):
+<span id="index-forall-1"></span>
+<div class="example">
+<pre class="example">forall <i>UVars</i> {exists <i>EVars1</i> <i>SimpleConj</i> ~&gt;
+              exists <i>EVars2</i> <i>SimpleActSeq</i>}   
+</pre></div>
+<p>The constraints on variables is the same as for the relational <code>forall</code>.
+</p>
+<p>This provides a form of action iteration. For example, if <code>Agents</code> is a given list of agent handles and <code>Message</code> is a message then
+</p>
+<p><code>forall A {A in Agents ~&gt; Message to A}</code>
+</p>
+<p>will sent the message to each agent in the list.
+</p>
+</li><li> <span id="index-try_002dexcept"></span>
+a <i>try-except action</i> for handling exceptions raised either by calls to builtin code or raised by user actions:
+<div class="example">
+<pre class="example">    try { <i>Acts</i> }
+    except {
+        <i>ExceptionPattern1</i> :: <i>Cond1</i> ~&gt; <i>Act1</i>
+        ...
+        <i>ExceptionPatternn</i> :: <i>Condn</i> ~&gt; <i>Actk</i>
+        }
+</pre></div>
+<p><code><i>Acts</i></code> is executed and if no exceptions are raised execution continues after the try_except. If an exception is raised then the action corresponding to the first matching exception pattern for which the corresponding condition is true is excuted and execution continues after the try_except. If no exception patterns match then the exception will be handled by some enclosing try-except. Conditions can be elided if not required.
+</p>
+<p>If there are no enclosing try_except actions that handle a given exception then that exception is handled at the top-level. If the program is run in the interpreter then the top-level of the enterpreter prints out the exception and then the interpreter is restarted. If the program is a runtime application then the exception is again printed and then the application terminates.
+</p>
+</li><li> <span id="index-raise"></span>
+a <i>raise action</i> for raising exceptions that are to be handled by enclosing try_except actions:
+<div class="example">
+<pre class="example">    raise(<i>ExceptionTerm</i>)
+</pre></div>
+<p>where <code><i>ExceptionTerm</i></code> is of type exception and is either a builtin exception or, more usually, a user declared exception.
+</p>
+</li><li> a  <i>case action</i> (like a cascading if-then-else in Prolog):
+<span id="index-case"></span>
+<div class="example">
+<pre class="example">    case {
+        <i>Test1</i>  ~&gt; <i>Acts1</i>
+        ...
+        <i>Testk</i>  ~&gt; <i>Actsk</i>
+        }
+</pre></div>
+<p>This executes the first <code><i>Actsi</i></code> for which the corresponding guard <code><i>Testi</i></code> is true. If no guards are true an <code>action_failure</code> exception is raised.
+</p></li><li> a simple <i>wait action</i>: 
+<div class="example">
+<pre class="example">wait(<i>Query</i>)
+</pre></div>
+</li><li> <span id="index-wait"></span>
+a more general <i>wait case action</i> that is similar to <code>case</code> except that it blocks until one of the guards is true or until an optional timeout is reached.
+<span id="index-wait_005fcase"></span>
+<div class="example">
+<pre class="example">    wait_case {
+        <i>Test1</i>  ~&gt; <i>Act1</i>
+        ...
+        <i>Testk</i>  ~&gt; <i>Actk</i>
+        timeout <i>T</i> ~&gt; <i>DefaultAct</i>
+        }
+</pre></div>
+
+</li><li> a <i>repeat action</i>: 
+<div class="example">
+<pre class="example">     <code>repeat</code> <i>Act</i> <code>until</code> <i>Condition</i>
+</pre></div>
+<span id="index-repeat"></span>
+<p>Repeatedly execute <code><i>Act</i></code> until <code><i>Condition</i></code> is true. The condition is optional and if it&rsquo;s not given it&rsquo;s the same as <code>repeat <i>Act</i> until false</code> (like a repeat-fail loop in Prolog). This could be used to implement an interpreter or a linda tuple space server. An alternative is to write the code recursively but the repeat-until approach typically does not require garbage collection.
+</p>
+</li><li> a <i>non-blocking agent message send action</i>: <i>Mess</i> <code>to</code> <i>AgentHandle</i>
+</li><li> <span id="index-to"></span>
+a <i>blocking single agent message receive action</i>: <i>Mess</i> <code>from</code> <i>AgentHandlePtn</i>
+</li><li> <span id="index-from"></span>
+a <i>non-blocking thread message send action</i>: <i>Mess</i> <code>to_thread</code> <i>ThreadHandle</i>
+</li><li> <span id="index-to_005fthread"></span>
+a <i>blocking thread message receive action</i>: <i>Mess</i> <code>from_thread</code> <i>ThreadHandle</i>
+<span id="index-from_005fthread"></span>
+
+</li><li> a <i>remote query response action</i>:
+<span id="index-respond_005fremote_005fquery"></span>
+<div class="example">
+<pre class="example"><code>respond_remote_query(</code><i>ID</i><code>, </code><i>QueryString</i><code>, </code><i>ClientThread</i><code>)</code>.
+</pre></div>
+</li><li> a <i>blocking choice message receive action</i>:
+<span id="index-receive"></span>
+<div class="example">
+<pre class="example">    receive {
+        <i>MessPtn1</i> from <i>HandlePtn1</i> :: <i>Test1</i>  ~&gt; <i>Act1</i>
+        ...
+        ...
+        <i>MessPtnk</i> from <i>HandlePtnk</i> :: <i>Test1k</i>  ~&gt; <i>Actk</i>
+
+        timeout <i>T</i> ~&gt; <i>DefaultAct</i>
+        }
+</pre></div>
+<p>where k&gt;=1 and each <code><i>Acti</i></code> and <code><i>DefaultAct</i></code> is a <i>Simple Action Sequence</i> and each <code><i>Test1i</i></code> is a simple conjunction. The <code>timeout</code> rule is optional.
+</p></li></ul>
+ 
+<p>Examples of use and semantics are given in the semantics section.
+</p>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Relation-Definitions.html">Relation Definitions</a>, Previous: <a href="Complex-Conjunctions.html">Complex Conjunctions</a>, Up: <a href="Programs.html">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

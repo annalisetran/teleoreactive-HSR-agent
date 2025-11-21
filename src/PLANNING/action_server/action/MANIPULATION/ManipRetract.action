@@ -1,0 +1,9 @@
+# Define the goal
+---
+# Define the result
+bool action_success
+---
+# Define a feedback message. 0 for not started, 1 for ongoing, 2 for failure.
+uint32 feedback
+
+

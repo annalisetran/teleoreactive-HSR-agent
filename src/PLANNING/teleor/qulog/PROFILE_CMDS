@@ -1,0 +1,5 @@
+# Add this file to your ~/.profile or ~/.bashrc or whatever
+
+PATH=/home/blinky/roboworkspace/src/PLANNING/teleor/qulog/bin:$PATH
+export PATH
+

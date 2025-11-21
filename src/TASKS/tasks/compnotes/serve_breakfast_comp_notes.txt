@@ -1,0 +1,16 @@
+add visual check for placing objects.
+test-wrappers for each state
+easily changeable nav points and manipulation points
+break the states down more, not linear
+test lol
+
+place on the end of the table
+
+collision avoidance model
+
+run through tasks
+rulebook session for every new people
+
+multimeter hsr!!
+
+

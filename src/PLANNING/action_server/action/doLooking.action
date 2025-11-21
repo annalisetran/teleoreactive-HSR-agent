@@ -1,0 +1,8 @@
+# Define the goal
+uint32 looking_id 
+---
+# Define the result
+bool looking_success
+---
+# Define a feedback message
+bool is_in_progress

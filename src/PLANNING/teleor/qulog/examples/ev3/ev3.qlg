@@ -1,0 +1,16 @@
+?- pconsult(ev3_interface)
+
+act ev3_init()
+act ev3_finish()
+act ev3_stop()
+
+act ev3_run_forever(!int, !int)
+act ev3_run_to_rel_pos(!int, !int, !int, !int)
+act ev3_run_timed(!int, !int, !int)
+act ev3_set_position(!int)
+
+rel ev3_is_running(?int)
+rel ev3_get_tacho_speed(?int, ?int)
+rel ev3_touch(!int, ?int)
+rel ev3_ultrasonic(?int)
+rel ev3_gyro(?int)

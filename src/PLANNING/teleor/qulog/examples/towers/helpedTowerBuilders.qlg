@@ -1,0 +1,363 @@
+%% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+
+%% A variant of twoArmTowerBuilders.qlg where each tower
+%% builder task is responsible for building a tower with only blocks on its
+%% table. A helper task is responsible for transfering blocks to the required
+%% table so that the tower building tasks can use those blocks.
+
+%% To run:
+%% Start the Python simulator in one terminal:
+%% python twoArmSim.py
+%% Start the Teleor interpreter in another terminal:
+%% teleor -Atowers
+%% In interpreter:
+%% [helpedTowerBuilders].
+%% go().
+
+%% See README for how to interact with simulator
+
+
+def arm ::= arm1 | arm2
+def table ::= table1 | shared | table2
+def block ::= (1 .. 16)
+
+def loc == table || block
+
+fun other(arm) -> arm
+other(arm1) -> arm2
+other(arm2) -> arm1
+
+tel_percept holding(arm, block), on(block, block), 
+    on_table(block,table), over_home(arm), tracking(arm)
+
+tel_action pickup(arm, block, table), put_on_table(arm, table), 
+        put_on_block(arm,block,table), go_home(arm)
+
+def resource == arm
+
+rel tower(list(block), ?table) 
+tower([B,..Bs],Tbl) <= not on(_,B) & stack([B,..Bs],Tbl)
+
+rel clear(block)
+clear(B) <= not holding(_,B) & not on(_,B)
+
+rel stack(?list(block),?table)
+stack([B], T) :: on_table(B,T) 
+stack([B1,B2|Bs], T) :: on(B1, B2) & stack([B2|Bs], T)
+
+%% Given a list of blocks and a table determine the longest
+%% stack of those blocks on the given table - fails if
+%% no stack from the given block on the given table
+rel longest_stack(!list(block), !table, ?list(block))
+longest_stack(Blocks, Table, OutStack) ::
+    Blocks =? _ <> Stack & stack(Stack, Table) <=
+        OutStack = Stack
+
+fun home_table(arm) -> table
+home_table(arm1) -> table1
+home_table(arm2) -> table2
+
+%% above(Above, Block) is true if Above is somewhere above Block
+rel above(?block, block)
+above(Above, Block) <= on(Above, Block)
+above(Above, Block) <= on(On, Block) & above(Above, On)
+
+%% above_table(Block, Table) is true if Above is somewhere above Table
+rel above_table(block, ?table)
+above_table(Block, Table) :: on_table(Block, Table)
+above_table(Block, Table) <= 
+    on(Block, NextBlock) & above_table(NextBlock, Table)
+
+%% top_block_above(TopBlock, Block) is true if TopBlock is somewhere above 
+%% Block and is clear
+rel top_block_above(?block, block)
+top_block_above(TopBlock, Block) <=
+    above(TopBlock, Block) & not on(_, TopBlock)
+
+tel_atomic move_to_block(arm,block,table,block,table)
+move_to_block(Arm,Block,BlockTab,ToBlock,TowerTab){
+    on(Block,ToBlock) ~> ()
+    
+    holding(Arm,Block) ~>  put_on_block(Arm,ToBlock,TowerTab)
+    
+    true ~>  pickup(Arm,Block,BlockTab)
+    
+    } 
+
+tel_atomic move_to_table(arm,block,table,table)
+move_to_table(Arm,Block,BlockTab,Tab){
+    on_table(Block,Tab) ~> ()
+    
+    holding(Arm,Block) ~> put_on_table(Arm,Tab)
+    
+    true ~>  pickup(Arm,Block, BlockTab)
+    } 
+
+%% move Block from Table to add to a tower on ToTable or move to ToTable
+%% The parent procedure commits to this move and so this procedure
+%% needs to deal with the case that the parent initially wanted
+%% to add to a tower but, after Block has been picked up,
+%% Block should no longer be added to a partial tower but
+%% instead should be moved to the table
+tel move_block(arm, block, table, table)
+move_block(Arm, Block, Table, ToTable) {
+    
+    task(_,makeTower(_,Blocks,ToTable)) &
+    block_needed_for_partial_tower(Blocks, ToTable, Block, TopBlock) ~>
+        move_to_block(Arm,Block, Table, TopBlock,ToTable)
+
+
+    true ~> 
+        move_to_table(Arm,Block,ToTable,ToTable)
+
+    }
+    
+        
+rel block_needed_for_stack(list(block), table, ?block, ?block)
+block_needed_for_stack(Blocks, TowerTable, Block, TopBlock) <=
+    longest_stack(Blocks, TowerTable, Stack) &
+    Stack = [TopBlock,.._] & 
+    Blocks =? _ <> [Block] <> Stack 
+
+rel block_needed_for_partial_tower(list(block), table, ?block, ?block)
+block_needed_for_partial_tower(Blocks, TowerTable, Block, TopBlock) <=
+    block_needed_for_stack(Blocks, TowerTable, Block, TopBlock) &
+    clear(TopBlock)
+ 
+rel block_location(block, ?block, ?table)
+block_location(Block, FromBlock, FromTable) ::
+    on_table(Block, FromTable) <= FromBlock = Block
+block_location(Block, FromBlock, FromTable) <=
+    on(Block, FromBlock) &
+    above_table(Block, FromTable)
+
+%% makeTower(Arm, Blocks, Table) : build the tower Blocks using Arm on
+%% Table - Arm's home table
+tel_start makeTower(arm, list(block), table)
+makeTower(Arm, Blocks, Table){
+    %% 1: tower done
+    tower(Blocks, Table) ~> ()
+    
+    %% 2: block needed for partical tower is clear and on this table
+    not holding(Arm, _) &
+    block_needed_for_partial_tower(Blocks, Table, Block, TopBlock) &
+    above_table(Block, Table) & not on(_, TopBlock)
+        commit_while holding(Arm, Block) ~>
+                move_block(Arm, Block, Table, Table)
+    
+    %% 3: block needed for partical tower is covered and on this table
+    not holding(Arm, _) &
+    block_needed_for_partial_tower(Blocks, Table, Block, _)  &
+    above_table(Block, Table) &
+    top_block_above(TopBlock, Block)
+        commit_while holding(Arm, TopBlock) ~>
+                move_block(Arm, TopBlock, Table, Table)
+     
+    %% 4: block needed for partical tower is not on this table
+    %% wait for helper task to move block
+    not holding(Arm, _) &
+    block_needed_for_partial_tower(Blocks, Table, _, _) ~> ()
+    
+    %% 5: partial tower is covered
+    not holding(Arm, _) &
+    longest_stack(Blocks, Table, Stack) & Stack = [Block,..] &
+    top_block_above(TopBlock, Block) & not on_table(Block, Table) 
+        commit_while holding(Arm, TopBlock)  ~>
+                move_block(Arm, TopBlock,  Table, Table)
+
+    %% 6: base of tower is clear and above this table but not on table
+    not holding(Arm, _) &
+    Blocks =? _ <> [Block] & not on(_, Block) &
+    above_table(Block, Table) & not on_table(Block, Table) 
+        commit_while holding(Arm, Block) ~>
+                move_block(Arm, Block, Table, Table)
+     
+    %% 7: base of tower is covered and above this table but not on table
+    not holding(Arm, _) &
+    Blocks =? _ <> [Block] &  top_block_above(TopBlock, Block) &
+    above_table(TopBlock, Table)  
+        commit_while holding(Arm, TopBlock)~>
+                move_block(Arm, TopBlock, Table, Table)
+ 
+    holding(Arm, Block) ~> move_block(Arm, Block, Table, Table)
+    
+    %% wait for helper task to help
+    true ~> ()
+        
+    }
+
+rel task_needs_resource(arm)
+task_needs_resource(Arm) <= 
+    task(_,makeTower(Arm,Blocks,Table)) &
+    block_needed_for_partial_tower(Blocks, Table, Block, _) &
+    above_table(Block, Table) &
+    not on(_, Block)
+
+rel block_needed_now(?block, ?arm, ?table, ?table, ?block)
+block_needed_now(Block, Arm, FromTable, ToTable, Block) <=
+    task(_,makeTower(_,Blocks,Table)) &
+    Blocks =? _ <> [Block] &
+    above_table(Block, FromTable) &
+    FromTable \= Table &
+    get_to_table_and_arm(FromTable, Table, ToTable, Arm) &
+    not task_needs_resource(Arm)
+block_needed_now(Block, Arm, FromTable, ToTable, TopBlock) <=
+    task(_,makeTower(_,Blocks,Table)) &
+    block_needed_for_partial_tower(Blocks, Table, Block, TopBlock) &
+    above_table(Block, FromTable) &    FromTable \= Table &
+    get_to_table_and_arm(FromTable, Table, ToTable, Arm) &
+    not task_needs_resource(Arm)
+
+rel get_to_table_and_arm(table, table, ?table, ?arm)
+get_to_table_and_arm(shared, table1, ToTable, Arm) :: 
+    ToTable = table1 & Arm = arm1
+get_to_table_and_arm(shared, table2, ToTable, Arm) :: 
+    ToTable = table2 & Arm = arm2
+get_to_table_and_arm(table1, table2, ToTable, Arm) :: 
+    ToTable = shared & Arm = arm1
+get_to_table_and_arm(table2, table1, ToTable, Arm) :: 
+    ToTable = shared & Arm = arm2
+
+tel_start cooperate()
+cooperate() {
+    %% 1: Block is open and now needed to add to a partial tower on 
+    %% another table
+    block_needed_now(Block, Arm, FromTable, ToTable, TopBlock) & 
+    not on(_, Block) & not holding(Arm, _)
+        commit_while not (finished_transfer(Block, TopBlock, ToTable) & 
+                            over_home(Arm)) ~>
+                transfer(Arm, Block, FromTable, ToTable, TopBlock)
+    
+    %% 2: Block is covered and now needed to add to a partial tower on 
+    %% another table
+    block_needed_now(Block, Arm, FromTable, _, _) & 
+    top_block_above(TopBlock, Block) & not holding(Arm, _)
+        commit_while holding(Arm, TopBlock) ~>
+                move_block(Arm, TopBlock, FromTable, FromTable)
+    
+    %% 3: Block is needed but another block is being held - needs to be put down
+    block_needed_now(Block, Arm, FromTable, _, _) & 
+    holding(Arm, B) & B \= Block ~>
+        move_block(Arm, B, FromTable, FromTable)
+    
+    %% 4: wait until tasks need a block from another table
+    true ~> ()
+    
+    }
+
+rel finished_transfer(block, block, table)
+finished_transfer(Block, Block, ToTable) <=
+    on_table(Block, ToTable)
+finished_transfer(Block, _, shared) <=
+    on_table(Block, shared)
+finished_transfer(Block, TopBlock, _Table) <=
+    on(Block, TopBlock)
+
+rel transfer_back(arm, table, table, ?block, ?block)
+transfer_back(Arm, shared, HomeTable, Block, ToBlock) <=
+    block_needed_now(Block, Arm, shared, HomeTable, ToBlock)
+transfer_back(Arm, shared, HomeTable, Block, ToBlock) <=
+    free_block_needed_eventually(Block, Arm, shared, HomeTable) &
+    ToBlock = Block
+
+rel pre_transfer(arm, table, table, ?block, ?block)
+pre_transfer(Arm, HomeTable, shared, Block, ToBlock) <=
+    block_needed_now(Block, Arm, HomeTable, shared, ToBlock)
+pre_transfer(Arm, HomeTable, shared, Block, ToBlock) <=
+    free_block_needed_eventually(Block, Arm, HomeTable, shared) &
+    ToBlock = Block
+
+rel free_block_needed_eventually(?block, arm, table, ?table)
+free_block_needed_eventually(Block, Arm, FromTable, ToTable) <=
+    task(_,makeTower(_,Blocks,TowerTable)) &
+    TowerTable \= FromTable &
+    longest_stack(Blocks, TowerTable, Stack) &
+    Blocks =? Needed <> Stack &
+    Block in Needed &
+    above_table(Block, FromTable) &
+    not on(_, Block) &
+    get_to_table_and_arm(FromTable, TowerTable, ToTable, Arm)
+    
+tel_atomic transfer(arm, block, table, table, block)
+
+transfer(Arm, Block, FromTable, ToTable, TopBlock) {
+    
+    %% 1: the block has been transfered and the arm is home
+    finished_transfer(Block, TopBlock, ToTable) & over_home(Arm) ~> ()
+    
+    %% 2: can transfer needed block back to FromTable
+    finished_transfer(Block, TopBlock, ToTable) &
+    transfer_back(Arm, ToTable, FromTable, NextBlock, _) 
+        commit_while holding(Arm, NextBlock) ~>
+                move_block(Arm, NextBlock, ToTable, FromTable)
+    
+    %% 3: the block has been transfered 
+    finished_transfer(Block, TopBlock, ToTable)  ~> go_home(Arm)
+    
+    pre_transfer(Arm, ToTable, FromTable, NextBlock, _) 
+        commit_while holding(Arm, NextBlock) ~>
+                move_block(Arm, NextBlock, ToTable, FromTable)
+    
+    %% 6: the block is on the shared table and can be transfered to top of
+    %% partial tower
+    Block \= TopBlock & FromTable = shared & not on(_, TopBlock)
+        commit_while holding(Arm, Block) ~>
+                move_block(Arm, Block, ToTable, ToTable)
+    
+    %% 7: 
+    true  ~> move_block(Arm, Block, FromTable, ToTable)
+    }
+
+rel block_needed_on_other_table(block, table)
+block_needed_on_other_table(Block, Table) <=
+    task(_,makeTower(_,BlocksList,Tab)) &
+    Tab \= Table &
+    BlocksList =? _ <> [Block] <> _
+    
+rel now_needed_by_task_using(block, list(block))
+now_needed_by_task_using(Block, ThisTower) <=
+    task(_,makeTower(_,BlocksList,Tab)) &
+    BlocksList \= ThisTower &       % not this task
+    BlocksList =? _ <> [Block, ToBlock] <> Blocks &
+    tower([ToBlock] <> Blocks, Tab)
+    
+
+def resources_message_ ::= locked_resources(term) | waiting_resources(term)
+
+resources_hook() :: 
+    get_active_resources(Resources) &
+    get_waiting_resources(WResources) ~> 
+        locked_resources(Resources) to twoArmSim ;
+        waiting_resources(WResources) to twoArmSim 
+
+
+
+
+def task_desc ::= task_data(atom, arm, list(block), table)
+
+act go()
+go() :: Tasks = [task_data(t1, arm1, [2,5,9,6], table1),
+                 task_data(t2, arm1, [3,4,10,7], table1),
+                 task_data(t3, arm2, [1,8,11,15], table2)]
+        ~>
+            start_agent(twoArmSim, updates);
+            forall T  {T in Tasks ~> T to twoArmSim} ;
+            task_data(coop, arm2, [], shared) to twoArmSim;
+            forall Task,Arm, Tower,Table 
+                   {task_data(Task, Arm, Tower, Table) in Tasks  ~>
+                        start_named_task(makeTower(Arm, Tower, Table), Task)};
+            start_named_task(cooperate(), coop)
+        

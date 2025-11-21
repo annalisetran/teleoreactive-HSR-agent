@@ -1,0 +1,40 @@
+Linux and MAC users
+
+To use the Qulog emacs mode, assuming you have a site-lisp directory, add qulog.el to that directory.
+
+To your .emacs file (or Preferences file if using aquamacs) add
+
+(autoload 'qulog-mode "qulog" "Major mode for editing Qulog programs." t)
+(setq auto-mode-alist (cons '("\\.qlg$" . qulog-mode) auto-mode-alist))
+
+
+Windows Users running emacs for Windows
+
+Assuming you have installed emacs for Windows then follow the following steps
+(for the user named auser)
+
+1. In system/advanced settings/Environment variables add the following
+    HOME   c:\users\auser
+    PATH   ;c:\emacs\bin  (add to end of existing PATH variable - assuming
+             emacs installed in c:\emacs\bin)
+
+2. In c:\users\auser create the folder .emacs.d
+   (and withing that folder add the folder lisp)
+
+3. In c:\users\auser\.emacs.d create the file init.d and in that file
+   add the following
+
+(setq load-path (cons "c:/users/auser/.emacs.d/lisp" load-path)
+(autoload 'qulog-mode "qulog" "Major mode for editing Qulog programs." t)
+(setq auto-mode-alist (cons '("\\.qlg$" . qulog-mode) auto-mode-alist))
+
+
+NOTE: load-path uses forward slashes
+
+4. Add qulog.el to the c:/users/auser/.emacs.d/lisp folder
+
+5. Log out and when you log back in and then if you start a Command Prompt
+   and then cd to the folder containing, say qlexample.qlg, then
+   emacs qlexample.qlg
+   should start up emacs and use the syntax highlighting and indentation
+   for Qulog/Teleor

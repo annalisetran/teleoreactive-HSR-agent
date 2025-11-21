@@ -1,0 +1,44 @@
+This application consists of the following files:
+
+follower_foreign.hpp  - the h file for the lowest level of the FF interface
+follower_foreign.cpp  - the lowest level of the FF interface
+follower_interface.cpp - the C++-level interface between QP and the C++ code
+follower_interface.ql - declaration of the interface
+follower.qlg - the TR program
+Makefile - make the C++ code
+README - this file
+
+
+To run
+
+Terminal 1: ros2 launch turtlebot3_gazebo turtlebot3_maze.launch.py
+Terminal 2: ros2 launch turtlebot3_cartographer cartographer.launch.py use_sim_time:=True
+
+Terminal 3: (TR program without logging)
+
+teleor
+
+| ?~> [follower].
+
+(This will produce some declaration warnings)
+
+| ?~> go().
+
+
+To terminate Control-D  (getting a segfault when ending - need to track down)
+
+Terminal 3: (TR program with logging - Pedro must be running)
+
+First
+
+logger.py logger&        (creates a app in whick logging messages are displayed)
+
+then
+
+teleor
+
+| ?~> logging logger.
+
+| ?~> [follower].
+
+| ?~> go().

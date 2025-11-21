@@ -1,0 +1,17 @@
+This program is a simple interactive natural deduction prover.
+
+The main aims of this example is to:
+
+1. show how "nondeterministic actions" can be used by escaping to the Prolog
+   level.
+
+2. how the programmer can use application specific operators using Prolog
+   level op declarations in conjunction with read_op_term and write_op_term.
+
+The file are:
+
+op_decl.ql  -  the Prolog-level operator declarations
+natural_deduction.qlg  -  the interactive natural deduction prover.
+natural_deduction_support.ql - the Prolog level code that implements
+   nondeterministic actions
+

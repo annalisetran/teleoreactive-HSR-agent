@@ -1,0 +1,133 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>User Defined Types (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="User Defined Types (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="User Defined Types (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Types.html" rel="up" title="Types">
+<link href="Type-Checking-and-Inference.html" rel="next" title="Type Checking and Inference">
+<link href="Built-In-Types.html" rel="prev" title="Built In Types">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="User-Defined-Types">
+<div class="header">
+<p>
+Next: <a href="Type-Checking-and-Inference.html" accesskey="n" rel="next">Type Checking and Inference</a>, Previous: <a href="Built-In-Types.html" accesskey="p" rel="prev">Built In Types</a>, Up: <a href="Types.html" accesskey="u" rel="up">Types</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="User-Defined-Types-1"></span><h3 class="section">5.3 User Defined Types</h3>
+<span id="index-User-Defined-Types"></span>
+<p>In <a href="Type-Definitions.html">Type Definitions</a> we described the user defined types. Here we discuss the pragmatic constraints on these types.
+</p>
+<p>To simplify type inference we insist that each term has a unique minimal type.
+This constraint has consequences for the various user defined enumerated types.
+</p>
+<p>For example if we allowed the definitions
+</p><div class="example">
+<pre class="example">def range1 ::= 0..20
+def range2 ::= -10..10
+</pre></div>
+<p>then numbers like <code>0</code> do not have a unique minimal type.
+</p>
+<p>To compensate for this constraint we can use the union type to get the same effect as the above (invalid) declaration as below.
+</p>
+<div class="example">
+<pre class="example">def range11 ::= 0..10
+def range12 ::= 11..20
+def range21 ::= -10..-1
+def range1 == range11 || range12
+def range2 == range21 || range11
+</pre></div>
+<p>The first three of the above type definitions ensure that every integer
+between -10 and 20 has a unique minimal type, <code>range11</code>,
+<code>range12</code> or <code>range21</code>. However, <code>range1</code> and
+<code>range2</code>,  now union types, capture the required range of
+integers. If <code>range1</code> is given as a <code>?</code> moded argument type of a relation
+any integer in either of its minimal subtypes <code>range11</code> and
+<code>range12</code>
+may be given or returned as a call value.
+</p>
+<p>For constructor enumerator types the problem is worse. Consider the following
+example where the first enumeration is completely contained in the second.
+</p>
+<div class="example">
+<pre class="example">def constr1(T) ::= f(T) | g(T)
+def constr2(T) ::= f(T) | g(T) | h(T)
+</pre></div>
+
+<p>Which of <code>constr1(int)</code> and <code>constr2(nat)</code> is the smaller type?
+</p>
+<p>For this reason we do not allow any overlaps in constructor type enumerations.
+</p>
+<p>Again, for pragmatic reasons, we also do not allow the constructor functors to be members of atom enumeration types as this can easily lead to confusion.
+</p>
+<p>For similar reasons we also do not allow the union of parameterised types as in the (invalid) example below.
+</p>
+<div class="example">
+<pre class="example">def constr1(T) ::= f(T) | g(T)
+def constr2(T) ::=  h(T)
+def constr3(T) == constr1(T) || constr2(T)
+</pre></div>
+
+<p>We feel that it is unlikely that a programmer will need to have constructor types that violate the above constraints but in the situation where they need such types we suggest using constuctors with similarly named functors and then defining a relation that maps between terms of each type.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Type-Checking-and-Inference.html">Type Checking and Inference</a>, Previous: <a href="Built-In-Types.html">Built In Types</a>, Up: <a href="Types.html">Types</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

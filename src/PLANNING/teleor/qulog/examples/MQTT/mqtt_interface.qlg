@@ -1,0 +1,10 @@
+?- pconsult(mqtt_interface)
+
+act start_mqtt_client(!string, !int, !string)
+act mqtt_connect(!string, !int, !string)
+act mqtt_subscribe(!string, !int, !string)
+act mqtt_notify(!string, !string, !int)
+
+
+%% This might need to be extended if the application has user defined exceptions
+def  user_exception ::= mqtt_exception(string)

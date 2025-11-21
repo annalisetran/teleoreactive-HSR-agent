@@ -1,0 +1,30 @@
+export COMMAND.qem = qem
+
+export SOURCES.qem = \
+	qem.cc \
+	qem_options.cc \
+	scheduler.cc
+
+export BASES.qem	= $(basename $(SOURCES.qem))
+export OBJECTS.qem	= $(addsuffix .o,$(BASES.qem))
+
+.PHONY:	all.qem
+all.qem: $(COMMAND.qem)
+
+$(COMMAND.qem): $(OBJECTS.qem) $(BIG_LIBRARY)
+#	$(CXX) $(LDFLAGS) -o $(COMMAND.qem) $(OBJECTS.qem) $(BIG_LIBRARY) -lnsl -ldl   `pkg-config --cflags --libs libpcre2-8` $(BIG_LIBRARY)
+	# Edit the build line for qem to add the --export-dynamic flag
+	$(CXX) -Wl,--export-dynamic $(LDFLAGS) -o $(COMMAND.qem) $(OBJECTS.qem) $(BIG_LIBRARY) -lnsl -ldl   `pkg-config --cflags --libs libpcre2-8` $(BIG_LIBRARY)
+
+
+.PHONY: install.qem
+install.qem: /home/blinky/roboworkspace/src/PLANNING/teleor/qp10.10/bin/$(COMMAND.qem)
+
+/home/blinky/roboworkspace/src/PLANNING/teleor/qp10.10/bin/$(COMMAND.qem): $(COMMAND.qem)
+	/usr/bin/install -c $(COMMAND.qem) /home/blinky/roboworkspace/src/PLANNING/teleor/qp10.10/bin
+
+.PHONY:	clean.qem
+clean.qem:
+	$(RM) $(OBJECTS.qem) $(COMMAND.qem) Makefile.qem
+
+

@@ -1,0 +1,5 @@
+08/04/2024
+inspection_controller
+  - comment out world model (world model not working, can not launch it)
+  - use indoor start point and fake doors 
+  - add goal reached cb to check whether goal is being reached(half implemented, topic is publish something when reached, confirmed)

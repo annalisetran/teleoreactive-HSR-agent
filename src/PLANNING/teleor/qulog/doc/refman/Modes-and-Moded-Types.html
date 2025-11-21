@@ -1,0 +1,126 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Modes and Moded Types (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Modes and Moded Types (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Modes and Moded Types (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Types.html" rel="up" title="Types">
+<link href="Built-In-Types.html" rel="next" title="Built In Types">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Modes-and-Moded-Types">
+<div class="header">
+<p>
+Next: <a href="Built-In-Types.html" accesskey="n" rel="next">Built In Types</a>, Up: <a href="Types.html" accesskey="u" rel="up">Types</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Modes-and-Moded-Types-1"></span><h3 class="section">5.1 Modes and Moded Types</h3>
+<span id="index-Modes-and-Moded-Types"></span>
+<p>Moded types are used when declaring types for code. They are used to
+specify which arguments of a call must be ground and which need not be
+ground when the call is made, which of the possibly non-ground
+arguments of the call will be ground on exit from the call, which
+may still be non-ground, and which will be unchanged by the call. Below we list the allowed moded types that were discussed in <a href="Type-Definitions.html">Type Definitions</a>.
+</p>
+<p>The moded types for code arguments are:
+</p><ul>
+<li> <code>!</code><i>Type</i> - the argument must be ground and of type <i>Type</i>.
+</li><li> <code>?</code><i>Type</i> - the argument may be ground, partly ground, or a variable on call but will be ground and of type  <i>Type</i> on exit from the call.
+</li><li> <code>??</code><i>Type</i> - the argument is not required to be ground on call and may remain unground on exit from the call.
+</li><li> <code>@term</code> - the call does not instantiate any variables in the
+<code>term</code> argument - i.e. the argument is left unchanged by the call.
+</li></ul>
+
+<p>The <code>!</code> mode is <i>more restrictive</i> than the <code>@</code> mode and
+the <code>?</code> mode, and  the <code>?</code> mode is more restrictive than the <code>??</code> mode. In other words, for example, the moded type <code>!</code><i>Type</i> is more constraining than the moded type <code>?</code><i>Type</i>.
+</p>
+<p>For instances of polymorphic types such as <code>list(int)</code> we may use
+a less constraining mode annotation at the inner  level from that used
+at the outer structure level. So, giving a relation argument the moded
+type <code>!list(?int)</code> means that this argument must be a complete
+list of known length 
+at call time, but some or all the elements of the list may be
+variables, each of which will be instantiated to an integer value if the
+call succeeds. The moded type <code>!list(?list(??int))</code> means that this
+argument must be a complete list of possibly partial lists of integers
+and variables, such as
+<code>[[X,3,..L],[-7,Y,Z]]</code>. It will become a complete list of complete
+lists of integers,  and perhaps variables,  if the call succeeds. So,
+<code>[[X,3],[-7,Y,-6]]</code> is a possible &rsquo;output&rsquo; value for the structure
+argument. 
+</p>
+<p>Modes must become less restrictive as we move into the type. This
+means we can have:
+</p><ul>
+<li> <code>!list(!int)</code> (for which we can use the shorthand  <code>!list(int)</code>) and even <code>list(int)</code>)
+</li><li> <code>!list(@term)</code> (with shorthand <code>list(@term)</code>) and
+</li><li> <code>!list(?int)</code> (with shorthand <code>list(?int)</code>) and
+</li><li> <code>!list(??int)</code> (with shorthand <code>list(??int)</code>)
+</li></ul>
+<p>but not:
+</p><ul>
+<li> <code>?list(!int)</code> and
+</li><li> <code>??list(!int)</code> and
+</li><li> <code>?list(@term)</code> (as <code>@</code> is not given as less restrictive then as <code>?</code>)
+</li></ul>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Built-In-Types.html">Built In Types</a>, Up: <a href="Types.html">Types</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,362 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Arithmetic Functions and Relations (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Arithmetic Functions and Relations (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Arithmetic Functions and Relations (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Built_002dIns.html" rel="up" title="Built-Ins">
+<link href="Other-Functions.html" rel="next" title="Other Functions">
+<link href="Term-Tests-and-Manipulation.html" rel="prev" title="Term Tests and Manipulation">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Arithmetic-Functions-and-Relations">
+<div class="header">
+<p>
+Next: <a href="Other-Functions.html" accesskey="n" rel="next">Other Functions</a>, Previous: <a href="Term-Tests-and-Manipulation.html" accesskey="p" rel="prev">Term Tests and Manipulation</a>, Up: <a href="Built_002dIns.html" accesskey="u" rel="up">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Arithmetic-Functions-and-Relations-1"></span><h3 class="section">7.4 Arithmetic Functions and Relations</h3>
+<span id="index-Arithmetic-Functions-and-Relations"></span>
+
+
+<p>The following arithemetic functions are available.
+</p>
+
+
+<p><code>Num1 + Num2</code>
+<span id="index-_002b"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the sum of <code>Num1</code> and <code>Num2</code>.
+<br>
+<code>fun nat + nat -&gt; nat, int + int -&gt; int, num + num -&gt; num</code>
+</p></blockquote>
+
+
+<p><code>Num1 - Num2</code>
+<span id="index-_002d"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the difference of <code>Num1</code> and <code>Num2</code>.
+<br>
+<code>fun int - int -&gt; int, num - num -&gt; num</code>
+</p></blockquote>
+
+
+<p><code>-Num1</code>
+</p><blockquote class="indentedblock">
+
+<p>Returns the negative value of <code>Num</code>.
+<br>
+<code>fun -(int) -&gt; int,  -(num) -&gt; num</code>
+</p></blockquote>
+
+
+<p><code>Num1 * Num2</code>
+<span id="index-_002a"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the product of <code>Num1</code> and <code>Num2</code>.
+<br>
+<code>fun nat * nat -&gt; nat, int * int -&gt; int, num * num -&gt; num</code>
+</p></blockquote>
+
+
+<p><code>Num1 // Num2</code>
+<span id="index-_002f_002f"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the integer division of <code>Num1</code> and <code>Num2</code>.
+<br>
+<code>fun //(nat, nat) -&gt; nat, //(int, int) -&gt; int</code>
+</p></blockquote>
+
+
+<p><code>Num1 / Num2</code>
+<span id="index-_002f"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the division of <code>Num1</code> and <code>Num2</code>.
+<br>
+<code>fun num / num -&gt; num</code>
+</p></blockquote>
+
+
+<p><code>Num1 mod Num2</code>
+<span id="index-mod"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the mod of <code>Num1</code> and <code>Num2</code>.
+<br>
+<code>fun int mod int -&gt; int
+</code>
+</p></blockquote>
+
+
+<p><code>Num1 ** Num2</code>
+<span id="index-_002a_002a"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns <code>Num1</code> raised to the power <code>Num2</code>.
+<br>
+<code>fun nat ** nat -&gt; nat, int ** int -&gt; int, num ** num -&gt; num</code>
+</p></blockquote>
+
+
+<p><code>Int &gt;&gt; Nat</code>
+<span id="index-_003e_003e"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the bitwise right shift of Int with respect to Nat.
+<br>
+<code> &gt;&gt;: (int, nat) -&gt; int</code>
+</p></blockquote>
+
+
+<p><code>Int &lt;&lt; Nat</code>
+<span id="index-_003c_003c"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the bitwise left shift of Int with respect to Nat.
+<br>
+<code> fun int &lt;&lt; nat -&gt; int</code>
+</p></blockquote>
+
+
+<p><code>Int1 /\ Int2</code>
+<span id="index-bitand"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the bitwise AND of Int1 and Int2.
+<br>
+<code> fun int /\ int -&gt; int</code>
+</p></blockquote>
+
+
+<p><code>Int1 \/ Int2</code>
+<span id="index-bitor"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the bitwise OR of Int1 and Int2.
+<br>
+<code>fun int \/ int -&gt; int</code>
+</p></blockquote>
+
+
+<p><code> \ Int</code>
+<span id="index-bitneg"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the bitwise complement of Int.
+<br>
+<code> fun \(int) -&gt; int</code>
+</p></blockquote>
+
+
+<p><code> abs(Num)</code>
+<span id="index-abs"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the absolute value of Num.
+<br>
+<code> fun abs(int) -&gt; nat, abs(num) -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> sqrt(Num)</code>
+<span id="index-sqrt"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the square root of Num.
+<br>
+<code> fun sqrt(num) -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> round(Num)</code>
+<span id="index-round"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the nearest integer to Num.
+<br>
+<code> fun round(num) -&gt; int</code>
+</p></blockquote>
+
+
+<p><code> floor(Num)</code>
+<span id="index-floor"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the greatest integer less than Num.
+<br>
+<code> fun floor(num) -&gt; int</code>
+</p></blockquote>
+
+
+<p><code> ceiling(Num)</code>
+<span id="index-ceiling"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the smallest number greater than Num.
+<br>
+<code> fun ceiling(num) -&gt; int</code>
+</p></blockquote>
+
+
+<p><code> pi()</code>
+<span id="index-pi"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns value 3.14159 for PI.
+<br>
+<code> fun pi() -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> e()</code>
+<span id="index-e"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns 2.71828 value for E.
+<br>
+<code> fun e() -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> sin(Num)</code>
+<span id="index-sin"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the sin of Num.
+<br>
+<code> fun sin(num) -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> cos(Num)</code>
+<span id="index-cos"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the cos of Num.
+<br>
+<code> fun cos(num) -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> tan(Num)</code>
+<span id="index-tan"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the tan of Num.
+<br>
+<code> fun tan(num) -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> asin(Num)</code>
+<span id="index-asin"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the arcsin of Num.
+<br>
+<code> fun asin(num) -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> acos(Num)</code>
+<span id="index-acos"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the arccos of Num.
+<br>
+<code> fun acos(num) -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> atan(Num)</code>
+<span id="index-atan"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the arctan of Num.
+<br>
+<code> fun atan(num) -&gt; num</code>
+</p></blockquote>
+
+
+<p><code> atan2(Y, X)</code>
+<span id="index-atan2"></span>
+</p><blockquote class="indentedblock">
+
+<p>Returns the atan2 of Y and X. This returns an angle in the range <code>(-pi, pi]</code>.
+<br>
+<code> fun atan2(num,num) -&gt; num</code>
+</p></blockquote>
+
+<p>Note that some of the above function calls can raise an exception - for example:
+</p>
+<div class="example">
+<pre class="example">| ?? X = 1/0.
+
+QuLog exception - exception term: arithmetic_function_domain_error(1 / 0)
+</pre></div>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Other-Functions.html">Other Functions</a>, Previous: <a href="Term-Tests-and-Manipulation.html">Term Tests and Manipulation</a>, Up: <a href="Built_002dIns.html">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

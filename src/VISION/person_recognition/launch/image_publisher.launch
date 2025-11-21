@@ -1,0 +1,3 @@
+<launch>
+    <node pkg="person_recognition" type="image_publisher.py" name="image_publisher" output="screen"></node>
+</launch>

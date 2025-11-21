@@ -1,0 +1,1 @@
+exec /home/blinky/roboworkspace/src/PLANNING/teleor/qp10.10/bin/qem  -Q '/home/blinky/roboworkspace/src/PLANNING/teleor/qp10.10/bin/qecat.qx' "$@" -- 

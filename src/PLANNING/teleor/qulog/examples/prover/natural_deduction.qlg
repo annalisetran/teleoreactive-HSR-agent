@@ -1,0 +1,354 @@
+
+/*
+ * A natural deduction prover for propositional logic using 
+ * a goal directed or "backwards" proof style.
+ * Based on the Qu-Prolog example
+ */
+
+%% The QP file op_decls.ql file containing operator declarations for use in 
+%% reading and displaying formulas
+
+?- pconsult(op_decls)
+?- pconsult(natural_deduction_support)
+
+% formula declaration - true, false and p,q etc are formulas
+% the logical cononnectives are compound formulas
+def formula == compound_formula || atom
+
+%% These constructors match the operator declarations in op_decls.ql
+def compound_formula ::=
+        and(formula, formula) |
+        or(formula, formula) |
+        ==>(formula, formula) |
+        ~(formula)
+
+% Declaring sequents - e.g.  p, q |- p
+def sequent ::= |-(list(formula), formula)
+
+% declaring rules - init_proof is a special name used for the proof start
+def rule_name ==
+        init_proof_name || atomic_rule_name || compound_rule_name
+
+def init_proof_name ::= init_proof
+
+def atomic_rule_name ::=
+        and_i |
+        or_i1 |
+        or_i2 |
+        imp_i |
+        neg_i |
+        false_i |
+        discharge_any |
+        and_e_any |
+        or_e_any |        
+        imp_e_any |        
+        neg_e_any |
+        or_i_any
+
+% the argument is the index of the hypothesis
+def compound_rule_name ::=
+        discharge(nat) |
+        and_e(nat) |
+        or_e(nat) |        
+        imp_e(nat) |        
+        neg_e(nat)
+
+% The encoding of the sequent calculus rules
+rel rule(?rule_name,  !sequent, ?list(sequent))
+
+%
+%  -------
+%  C |- C
+rule(discharge(N), |-(Gamma, A), []) <= 
+    nth_item(N, A, Gamma)
+
+%  Gamma |- A     Gamma |- B
+%  ----------
+%  Gamma |- A and B  
+rule(and_i, |-(Gamma, and(A, B)), [|-(Gamma, A), |-(Gamma, B)])
+
+%  Gamma, A |- C
+%  ----------
+%  Gamma, A or B |- C  
+rule(or_i1, |-(Gamma, or(A, _B)), [|-(Gamma, A)])
+
+%  Gamma, B |- C
+%  ----------
+%  Gamma, A or B |- C  
+rule(or_i2, |-(Gamma, or(_A, B)), [|-(Gamma, B)])
+
+%  Gamma, A |- B
+%  ----------
+%  Gamma |- A ==> B  
+rule(imp_i, |-(Gamma, ==>(A, B)), [|-([A|Gamma], B)])
+
+%  Gamma, A |- false
+%  ----------
+%  Gamma  |- ~A  
+rule(neg_i, |-(Gamma, ~(A)) , [|-([A|Gamma], false)])
+
+%  Gamma |- false
+%  ----------
+%  Gamma |- A  
+rule(false_i, |-(Gamma, _A) , [|-(Gamma, false)])
+
+%  Gamma, A, B |- C
+%  ----------
+%  Gamma, A and B |- C  
+rule(and_e(N), |-(Gamma, C), [|-([A,B|NewGamma], C)]) <= 
+    nth_and_rest(N, and(A, B), Gamma, NewGamma)
+
+%  Gamma |-  A     Gamma, B |- C
+%  ----------
+%  Gamma, A ==> B |- C  
+rule(imp_e(N), |-(Gamma, C), [|-(NewGamma, A), |-([B|NewGamma], C)]) <=
+    nth_and_rest(N, ==>(A, B), Gamma, NewGamma).
+
+%  Gamma, A |-  C     Gamma, B |- C
+%  ----------
+%  Gamma, A or B |- C  
+rule(or_e(N), |-(Gamma, C), [|-([A|NewGamma], C), 
+                               |-([B|NewGamma], C)]) <=        
+    nth_and_rest(N, or(A,B), Gamma, NewGamma)
+
+%  Gamma |- A      Gamma, false |- C
+%  ----------
+%  Gamma, ~A  |- C  
+rule(neg_e(N), |-(Gamma, C), [|-(NewGamma, A), 
+                                |-([false|NewGamma], C)]) <=
+    nth_and_rest(N, ~(A), Gamma, NewGamma)
+
+% nth_item(N, A, Fs) is true if A is the N'th element of Fs
+% We can give N or have the code choose both N and A.
+rel nth_item(?nat, ?formula, !list(formula))
+nth_item(1, A, [A|_])
+nth_item(N, A, [_|T]) <= nth_item(M, A, T) & N = M + 1
+
+% the same as above except the chosen formula is removed from the
+% input list of formula
+rel nth_and_rest(?nat, ?formula, !list(formula), ?list(formula))
+nth_and_rest(1, A, [A|T], T)
+nth_and_rest(N, A, [H|T], [H|NT]) <=
+    nth_and_rest(M, A, T, NT) & N = M + 1
+
+% by giving an enumerated type for the rules for the auto tactic
+% we can use isa(T, auto_rules) to backtrack over possible rules
+def auto_rules ::=
+        discharge_any |
+        and_i |
+        imp_i |
+        neg_i |
+        and_e_any |
+        or_e_any |        
+        imp_e_any |        
+        neg_e_any |
+        or_i_any
+
+% a proof step is used to encode a step in the proof so that the
+% complete proof can be listed at the completion of the proof
+def proof_step ::= ps(rule_name, list(sequent))
+
+% All steps in the proof are done via tactics which typically adds
+% to list (stack) of proof steps. The first element encodes the current 
+% state of the proof.
+% It might seem that we could write
+% def tactic == fun(list(proof_step)) -> list(proof_step)
+% The problem is or_i_any produces alternatives and so we need
+% to be able to backtrack to make the other choice if required.
+def tactic == rel(!list(proof_step), ?list(proof_step))
+
+%% The trans tactic is used to apply rules as a tactic 
+fun trans(rule_name) -> tactic
+trans(discharge_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(discharge(N), P1, Ps) &
+        Q = [ps(discharge(N), Ps <> Rest),..P]
+trans(and_e_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(and_e(N), P1, Ps) &
+        Q = [ps(and_e(N), Ps <> Rest),..P]
+trans(and_e(N))(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(and_e(N), P1, Ps) &
+        Q = [ps(and_e(N), Ps <> Rest),..P]
+trans(or_e_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(or_e(N), P1, Ps) &
+        Q = [ps(or_e(N), Ps <> Rest),..P]
+trans(or_e(N))(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(or_e(N), P1, Ps) &
+        Q = [ps(or_e(N), Ps <> Rest),..P]
+trans(imp_e_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(imp_e(N), P1, Ps) &
+        Q = [ps(imp_e(N), Ps <> Rest),..P]
+trans(imp_e(N))(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(imp_e(N), P1, Ps) &
+        Q = [ps(imp_e(N), Ps <> Rest),..P]
+trans(neg_e_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(neg_e(N), P1, Ps) &
+        Q = [ps(neg_e(N), Ps <> Rest),..P]
+trans(neg_e(N))(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(neg_e(N), P1, Ps) &
+        Q = [ps(neg_e(N), Ps <> Rest),..P]
+trans(or_i_any)(P, Q) <=
+    P = [ps(_, [P1,..Rest]),..] &
+    rule(or_i1, P1, Ps) &
+    Q = [ps(or_i1, Ps <> Rest),..P]
+trans(or_i_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(or_i2, P1, Ps) &
+        Q = [ps(or_i2, Ps <> Rest),..P]
+trans(Rule)(P, Q) <=
+    P = [ps(_, [P1,..Rest]),..] &
+    rule(Rule, P1, Ps) &
+    Q = [ps(Rule, Ps <> Rest),..P]
+
+rel apply(tactic, !list(proof_step), ?list(proof_step))
+apply(Tactic, P, Q) <= Tactic(P, Q)
+
+% a special tactic that simply tests if the proof is finished
+rel finished(!list(proof_step), ?list(proof_step))
+finished(Steps, Steps) <= Steps = [ps(_,[]),..]
+
+
+rel auto_step(!list(proof_step), ?tactic, ?list(proof_step))
+auto_step(P, Tac, Q) <=
+    isa(T, auto_rules) & 
+    Tac = trans(T) &
+    Tac(P, Q)
+
+% Used to display the outcome of the proof
+% completed : the proof has been successfully completed
+% abandoned : the user entered 'quit' to abandoned the proof
+% failed : no proof was found
+def status ::= completed | abandoned | failed
+
+%% Action defined in natural_deduction.ql
+act start_proof(formula, ?status)
+
+% start a proof
+act do_proof()
+do_proof() ~>
+    repeat { % keep asking the user for formula until a valid formula is entered
+        write_list(["Enter formula to prove (terminate with .newline): "]);
+        flush_output();
+        get_formula(Formula)
+        } until Formula \= no_formula;
+    start_proof(Formula, Status);  % do the proof
+    show_status(Status)
+
+act show_status(status)
+show_status(completed) ~> {}
+show_status(Status) ~>
+    write_list(["Proof ", Status, nl_])
+
+%% Read in a formula to be proved
+act get_formula(?formula)
+get_formula(Formula) ~>
+    try {
+        read_op_term(Term);
+        term2formula(Term, Formula)
+        }
+    except { % read_op_term can produce a syntax or type exception
+        read_op_term_syntax_error(_) :: Formula = no_formula ~>
+                write_list(["Syntax error", nl_])
+        input_term_type_error(_, _) :: Formula = no_formula ~>
+                write_list(["Type error", nl_])
+        }
+
+% check that the term is of type formula or raise an exception
+act term2formula(??term, ?formula)
+term2formula(Term, Formula) ::
+    % check the type of the term read in to see if it is a ground formula
+    type(Term, !formula) & Formula = Term ~> {}
+term2formula(_Term, _Formula) ~> 
+    % the corresponding except does not look at the arguments
+    raise(input_term_type_error(dummy, ""))
+
+
+
+% special tactics
+rel auto(!list(proof_step), ?list(proof_step))
+rel quit(!list(proof_step), ?list(proof_step))
+rel undo(!list(proof_step), ?list(proof_step))
+rel not_a_tactic(!list(proof_step), ?list(proof_step))
+    
+act display_state(list(sequent))
+display_state(Sequents) ~>  write_sequents(Sequents)
+
+
+% get a tactic from the user - keep trying until valid tactic entered
+act get_command(list(proof_step), int, ?term_naming(tactic))
+get_command([ps(_, Sequents),..], Level, Cmd) ~>
+    repeat {
+        write_list([Level, ":", nl_]);
+        write_sequents(Sequents);
+        write_list([nl_, "Command: "]);
+        flush_output();
+        get_line(CmdStr);
+        try {
+            string2tactic(CmdStr, Cmd)
+            } 
+        except {
+            string2term_syntax_error(_) ~>
+                write_list(["Syntax error", nl_]);
+                ?(Cmd = not_a_tactic)
+            input_term_type_error(_, _) ~>
+                 write_list(["Type error", nl_]);
+                ?(Cmd = not_a_tactic)
+            } 
+            
+        } until Cmd \= not_a_tactic
+
+
+act string2tactic(string, ?term_naming(tactic))
+string2tactic(CmdStr, Cmd) :: 
+    string2term(CmdStr, Cmd1) &
+    type(Cmd1, !term_naming(tactic)) &
+    Cmd = Cmd1 ~> {}
+string2tactic(CmdStr, _) ~> raise(input_term_type_error(string2term, CmdStr))
+
+% Display the completed proof
+act write_proof(list(proof_step))
+
+write_proof([]) ~> write_list(["Proof Completed\nProof:", nl_])
+write_proof([ps(init_proof, Preds),..Rest]) ~>
+    write_proof(Rest);
+    write_list(["Statement "]);
+    write_sequents(Preds)
+write_proof([ps(Rule, Preds),..Rest]) ~>
+    write_proof(Rest);
+    write_list(["-------------\nApply ", Rule,nl_]);
+    write_sequents(Preds)
+
+% Write a list of sequents
+act  write_sequents(!list(sequent))
+write_sequents([]) ~> {}
+write_sequents([|-(Hyps,Conclusion)|Rest]) ~>
+    write_formulas(Hyps);
+    write_list([" |- "]);
+    write_op_term(Conclusion);
+    write_list([nl_]);
+    write_sequents(Rest)
+
+% Write a list of formulas
+act  write_formulas(list(formula))
+write_formulas([]) ~> {}
+write_formulas([F]) ~>  write_op_term(F)
+write_formulas([F|Rest]) ~>
+    write_op_term(F);
+    write_list([", "]);
+    write_formulas(Rest)
+
+
+% If we wanted to make this a runtime level application then we could uncomment
+% the following and build with qulogc -Q natural_deduction
+
+qmain(_) ~> do_proof()
+        
+% and then run ./natural_deduction to do a proof.

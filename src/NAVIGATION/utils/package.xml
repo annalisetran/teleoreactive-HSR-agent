@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>nav_utils</name>
+  <version>1.1.1</version>
+  <description>
+    package for testing navigation, adapted from turtlebot3 simulation package
+  </description>
+  <license>Apache 2.0</license>
+  <author email="theoandpebbles@hotmail.com">Theo</author>
+  <maintainer email="theoandpebbles@hotmail.com">Theo</maintainer>
+  <buildtool_depend>catkin</buildtool_depend>
+  <depend>std_msgs</depend>
+  <depend>sensor_msgs</depend>
+  <depend>geometry_msgs</depend>
+  <depend>nav_msgs</depend>
+  <depend>tf</depend>
+</package>

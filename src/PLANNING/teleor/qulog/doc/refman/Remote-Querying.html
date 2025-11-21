@@ -1,0 +1,199 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Remote Querying (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Remote Querying (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Remote Querying (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Semantics-of-Actions.html" rel="up" title="Semantics of Actions">
+<link href="Receive-Action.html" rel="prev" title="Receive Action">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Remote-Querying">
+<div class="header">
+<p>
+Previous: <a href="Receive-Action.html" accesskey="p" rel="prev">Receive Action</a>, Up: <a href="Semantics-of-Actions.html" accesskey="u" rel="up">Actions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Remote-Querying-1"></span><h4 class="subsection">6.3.3 Remote Querying</h4>
+<span id="index-Remote-Querying"></span>
+<span id="index-query_005fat-1"></span>
+<span id="index-respond_005fremote_005fquery-1"></span>
+<p>Remote querying allows one QuLog process, the client, to query another, the server, providing both are connected to the same Pedro daemon. Typically the client query involves quering the servers knowledge base. 
+The server receives the query as a string inside a <code>remote_query</code> message term with sender identified as the client.  The server answers the query by calling the <code>respond_remote_query</code> primitive. This parses the query string into a query term, locally evaluates the query,  then  returns answers to the client as a stream of answer bindings for  query variables.   
+</p>
+
+<p>More precisely, to have a query <i>Query</i> evaluated remotely a special relation call is used of the form:
+</p><blockquote class="indentedblock">
+<p><i>Query</i> <code> query_at </code> <i>ServerHandle</i>
+</p></blockquote>
+<p>Here <i>Query</i> is the query to be remotely evaluated and <i>ServerHandle</i>
+is the Pedro registered handle of the server process where it should be evaluated. 
+</p>
+<p>The query has the same syntax as an interpreter query except it
+needs to be surrounded by brackets (unless it is a single condition).
+Examples are given in the QuLog user guide. 
+</p>
+<p>In the client program <i>Query</i> is a term. Before being sent to the server process it is analysed, translated into a string <i>QueryString</i>, and dispatched as a message term of the form:
+</p><blockquote class="indentedblock">
+<p><code>remote_query(</code><i>QueryString</i><code>)</code> 
+</p></blockquote>
+<p>As part of the translation to a string the  variables whose bindings must be returned as an answer to the query are identified and linked with their required types.  
+The server will respond by sending back a sequence of answer messages. Each answer message 
+is a string representing a list of bindings for the identified answer variables.
+Each answer string is parsed by the client and type checked to ensure that
+the type of each answer variable binding corresponds to the client&rsquo;s required moded type. It then binds each of the answer 
+variables of the client query term <i>Query</i> to its returned value.
+</p>
+
+
+<p>On the server side, when the server calls 
+</p><blockquote class="indentedblock">
+<p><code>respond_remote_query(</code><i>QueryStr, Client</i><code>)</code> 
+</p></blockquote>
+<p>the following takes place.
+</p>
+<ol>
+<li> The query string is parsed
+</li><li> The parsed query is type checked
+</li><li> The query is called and for each answer the server generates the required  answer string and sends that back to the client.
+</li><li> When there are no more solutions it sends back <code>no_more_solutions</code>
+</li></ol>
+<p>The <code>query_at</code> primitive handles receipt of the stream of answer bindings for the variables of the client.
+As an example consider the following example remote query:
+</p><div class="example">
+<pre class="example">(Person, Age :: age_of(Person, Age)) query_at server
+</pre></div>
+<p>The client first type checks the query and confirms that the answer variables
+will be ground after the call. The compiled call contains the answer type
+information:
+</p><div class="example">
+<pre class="example">Person : !human, Age: !age_val
+</pre></div>
+<p>The term, 
+</p><div class="example">
+<pre class="example">remote_query(&quot;Person, Age :: age_of(Person, Age)&quot;)
+</pre></div>
+<p>is sent to the server identifying the sender of the message as the client thread in which the <code>remote_query</code> has been invoked  This client thread then suspends waiting for a response, usually an <code>ans</code>  message term, from the server.
+</p>
+<p>Typically, the server responds to receiving this message by calling:
+</p><div class="example">
+<pre class="example">respond_remote_query(&quot;Person, Age :: age_of(Person, Age)&quot;, <i>Client</i>)
+</pre></div>
+<p>where <i>Client</i> is the handle of the client thread that called the remote query. 
+</p>
+<p>The query is then parsed and processed in the same way as if
+this was a query in the interpreter of the server except that a maximum of 20 answers will be found.  To have more, or less answers returned, the maximum required number of answers  may be specified using the <code>N of ...</code> query form.  For example, the remote query:
+</p><div class="example">
+<pre class="example">(30 of Person, Age :: age_is(Person, Age)) query_at server
+</pre></div>
+<p>specifies that up to 30 answers should be returned if there are that many answers, or more. 
+ </p><div class="example">
+<pre class="example">(5 of Person, Age :: age_is(Person, Age)) query_at server
+</pre></div>
+<p>specifies at most 5 should be returned. 
+</p>
+<p>Suppose the server evaluatione of <code>age_of(Person, Age)</code>  binds <code>Person</code> to <code>roger</code> and <code>Age</code> to <code>110</code>.
+The server will send back the message
+</p><div class="example">
+<pre class="example">ans(&quot;[roger, 110]&quot;)
+</pre></div>
+
+<p>The client reads the answer, parses the string, type checks the answer bindings
+against its saved types and accumulates the answers in a list until it
+gets the <code>ans(no_more_solutions)</code> message. At this stage the different solutions for the original  remote query 
+</p><blockquote class="indentedblock">
+<p><i>Query</i> <code> query_at </code> <i>ServerHandle</i>
+</p></blockquote>
+<p>are generated, one at a time,  by calling the list membership primitive with first argument the identified answer variables of <i>Query</i> (<code>[Person, Age]</code> in the above example) and second argument the list of bindings for these variables constructed from the stream of answer strings received from the server. 
+</p>
+
+<p>The reader might be wondering why the query is turned into a string only
+to be parsed on the server and why the answers are likewise processed and why
+type checking is repeated on the server side and on the client side
+when the answer comes back.
+</p>
+<p>Provided the client and the server use the same ontology (type definitions and declarations) then the query could be sent as a term rather than a string and
+the answers would automatically be of the correct type from the clients point of view. On the other hand, if the ontologies don&rsquo;t align exactly then there
+are several possible problems with this approach:
+</p>
+<ol>
+<li> the term message sent by the client might not be a term on the server side and so the message would be rejected by the message reader;
+</li><li> the dual problem is that an answer term might not be a term on the client side and so the answer message would be rejected;
+</li><li> the query might type check on the client side but might not type check on the server side; or
+</li><li> the answer terms might not have the required type (or not be ground) on the client side.
+</li></ol>
+
+<p>By converting back and forward to strings we guarantee that messages get through
+and by repeating type checking then we guarantee that we don&rsquo;t get type problems.
+</p>
+<p>If any of the above problems occur then the client code will raise
+a  <code>remote_query_ontology_mismatch</code> exception.
+</p>
+<p>For the reasons above we suggest that if you want to implement such a client-server you should put all relevant type definitions and declarations is a qulog file and consult that file in all clients and in the server. That will provide a shared ontology.
+</p>
+<p>In attempting to answer the client&rsquo;s query, some exception might be raised.
+In this case the server traps the exception and forwards the exception to the client wrapped with  <code>remote_query_exception</code>. This, and the <code>remote_query_ontology_mismatch</code> above, are the only two exceptions that the server might send to the client. On receipt of such execption message the client simply raises them (locally).
+</p>
+<p>An example server program is given in the QuLog user guide.
+</p>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="Receive-Action.html">Receive Action</a>, Up: <a href="Semantics-of-Actions.html">Actions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

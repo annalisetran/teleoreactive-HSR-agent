@@ -1,0 +1,4 @@
+string direction
+float64 distance
+---
+bool success

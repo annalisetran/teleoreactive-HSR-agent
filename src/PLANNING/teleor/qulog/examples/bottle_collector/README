@@ -1,0 +1,27 @@
+This directory contains the code for running different bottle collecting 
+programs.
+
+---------------------------------------
+
+bottleCollector.qlg - a single bottle collector
+
+coopBottleCollector.qlg - two bottle collector cooperating to avoid collisions
+and keeping track of the total number of bottles collected
+
+tasksBottleCollector.qlg - two bottle collector robots controlled by a single
+agent running a task for each robot.
+
+---------------------------------------
+
+When running the programs you are able to interact with the environment so as
+to observe how the agents react to changes.
+
+Clicking on a bottle with Button-1 and then dragging will move the selected
+bottle.
+
+Control-Button-1 or Button-2 will add a bottle at the selected spot
+
+Control-Shift-Button-1 or Button-3 when clicked on a bottle will remove
+  that bottle
+
+Pressing the Space bar will toggle running the simulator.

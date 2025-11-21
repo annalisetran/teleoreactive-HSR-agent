@@ -1,0 +1,13 @@
+<launch>
+    <node pkg="world_model_kb" type="wm_image_overlay_node" name="wm_image_overlay_node" output="screen" launch-prefix="">
+        <!--remap from="/wm_image_overlay_node/image" to="/gpu/Republisher/throttled_object"/-->
+        <remap from="/wm_image_overlay_node/image" to="/gpu/Republisher/throttled_object"/>
+        <!--remap from="/wm_image_overlay_node/camera_info" to="/gpu/Republisher/camera_info"/-->
+        <remap from="/wm_image_overlay_node/camera_info" to="/hsrb/head_rgbd_sensor/rgb/camera_info"/>
+    </node>
+    <!--node pkg="world_model_kb" type="camera_info_gen.py" name="camera_info_gen" >
+        <param name="~camera_file" value="$(env HOME)/.ros/camera_info/rgb_PS1080_PrimeSense.yaml"/>
+        <remap from="/camera_info" to="/gpu/Republisher/camera_info" />
+    </node-->
+</launch>
+

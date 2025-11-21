@@ -1,0 +1,192 @@
+%% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+%%% This program is for an agent with two tasks each controlling a robot that 
+%%% cooperate to  avoid collisions and keep track of the total number of 
+%%% bottles collected
+
+
+%% To run:
+%% Start the Python simulator in one terminal:
+%% python bottles_centre_env.py twotasks
+%% In another terminal:
+%% teleor -AtwoTasks
+%% and in the interpreter:
+%% [tasksBottleCollector].
+%% go().
+
+%% See README for how to interact with simulator
+
+
+def robot_id::= r1 | r2
+fun other_id(robot_id) -> robot_id
+other_id(r1) -> r2
+other_id(r2) -> r1
+
+def dir::= left | centre | right | dead_centre
+def thing::= bottle | drop | robot 
+
+tel_percept see_at(robot_id, thing, int, dir), holding(robot_id), 
+    gripper_open(robot_id), over_drop(robot_id)
+
+tel_action   move(num), turn(dir,num), open_gripper(), close_gripper()
+
+rel see(?robot_id,?thing,?dir), next_to(?robot_id,?thing,?dir),
+    close_to(?robot_id,?thing,?dir), near(?robot_id,?thing,?dir)
+see(RId,Thing, Dir) <= 
+    see_at(RId,Thing, _Dist, Dir)
+next_to(RId,Thing, Dir) <= 
+    see_at(RId,Thing, Dist, Dir) & Dist < 1
+close_to(RId,Thing, Dir) <= 
+    see_at(RId,Thing, Dist, Dir) & Dist < 17
+near(RId,Thing, Dir) <= 
+    see_at(RId,Thing, Dist, Dir) & Dist < 33
+
+rel next_to_centre(robot_id,thing)
+next_to_centre(Robot,Thing) <= next_to(Robot,Thing, dead_centre)
+next_to_centre(Robot,Thing) <= next_to(Robot,Thing, centre)
+
+rel delivered(robot_id)
+delivered(MyRobot) <= 
+    next_to(MyRobot,drop,_) & next_to(MyRobot,bottle,_) & gripper_open(MyRobot) 
+
+
+%fun random()->num
+
+int collected:=0
+
+tel two_task_collect_bottles(nat, robot_id)
+
+two_task_collect_bottles(Total,MyRobot){ 
+    
+    collected(C) & C >= Total ~> ()
+    
+    delivered(MyRobot) or_while min_time 5 ~>
+            [turn(right,0.5): 3, forward_avoiding(MyRobot)] ++ 
+                update_count()
+    
+    holding(MyRobot) & next_to_centre(MyRobot,drop) ~> open_gripper()
+    
+    holding(MyRobot) ~> get_next_to(MyRobot,drop)
+    
+    next_to_centre(MyRobot,bottle) & gripper_open(MyRobot) ~> 
+            close_gripper() 
+    
+    gripper_open(MyRobot) ~> get_next_to(MyRobot,bottle)  
+    
+    true ~> open_gripper()
+    }
+
+def msg_t_ ::= display_info(term) | count(term)
+
+act update_count()
+update_count() ~>
+    collected +:= 1;
+    display_info(count($collected)) to_thread '':env
+
+
+tel get_next_to(robot_id,thing)
+get_next_to(MyRobot,Th){   
+    
+    next_to(MyRobot,Th,Dir) & centre_dir(Dir) ~> ()
+    
+    next_to(MyRobot,Th,Dir) ~> turn(Dir,0.5) 
+    
+    close_to(MyRobot,Th,_)  ~> approach(MyRobot,Th,0.5,0.5) 
+    
+    near(MyRobot,Th,_) & not near(MyRobot,robot,_) ~> 
+            approach(MyRobot,Th,1.5,0.5) 
+    
+    see(MyRobot,Th,_) & not near(MyRobot,robot,_) ~> 
+            approach(MyRobot,Th,2.5,0.3) 
+    
+    near(MyRobot,robot,RDir)  & 
+        near(other_id(MyRobot),robot,MyDir) commit_while min_time 4 ~> 
+            avoid_move(MyDir,RDir) 
+    
+    near(MyRobot,robot,_) ~> ()
+    
+    true ~> [turn(left,0.5):6, move(0.5):2]
+    }    
+
+fun op_dir(dir) -> dir
+op_dir(left) -> right
+op_dir(right) -> left
+op_dir(_) -> centre
+
+rel not_dead_centre_yet(thing,dir)
+not_dead_centre_yet(Th, Dir) <=
+    see(_,Th, D) & D \= dead_centre & D \= op_dir(Dir)
+
+rel dir_or_centre(robot_id, thing, dir)
+dir_or_centre(Robot, Th, Dir) <=
+    see(Robot, Th, Dir)
+dir_or_centre(Robot, Th, _) <=
+    see(Robot, Th, centre)
+
+tel approach(robot_id,thing,num,num)
+approach(MyRobot,Th,FS,TS){ 
+    
+    see(MyRobot,Th,Dir) & centre_dir(Dir) ~> move(FS)
+    
+    see(MyRobot,Th,Dir) commit_while dir_or_centre(MyRobot, Th, Dir) ~>
+            (move(FS),turn(Dir,TS))
+     } 
+
+rel centre_dir(?dir)
+centre_dir(dead_centre)
+centre_dir(centre)
+   
+  
+tel forward_avoiding(robot_id)
+forward_avoiding(MyRobot){ 
+    not near(MyRobot,robot,_) ~> move(1.5)
+    
+    near(MyRobot,robot,RDir) & 
+        near(other_id(MyRobot),robot,MyDir) or_while min_time  4 ~> 
+            avoid_move(MyDir,RDir) 
+    
+    near(MyRobot,robot,_) ~> ()
+    }    
+
+tel avoid_move(dir,dir)
+avoid_move(MyDir,RDir){
+    
+    centre_dir(MyDir) & centre_dir(RDir) ~> 
+            [turn(left,0.5):2, move(1.0)] 
+    % Robots head on, both turn left then move forward
+    
+    MyDir=RDir ~> 
+        [turn(RDir,-0.2):2, move(1.0)] 
+    % Robots see each other in same left or right direction. They each
+    % turn very slightly in opposite direction (neg. speed) then move forward
+    
+    centre_dir(MyDir) ~> 
+            [turn(RDir,-0.4):2, move(1.0)]  
+    % This robot sees other at an angle, other sees this in centre.
+    % This robot turns slightly in opposite direction then moves forward                  
+    centre_dir(RDir) ~>  ()
+    % Other task will be doing an avoid move using rule above
+    
+    true ~> [turn(RDir, -0.4):2, move(1.0)]
+
+    }        
+
+
+
+act go()
+go() ~>
+    start_agent(env@localhost, updates) ;
+    start_task(two_task_collect_bottles(10,r1), _, r);
+    start_task(two_task_collect_bottles(10,r2), _, r)

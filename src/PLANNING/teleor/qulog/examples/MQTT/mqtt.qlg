@@ -1,0 +1,7 @@
+?- pconsult(qp_mqtt_interface)
+
+mqtt_connect : act(string, nat, string)
+mqtt_subscribe : act(string, nat)
+mqtt_notify : act(string, string, nat)
+
+mqtt_message ::= mqtt(string, string) |

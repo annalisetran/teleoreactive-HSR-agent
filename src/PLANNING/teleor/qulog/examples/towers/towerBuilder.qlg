@@ -1,0 +1,180 @@
+%% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+%% This is a single tower builder agent program - 
+%% a direct translation of Nilsson's original tower builder program
+%% To run:
+%% Start the Python simulator in one terminal:
+%% python oneArmSim.py
+%% Start the Teleor interpreter in another terminal:
+%% teleor -Atowers
+%% In interpreter:
+%% [towerBuilder].
+%% go().
+
+%% See README for how to interact with simulator
+
+
+def block ::= (1 .. 16)
+
+tel_percept holding(block), on_table(block), on(block,block)         
+
+tel_action  pickup(block), put_on_block(block), put_on_table()
+
+rel stack(?list(block))  
+% The ? means list of labels may be given or generated    
+stack([Block]) <= on_table(Block)
+stack([Block1,Block2,..Blocks]) <=
+    on(Block1,Block2) & stack([Block2,..Blocks])
+
+rel tower(list(block))
+tower([Block,..Blocks]) <= 
+    clear(Block) & stack([Block,..Blocks])
+
+rel clear(block)
+clear(B) <= 
+    not on(_,B)
+
+tel makeTower(list(block))    
+makeTower(Blocks){
+    tower(Blocks) ~> ()  
+    % Guard of this first rule is goal of any call of this procedure
+    
+    stack(Blocks) & Blocks=[Block,..] ~> unpile(Block)
+    % Blocks are stacked in correct order on table but Block,
+    % which should be clear at top of then tower, is covered
+    % by one or more blocks. unpile will remove these one by one
+    % and achieve guard of rule 1.
+    
+    Blocks=[Block1,Block2,..Rest] & tower([Block2,..Rest]) ~>
+        move_to_block(Block1,Block2) 
+    % Tower comprising [Block1,Block2,..Rest] nearly built. 
+    % Last block, Block1,  just has to be moved, from whereever it is, 
+    % to be directly on Block2. Block1 may need to be cleared first.
+    % Action should achieve guard of rule 1.
+
+    Blocks=[Block]   ~> move_to_table(Block)
+    % To build a single block tower [Block] need only move
+    % Block from wherever it is, to be directly on the table. 
+    % Block may need to be cleared first. Should achieve guard of rule 1.
+      
+    Blocks = [_,..Rest] ~> makeTower(Rest) 
+    % Tower of Blocks  is neither a stack nor almost built. 
+    % Recursively use this procedure to build the required tower
+    % minus its top block. Should achieve guard of 3rd rule. 
+    }
+
+tel unpile(block)  
+unpile(Block){
+    clear(Block)  ~> ()   % The goal of the procedure is achieved
+    
+    on(OnBlock, Block) ~>  move_to_table(OnBlock)
+    % Otherwise move OnBlock, immediately above Block, to the table
+    }
+ 
+tel move_to_table(block)
+move_to_table(Block){
+    % Mutually recursive with unpile. The indirect recursive calls of 
+    % move_to_table climb up the pile of blocks B1,B2,...Bk covering Block 
+    % until top block B1 above Block is reached. This deepest recursive call 
+    % then moves the clear B1 to the table, clearing the block B2 immediately 
+    % beneath it, by firing its rule 3 then its  rule 2. The previous call 
+    % of move_to_table can then similarly moves B2 to the table. Eventually 
+    % the first call of move_to_table can move the block Bk, immediately above
+    % Block, to the table. This recursive moving of blocks to the table to 
+    % clear a particular block may be helped or hindered. Help that removes 
+    % blocks above Block results in an earlier recursive call of move_to_table 
+    % firing its rules 3 and 2. Hindrance causes new recursive calls to be made
+    % to clear away extra blocks placed above Block. 
+    on_table(Block) ~> ()  
+    % Goal is achieved, do nothing
+    
+    holding(_) ~> put_on_table()
+    % This rule puts the held block (which is typically Block) on the table
+    
+    clear(Block) ~> pickup(Block)
+    
+    true ~> unpile(Block)
+    % Block needs to be made clear 
+    }
+
+tel move_to_block(Block1:block, Block2:block) 
+% Moves Block1 from wherever it is to be on Block2
+move_to_block(Block1,Block2){   
+    
+    on(Block1,Block2) ~> ()         % The goal is achieved
+    
+    holding(Block1) & clear(Block2) ~> put_on_block(Block2)
+    
+    holding(_) ~> put_on_table()
+    % This rule puts the held block on the table. If the held block is Block1
+    % then it needs to be put on the table because, since rule 2 didn't fire,
+    % Block2 is covered and so needs to be cleared.
+    
+    clear(Block1)  & clear(Block2) ~> pickup(Block1) 
+    
+    clear(Block2) ~> unpile(Block1)
+     % Need to clear  Block1 to pick it up
+   
+    true ~> unpile(Block2)
+     % Need to clear Block2 so that Block1 can be put on top of it
+   } 
+
+
+def message ::= newTower(list(block)) | stop_task(atom) 
+% Type def that is used by the agent's message handling thread.
+% Must use type name ground_message_. Only ground messages of this
+% type will be passed to the QuLog action handle_ground_message_
+
+
+def out_message ::= 
+    task_killed(atom) | not_current_task(atom) | tower_task(atom,list(block)) | 
+    have_active_task(atom) | task_data(atom, list(block)) | remove_task(atom) |
+    invalid_message(term)
+% The messages that will be sent to the Python simulator. There args will be
+% type checked before they are sent. The type def that may use any type name. 
+% There is no check that the message terms are ground when sent. 
+
+handle_message(newTower(Blocks),Agent) :: not task(_,_) ~> 
+        % No task currently active
+        start_task(makeTower(Blocks), T, makeTower); 
+        task_data(T,Blocks) to oneArmSim;
+        % Tell the simulator new task details for display
+        write_list(["New tower task ",(T,Blocks),nl_]);
+        tower_task(T,Blocks) to Agent
+handle_message(newTower(_),Agent) :: task(T,_) ~>
+        have_active_task(T) to Agent
+handle_message(stop_task(T),Agent) ~>
+        kill_current_task(T,Agent)
+
+handle_invalid_message(Message,Agent) ~>                             
+    invalid_message(Message) to Agent;
+    write_list(["Invalid message received: ",Message,nl_])
+
+act kill_current_task(atom,agent_handle)
+kill_current_task(T,Agent) :: task(T,_) ~>
+    kill_task(T);
+    remove_task(T) to oneArmSim;
+    task_killed(T) to Agent
+kill_current_task(T,Agent) ~> 
+    not_current_task(T) to Agent
+
+
+
+act go()
+go() ~>
+    start_agent(oneArmSim, updates);
+    start_task(makeTower([2,5,9,6]), T, makeTower);
+    task_data(T, [2,5,9,6]) to oneArmSim
+% task_data message sent to simulator so task info can be displayed

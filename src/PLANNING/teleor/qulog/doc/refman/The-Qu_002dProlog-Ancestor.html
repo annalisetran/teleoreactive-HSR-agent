@@ -1,0 +1,91 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>The Qu-Prolog Ancestor (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="The Qu-Prolog Ancestor (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="The Qu-Prolog Ancestor (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="History-of-QuLog_002fTeleoR.html" rel="up" title="History of QuLog/TeleoR">
+<link href="Multi_002dthreaded-Qu_002dProlog.html" rel="next" title="Multi-threaded Qu-Prolog">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="The-Qu_002dProlog-Ancestor">
+<div class="header">
+<p>
+Next: <a href="Multi_002dthreaded-Qu_002dProlog.html" accesskey="n" rel="next">Multi-threaded Qu-Prolog</a>, Up: <a href="History-of-QuLog_002fTeleoR.html" accesskey="u" rel="up">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="The-Qu_002dProlog-Ancestor-1"></span><h3 class="section">2.1 The Qu-Prolog Ancestor</h3>
+<span id="index-The-Qu_002dProlog-Ancestor"></span>
+
+<p>QuLog/TeleoR is the result of many years experience using, and step-by-step extending, 
+the Qu-Prolog language
+</p>
+<p>(<code>http://staff.itee.uq.edu.au/pjr/HomePages/QuPrologHome.html</code>) 
+</p>
+<p>as an agent programming language.
+</p>
+<p>Qu-Prolog was initially developed in the late 1980s as a Prolog variant with
+sound meta-level reasoning features for 
+implementing interactive theorem provers for
+program verification. (Its unification algorithm has the
+<i>occurs check</i> required for sound resolution inference.) 
+</p>
+<p>By a series of incremental changes starting in the early 1990s  we have significantly enhanced the Qu-Prolog system and developed its QuLog/TeleoR extension. QuLog/TeleoR programs are first compiled into Qu-Prolog code, which is then further compiled into an abstract instruction set based on Warren&rsquo;s WAM code. The extended WAM code is then interpretively executed by a C++ run-time system.  
+</p>
+<p>Eventually QuLog/TeleoR programs may be compiled directly into its own WAM style code using optimisations that  make use of  information that can be inferred from type and mode declarations of the QuLog/TeleoR source.  It may also be optionally compiled directly into C or C++. However, the current system sitting on top of Qu-Prolog achieves execution speeds exceeding one million logical inferences per second which is more than enough for a reasoning reactive agent controlling relatively slow physical robotic devices.  
+</p>
+</div>
+
+
+
+</body>
+</html>

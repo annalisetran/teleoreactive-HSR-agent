@@ -1,0 +1,26 @@
+The examples folder contains:
+
+introduction - Some simple examples of using Qulog/Teleor
+
+prover - A simple interactive propositional natural deduction prover
+
+bottle_collector - all the code to simulate example bottle collectors
+
+towers - all the code to simulate example tower builders including multi-tasking ones
+
+navigation - robots navigating through rooms
+
+embedded_agents - examples of using the embedded_agent interface for TR programs
+
+ROS - a simple example showing how to set up an interface to ROS
+
+MQTT - a simple example showing how to set up an interface to MQTT
+
+NOTE: In all teleor programs you can turn logging on.
+To do that run
+logger.py logger&
+
+If you want a particluar teleor instance to do logging enter the following into the interpreter:
+
+logging logger.
+

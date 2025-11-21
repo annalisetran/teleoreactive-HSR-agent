@@ -1,0 +1,8 @@
+see(10, right)
+see(10, centre)
+see(10, dead_centre)
+see(0, centre)
+see(0, centre), holding()
+see(0, right), holding()
+see(0, right)
+

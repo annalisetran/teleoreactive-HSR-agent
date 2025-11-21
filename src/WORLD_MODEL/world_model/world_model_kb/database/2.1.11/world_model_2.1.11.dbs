@@ -1,0 +1,644 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<project name="PostgreSQL" id="Project-8a9" database="PostgreSQL" >
+	<schema name="public" >
+		<comment><![CDATA[standard public schema]]></comment>
+		<table name="agent" generator_rows="100" row_count="0" spec="" >
+			<column name="agent_id" type="integer" jt="4" mandatory="y" >
+				<identity><![CDATA[GENERATED ALWAYS AS IDENTITY]]></identity>
+			</column>
+			<column name="agent_name" type="varchar" length="100" jt="12" />
+			<column name="height" type="real" jt="7" />
+			<column name="gender" type="char" length="1" jt="1" />
+			<column name="gender_conf" type="real" jt="7" />
+			<column name="agent_type" type="char" length="1" jt="1" >
+				<comment><![CDATA[E'E'P = Person\\
+R = Robot'']]></comment>
+			</column>
+			<column name="last_seen" type="timestamp" jt="93" />
+			<index name="pk_agent" unique="PRIMARY_KEY" >
+				<column name="agent_id" />
+			</index>
+		</table>
+		<table name="agent_attribute" generator_rows="150" row_count="0" spec="" >
+			<column name="agent_id" type="integer" jt="4" mandatory="y" />
+			<column name="agent_attribute_type_id" type="integer" jt="4" mandatory="y" />
+			<column name="agent_attribute_value" type="varchar" length="255" jt="12" />
+			<index name="pk_agent_attribute" unique="PRIMARY_KEY" >
+				<column name="agent_id" />
+				<column name="agent_attribute_type_id" />
+			</index>
+			<fk name="fk_agent_attribute_agent" to_schema="public" to_table="agent" options="" >
+				<fk_column name="agent_id" pk="agent_id" />
+			</fk>
+			<fk name="fk_agent_attribute" to_schema="public" to_table="agent_attribute_type" options="" >
+				<fk_column name="agent_attribute_type_id" pk="agent_attribute_type_id" />
+			</fk>
+		</table>
+		<table name="agent_attribute_type" generator_rows="100" row_count="0" spec="" >
+			<column name="agent_attribute_type_id" type="integer" jt="4" mandatory="y" />
+			<column name="agent_attribute_type" type="varchar" length="255" jt="12" />
+			<index name="pk_agent_attribute_type" unique="PRIMARY_KEY" >
+				<column name="agent_attribute_type_id" />
+			</index>
+		</table>
+		<table name="agent_feature" prior="pose_texture" generator_rows="150" row_count="0" spec="" >
+			<column name="agent_feature_id" prior="encoding_id" type="integer" jt="4" mandatory="y" >
+				<identity><![CDATA[GENERATED ALWAYS AS IDENTITY]]></identity>
+			</column>
+			<column name="agent_id" type="integer" jt="4" mandatory="y" />
+			<column name="agent_feature_type_id" type="integer" jt="4" mandatory="y" />
+			<column name="perspective" prior="pose" type="varchar" length="20" jt="12" />
+			<column name="encoding" prior="texture" type="bytea" jt="-2" />
+			<column name="ave_colour" type="bytea" jt="-2" />
+			<column name="image_path" type="varchar" length="255" jt="12" />
+			<column name="last_updated" type="timestamp" jt="93" mandatory="y" >
+				<defo><![CDATA[CURRENT_TIMESTAMP]]></defo>
+			</column>
+			<index name="pk_pose_encoding" unique="PRIMARY_KEY" >
+				<column name="agent_feature_id" />
+			</index>
+			<fk name="fk_agent_feature_agent" to_schema="public" to_table="agent" >
+				<fk_column name="agent_id" pk="agent_id" />
+			</fk>
+			<fk name="fk_agent_feature" to_schema="public" to_table="agent_feature_type" >
+				<fk_column name="agent_feature_type_id" pk="agent_feature_type_id" />
+			</fk>
+		</table>
+		<table name="agent_feature_type" generator_rows="100" >
+			<column name="agent_feature_type_id" type="integer" jt="4" mandatory="y" />
+			<column name="agent_feature_type" type="varchar" length="50" jt="12" />
+			<index name="pk_agent_feature_type" unique="PRIMARY_KEY" >
+				<column name="agent_feature_type_id" />
+			</index>
+		</table>
+		<table name="agent_object" generator_rows="337" row_count="0" spec="" >
+			<comment><![CDATA[This table contains the objects that the agent has seen. It forms the world model from the agent perspective]]></comment>
+			<column name="agent_id" type="integer" jt="4" mandatory="y" />
+			<column name="object_id" type="integer" jt="4" mandatory="y" />
+			<column name="created" type="timestamp" jt="93" mandatory="y" />
+			<column name="last_updated" type="timestamp" jt="93" mandatory="y" />
+			<column name="loc_x" type="real" jt="7" />
+			<column name="loc_y" type="real" jt="7" />
+			<column name="loc_z" type="real" jt="7" />
+			<column name="loc_confidence" type="real" jt="7" >
+				<comment><![CDATA[The location confidence, i.e. the confidence that the agent still know the object is in this location.]]></comment>
+			</column>
+			<index name="pk_agent_object" unique="PRIMARY_KEY" >
+				<column name="agent_id" />
+				<column name="object_id" />
+			</index>
+			<fk name="fk_agent_object_agent" to_schema="public" to_table="agent" options="" >
+				<fk_column name="agent_id" pk="agent_id" />
+			</fk>
+			<fk name="fk_agent_object_object" to_schema="public" to_table="object" options="" >
+				<fk_column name="object_id" pk="object_id" />
+			</fk>
+		</table>
+		<table name="agent_speech" generator_rows="150" >
+			<column name="agent_speech_id" type="integer" jt="4" mandatory="y" />
+			<column name="agent_id" type="integer" jt="4" mandatory="y" />
+			<column name="phrase" type="varchar" length="1000" jt="12" />
+			<column name="speech_ts" prior="speech_time" type="timestamp" jt="93" />
+			<index name="pk_agent_speech" unique="PRIMARY_KEY" >
+				<column name="agent_speech_id" />
+			</index>
+			<fk name="fk_agent_speech_agent" to_schema="public" to_table="agent" >
+				<fk_column name="agent_id" pk="agent_id" />
+			</fk>
+		</table>
+		<table name="app_info" generator_rows="100" row_count="0" spec="" >
+			<column name="db_version" type="varchar" length="20" jt="12" />
+		</table>
+		<table name="object" generator_rows="225" row_count="0" spec="" >
+			<column name="object_id" type="integer" jt="4" mandatory="y" >
+				<identity><![CDATA[GENERATED ALWAYS AS IDENTITY]]></identity>
+			</column>
+			<column name="object_class_id" type="integer" jt="4" mandatory="y" />
+			<column name="class_confidence" type="real" jt="7" mandatory="y" />
+			<column name="associated_text" type="varchar" length="255" jt="12" />
+			<column name="frame_id" type="varchar" length="50" jt="12" mandatory="y" />
+			<column name="bbox_x" type="integer" jt="4" />
+			<column name="bbox_y" type="integer" jt="4" />
+			<column name="bbox_width" type="integer" jt="4" />
+			<column name="bbox_height" type="integer" jt="4" />
+			<column name="bbox_cols" type="integer" jt="4" />
+			<column name="bbox_rows" type="integer" jt="4" />
+			<column name="loc_x" type="real" jt="7" />
+			<column name="loc_y" type="real" jt="7" />
+			<column name="loc_z" type="real" jt="7" />
+			<column name="loc_confidence" type="real" jt="7" />
+			<column name="colour" type="bytea" jt="-2" />
+			<column name="texture" type="bytea" jt="-2" />
+			<column name="region_id" type="integer" jt="4" />
+			<column name="size_id" type="integer" jt="4" />
+			<column name="shape_id" type="integer" jt="4" />
+			<column name="created" type="timestamp" jt="93" mandatory="y" />
+			<column name="last_updated" type="timestamp" jt="93" mandatory="y" />
+			<column name="pcd_path" prior="pc_path" type="varchar" length="255" jt="12" />
+			<column name="img_path" type="varchar" length="255" jt="12" />
+			<column name="is_current" type="smallint" jt="5" mandatory="y" />
+			<index name="pk_object" unique="PRIMARY_KEY" >
+				<column name="object_id" />
+			</index>
+			<fk name="fk_bbject_object_class" to_schema="public" to_table="object_class" options="" >
+				<fk_column name="object_class_id" pk="object_class_id" />
+			</fk>
+			<fk name="fk_object_object_shape" to_schema="public" to_table="object_shape" options="" >
+				<fk_column name="shape_id" pk="shape_id" />
+			</fk>
+			<fk name="fk_object_size" to_schema="public" to_table="object_size" options="" >
+				<fk_column name="size_id" pk="size_id" />
+			</fk>
+			<fk name="fk_object_location" to_schema="public" to_table="region" options="" >
+				<fk_column name="region_id" pk="region_id" />
+			</fk>
+		</table>
+		<table name="object_class" generator_rows="150" row_count="101" spec="" >
+			<column name="object_class_id" type="integer" jt="4" mandatory="y" />
+			<column name="name" type="varchar" length="100" jt="12" />
+			<column name="description" type="varchar" length="255" jt="12" />
+			<column name="pcd_path" prior="pc_path" type="varchar" length="255" jt="12" />
+			<column name="img_path" prior="image_path" type="varchar" length="255" jt="12" />
+			<column name="decay_weight" type="real" jt="7" />
+			<column name="object_group_id" type="integer" jt="4" />
+			<column name="region_id" type="integer" jt="4" />
+			<index name="pk_object_class" unique="PRIMARY_KEY" >
+				<column name="object_class_id" />
+			</index>
+			<fk name="fk_object_class_object_group" to_schema="public" to_table="object_group" options="" >
+				<fk_column name="object_group_id" pk="object_group_id" />
+			</fk>
+			<fk name="fk_object_class_region" to_schema="public" to_table="region" options="" >
+				<fk_column name="region_id" pk="region_id" />
+			</fk>
+		</table>
+		<table name="object_class_attribute" generator_rows="225" row_count="0" spec="" >
+			<column name="object_class_id" type="integer" jt="4" mandatory="y" />
+			<column name="object_class_attribute_type_id" type="integer" jt="4" mandatory="y" />
+			<column name="attribute_value" type="real" jt="7" />
+			<index name="pk_object_class_attribute" unique="PRIMARY_KEY" >
+				<column name="object_class_id" />
+				<column name="object_class_attribute_type_id" />
+			</index>
+			<fk name="fk_object_class_attribute_object_class_attribute_type" to_schema="public" to_table="object_class_attribute_type" options="" >
+				<fk_column name="object_class_attribute_type_id" pk="object_class_attribute_type_id" />
+			</fk>
+			<fk name="fk_object_class_attribute_object_class" to_schema="public" to_table="object_class" options="" >
+				<fk_column name="object_class_id" pk="object_class_id" />
+			</fk>
+		</table>
+		<table name="object_class_attribute_type" generator_rows="100" row_count="0" spec="" >
+			<column name="object_class_attribute_type_id" type="integer" jt="4" mandatory="y" />
+			<column name="object_class_attribute_type" type="varchar" length="255" jt="12" />
+			<index name="pk_object_class_attribute_type" unique="PRIMARY_KEY" >
+				<column name="object_class_attribute_type_id" />
+			</index>
+		</table>
+		<table name="object_class_label" generator_rows="225" >
+			<column name="object_class_id" type="integer" jt="4" mandatory="y" />
+			<column name="object_label_id" type="integer" jt="4" mandatory="y" />
+			<index name="pk_object_class_label" unique="PRIMARY_KEY" >
+				<column name="object_class_id" />
+				<column name="object_label_id" />
+			</index>
+			<index name="unq_object_class_label_object_class_id" unique="UNIQUE_KEY" >
+				<column name="object_class_id" />
+			</index>
+			<fk name="fk_object_class_label_object_class" to_schema="public" to_table="object_class" >
+				<fk_column name="object_class_id" pk="object_class_id" />
+			</fk>
+			<fk name="fk_object_class_label_object_label" to_schema="public" to_table="object_label" >
+				<fk_column name="object_label_id" pk="object_label_id" />
+			</fk>
+		</table>
+		<table name="object_group" generator_rows="100" row_count="0" spec="" >
+			<column name="object_group_id" type="integer" jt="4" mandatory="y" />
+			<column name="object_group" type="varchar" length="50" jt="12" />
+			<index name="pk_object_group" unique="PRIMARY_KEY" >
+				<column name="object_group_id" />
+			</index>
+		</table>
+		<table name="object_label" generator_rows="100" row_count="101" spec="" >
+			<column name="object_label_id" type="integer" jt="4" mandatory="y" />
+			<column name="object_label" type="varchar" length="255" jt="12" />
+			<index name="pk_object_label" unique="PRIMARY_KEY" >
+				<column name="object_label_id" />
+			</index>
+		</table>
+		<table name="object_relationship" generator_rows="337" row_count="0" spec="" >
+			<column name="primary_id" type="integer" jt="4" mandatory="y" />
+			<column name="related_id" type="integer" jt="4" mandatory="y" />
+			<column name="object_relationship_type_id" type="integer" jt="4" mandatory="y" />
+			<index name="pk_object_relationship" unique="PRIMARY_KEY" >
+				<column name="primary_id" />
+				<column name="related_id" />
+				<column name="object_relationship_type_id" />
+			</index>
+			<fk name="fk_object_rel_1" to_schema="public" to_table="object" options="" >
+				<fk_column name="primary_id" pk="object_id" />
+			</fk>
+			<fk name="fk_object_rel_2" to_schema="public" to_table="object" options="" >
+				<fk_column name="related_id" pk="object_id" />
+			</fk>
+			<fk name="fk_object_rel_type" to_schema="public" to_table="object_relationship_type" options="" >
+				<fk_column name="object_relationship_type_id" pk="object_relationship_type_id" />
+			</fk>
+		</table>
+		<table name="object_relationship_type" generator_rows="100" row_count="0" spec="" >
+			<column name="object_relationship_type_id" type="integer" jt="4" mandatory="y" />
+			<column name="object_relationship_type" type="varchar" length="255" jt="12" />
+			<index name="pk_object_relationship_type" unique="PRIMARY_KEY" >
+				<column name="object_relationship_type_id" />
+			</index>
+		</table>
+		<table name="object_shape" generator_rows="100" row_count="0" spec="" >
+			<column name="shape_id" type="integer" jt="4" mandatory="y" />
+			<column name="shape_desc" type="varchar" length="255" jt="12" />
+			<index name="pk_object_shape" unique="PRIMARY_KEY" >
+				<column name="shape_id" />
+			</index>
+		</table>
+		<table name="object_size" generator_rows="100" row_count="0" spec="" >
+			<column name="size_id" type="integer" jt="4" mandatory="y" />
+			<column name="size_desc" type="varchar" length="255" jt="12" />
+			<index name="pk_object_size" unique="PRIMARY_KEY" >
+				<column name="size_id" />
+			</index>
+		</table>
+		<table name="point_of_interest" generator_rows="150" row_count="0" spec="" >
+			<column name="point_of_interest_id" type="integer" jt="4" mandatory="y" >
+				<identity><![CDATA[GENERATED BY DEFAULT AS IDENTITY]]></identity>
+			</column>
+			<column name="name" type="varchar" length="100" jt="12" />
+			<column name="loc_x" type="real" jt="7" />
+			<column name="loc_y" type="real" jt="7" />
+			<column name="loc_z" type="real" jt="7" />
+			<column name="region_id" type="integer" jt="4" />
+			<index name="pk_point_of_interest" unique="PRIMARY_KEY" >
+				<column name="point_of_interest_id" />
+			</index>
+			<fk name="fk_point_of_interest_region" to_schema="public" to_table="region" options="" >
+				<fk_column name="region_id" pk="region_id" />
+			</fk>
+		</table>
+		<table name="region" generator_rows="100" row_count="0" spec="" >
+			<column name="region_id" type="integer" jt="4" mandatory="y" >
+				<identity><![CDATA[GENERATED BY DEFAULT AS IDENTITY]]></identity>
+			</column>
+			<column name="label" type="varchar" length="255" jt="12" />
+			<column name="polygon" type="polygon" jt="1111" />
+			<column name="neighbors" type="integer" jt="4" />
+			<index name="pk_region" unique="PRIMARY_KEY" >
+				<column name="region_id" />
+			</index>
+		</table>
+		<table name="robot_state" generator_rows="337" row_count="0" spec="" >
+			<column name="robot_state_id" type="integer" jt="4" mandatory="y" >
+				<identity><![CDATA[GENERATED ALWAYS AS IDENTITY]]></identity>
+			</column>
+			<column name="frame_id" type="integer" jt="4" mandatory="y" />
+			<column name="base_pose_x" type="real" jt="7" />
+			<column name="base_pose_y" type="real" jt="7" />
+			<column name="base_pose_z" type="real" jt="7" />
+			<column name="base_pose_w" type="real" jt="7" />
+			<column name="base_r" type="real" jt="7" />
+			<column name="base_p" type="real" jt="7" />
+			<column name="base_yw" type="real" jt="7" />
+			<column name="head_pose_x" type="real" jt="7" />
+			<column name="head_pose_y" type="real" jt="7" />
+			<column name="head_pose_z" type="real" jt="7" />
+			<column name="head_pose_w" type="real" jt="7" />
+			<column name="head_r" type="real" jt="7" />
+			<column name="head_p" type="real" jt="7" />
+			<column name="head_yw" type="real" jt="7" />
+			<column name="driveable_state" type="smallint" jt="5" />
+			<column name="arm_state" type="smallint" jt="5" />
+			<column name="gripper_state" type="smallint" jt="5" />
+			<column name="shoulder_state" type="smallint" jt="5" />
+			<column name="holding_object_id" type="integer" jt="4" />
+			<column name="created" type="timestamp" jt="93" mandatory="y" />
+			<column name="is_current" type="smallint" jt="5" mandatory="y" />
+			<index name="pk_robot_state" unique="PRIMARY_KEY" >
+				<column name="robot_state_id" />
+			</index>
+			<fk name="fk_robot_state_object" to_schema="public" to_table="object" options="" >
+				<fk_column name="holding_object_id" pk="object_id" />
+			</fk>
+		</table>
+		<table name="scene" prior="tbl" generator_rows="100" >
+			<column name="scene_id" prior="seq_id" type="integer" jt="4" mandatory="y" />
+			<column name="scene_ts" type="timestamp" jt="93" >
+				<defo><![CDATA[CURRENT_TIMESTAMP]]></defo>
+			</column>
+			<index name="pk_scene" unique="PRIMARY_KEY" >
+				<column name="scene_id" />
+			</index>
+		</table>
+		<table name="scene_object" prior="tbl" generator_rows="337" >
+			<column name="scene_id" prior="seq_id" type="integer" jt="4" mandatory="y" />
+			<column name="object_id" type="integer" jt="4" mandatory="y" />
+			<index name="pk_scene_object" unique="PRIMARY_KEY" >
+				<column name="scene_id" />
+				<column name="object_id" />
+			</index>
+			<fk name="fk_scene_object_object" to_schema="public" to_table="object" >
+				<fk_column name="object_id" pk="object_id" />
+			</fk>
+			<fk name="fk_scene_object_scene" to_schema="public" to_table="scene" >
+				<fk_column name="scene_id" pk="scene_id" />
+			</fk>
+		</table>
+		<view name="v_cur_object" >
+			<comment><![CDATA[This view contains the objects that are current in the world model, i.e. have not been deleted.]]></comment>
+			<view_script><![CDATA[CREATE OR REPLACE VIEW ${nameWithSchemaName} AS SELECT o.object_id, o.object_class_id, oc.name, o.class_confidence, o.frame_id, o.bbox_x, o.bbox_y, o.bbox_width, o.bbox_height, o.bbox_cols, 
+o.bbox_rows, o.loc_x, o.loc_y, o.loc_z, o.loc_confidence, o.colour, o.texture, o.region_id, r.label, o.size_id, sz.size_desc, o.shape_id, sh.shape_desc,
+o.created, o.last_updated
+FROM public.object o inner join public.object_class oc on o.object_class_id = oc.object_class_id
+left outer join public.region r on o.region_id = r.region_id
+left outer join public.object_size sz on o.size_id = sz.size_id
+left outer join public.object_shape sh on o.shape_id = sh.shape_id
+WHERE is_current = 1]]></view_script>
+			<column name="object_id" type="integer" />
+			<column name="object_class_id" type="integer" />
+			<column name="class_confidence" type="real" />
+			<column name="frame_id" type="varchar" />
+			<column name="bbox_x" type="integer" />
+			<column name="bbox_y" type="integer" />
+			<column name="bbox_width" type="integer" />
+			<column name="bbox_height" type="integer" />
+			<column name="bbox_cols" type="integer" />
+			<column name="bbox_rows" type="integer" />
+			<column name="loc_x" type="real" />
+			<column name="loc_y" type="real" />
+			<column name="loc_z" type="real" />
+			<column name="loc_confidence" type="real" />
+			<column name="colour" type="bytea" />
+			<column name="texture" type="bytea" />
+			<column name="region_id" type="integer" />
+			<column name="size_id" type="integer" />
+			<column name="shape_id" type="integer" />
+			<column name="created" type="timestamp" />
+			<column name="last_updated" type="timestamp" />
+			<column name="name" type="varchar" />
+			<column name="label" type="varchar" />
+			<column name="size_desc" type="varchar" />
+			<column name="shape_desc" type="varchar" />
+		</view>
+		<view name="v_scene" >
+			<view_script><![CDATA[CREATE OR REPLACE VIEW ${nameWithSchemaName} AS SELECT so.scene_id, s.scene_ts, so.object_id, oc.name
+FROM public.scene_object so 
+inner join public.scene s on so.scene_id = s.scene_id
+inner join public.object o on so.object_id = o.object_id
+left outer join public.object_class oc on o.object_class_id = oc.object_class_id]]></view_script>
+			<column name="scene_id" type="integer" />
+			<column name="scene_ts" type="timestamp" />
+			<column name="object_id" type="integer" />
+			<column name="name" type="varchar" />
+		</view>
+		<trigger name="object_location_change" table="object" id="Trigger-20d1" isSystem="false" >
+			<string><![CDATA[CREATE TRIGGER object_location_change BEFORE INSERT OR UPDATE ON public.object FOR EACH ROW EXECUTE FUNCTION update_object_region();]]></string>
+		</trigger>
+		<function name="update_object_region" id="Function-478" isSystem="false" params_known="y" >
+			<string><![CDATA[CREATE OR REPLACE FUNCTION public.update_object_region()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+begin
+    --raise notice 'hi: %', NEW;
+    -- lookup correct polygon and store this as the region for the object
+    NEW.region_id = (SELECT r.region_id FROM region r WHERE point (NEW.loc_x, NEW.loc_y) <@ r.polygon FETCH FIRST ROW ONLY);
+    RETURN NEW;
+end;
+$function$
+;]]></string>
+			<result_param jt="-1" />
+		</function>
+	</schema>
+	<layout name="Main Layout" id="Layout-1516" show_relation="columns" >
+		<entity schema="public" name="agent" color="BED3F4" x="1800" y="840" />
+		<entity schema="public" name="agent_attribute" color="BED3F4" x="1776" y="1152" />
+		<entity schema="public" name="agent_attribute_type" color="BED3F4" x="2112" y="1176" />
+		<entity schema="public" name="agent_feature" color="BED3F4" x="1416" y="840" />
+		<entity schema="public" name="agent_feature_type" color="C1D8EE" x="1416" y="696" />
+		<entity schema="public" name="agent_object" color="BED3F4" x="2112" y="840" />
+		<entity schema="public" name="agent_speech" color="C1D8EE" x="1440" y="1152" />
+		<entity schema="public" name="app_info" color="3986C1" x="96" y="864" />
+		<entity schema="public" name="object" color="C7F4BE" x="336" y="120" />
+		<entity schema="public" name="object_class" color="BEBEF4" x="1416" y="144" />
+		<entity schema="public" name="object_class_attribute" color="BEBEF4" x="1680" y="336" />
+		<entity schema="public" name="object_class_attribute_type" color="BEBEF4" x="2064" y="336" />
+		<entity schema="public" name="object_class_label" color="BEBEF4" x="1776" y="144" />
+		<entity schema="public" name="object_group" color="BEBEF4" x="1416" y="432" />
+		<entity schema="public" name="object_label" color="BEBEF4" x="2112" y="144" />
+		<entity schema="public" name="object_relationship" color="C7F4BE" x="624" y="360" />
+		<entity schema="public" name="object_relationship_type" color="C7F4BE" x="960" y="384" />
+		<entity schema="public" name="object_shape" color="C7F4BE" x="648" y="528" />
+		<entity schema="public" name="object_size" color="C7F4BE" x="1032" y="672" />
+		<entity schema="public" name="point_of_interest" color="C7F4BE" x="1008" y="120" />
+		<entity schema="public" name="region" color="C7F4BE" x="720" y="120" />
+		<entity schema="public" name="robot_state" color="F4C8BE" x="912" y="888" />
+		<entity schema="public" name="scene" color="C7F4BE" x="72" y="192" />
+		<entity schema="public" name="scene_object" color="C7F4BE" x="72" y="432" />
+		<entity schema="public" name="v_cur_object" color="3986C1" x="336" y="888" />
+		<entity schema="public" name="v_scene" color="3986C1" x="96" y="1032" />
+		<callout x="144" y="1368" pointer="Round" >
+			<comment><![CDATA[World Model
+Version 2.1.11]]></comment>
+		</callout>
+		<group name="agent" color="ECF0F7" >
+			<entity schema="public" name="agent_feature" />
+			<entity schema="public" name="agent_speech" />
+			<entity schema="public" name="agent_object" />
+			<entity schema="public" name="agent_attribute" />
+			<entity schema="public" name="agent" />
+			<entity schema="public" name="agent_attribute_type" />
+			<entity schema="public" name="agent_feature_type" />
+		</group>
+		<group name="object_class" color="ECECF7" >
+			<entity schema="public" name="object_group" />
+			<entity schema="public" name="object_label" />
+			<entity schema="public" name="object_class_label" />
+			<entity schema="public" name="object_class_attribute" />
+			<entity schema="public" name="object_class_attribute_type" />
+			<entity schema="public" name="object_class" />
+		</group>
+		<group name="object" color="EEF7EC" >
+			<entity schema="public" name="object_size" />
+			<entity schema="public" name="object_shape" />
+			<entity schema="public" name="object_relationship" />
+			<entity schema="public" name="object_relationship_type" />
+			<entity schema="public" name="region" />
+			<entity schema="public" name="point_of_interest" />
+			<entity schema="public" name="scene" />
+			<entity schema="public" name="scene_object" />
+			<entity schema="public" name="object" />
+		</group>
+	</layout>
+	<layout name="PostgreSQL" id="Layout-1ded" show_relation="columns" />
+	<layout name="~Layout with Sample Tools" id="Layout-1750" show_column_type="y" show_relation="columns" >
+		<entity schema="public" name="agent" color="BED3F4" x="1488" y="1344" />
+		<entity schema="public" name="agent_attribute" color="BED3F4" x="1416" y="1584" />
+		<entity schema="public" name="agent_attribute_type" color="BED3F4" x="1776" y="1608" />
+		<entity schema="public" name="agent_feature" color="BED3F4" x="1200" y="1128" />
+		<entity schema="public" name="agent_object" color="BED3F4" x="1776" y="1344" />
+		<entity schema="public" name="app_info" color="3986C1" x="1200" y="912" />
+		<entity schema="public" name="object" color="C7F4BE" x="72" y="72" />
+		<entity schema="public" name="object_class" color="BEBEF4" x="1488" y="72" />
+		<entity schema="public" name="object_class_attribute" color="BEBEF4" x="1776" y="336" />
+		<entity schema="public" name="object_class_attribute_type" color="BEBEF4" x="2160" y="336" />
+		<entity schema="public" name="object_group" color="BEBEF4" x="1200" y="336" />
+		<entity schema="public" name="object_label" color="BEBEF4" x="2064" y="72" />
+		<entity schema="public" name="object_relationship" color="C7F4BE" x="384" y="384" />
+		<entity schema="public" name="object_relationship_type" color="C7F4BE" x="768" y="384" />
+		<entity schema="public" name="object_shape" color="BEBEF4" x="1488" y="336" />
+		<entity schema="public" name="object_size" color="BEBEF4" x="1488" y="528" />
+		<entity schema="public" name="point_of_interest" color="C7F4BE" x="648" y="72" />
+		<entity schema="public" name="region" color="C7F4BE" x="384" y="72" />
+		<entity schema="public" name="robot_state" color="C7F4BE" x="384" y="576" />
+		<script name="SQL Editor" id="Editor-2bf" language="SQL" >
+			<string><![CDATA[SELECT
+	object_id, object_class_id, class_confidence, name, description, associated_text, frame_id, bounding_box, loc_x, 
+	loc_y, loc_z, loc_confidence, colour, texture, region_id, shape_id, size_id, img_path, pc_path, created, last_updated, is_current
+FROM
+	"public"."object" t;]]></string>
+		</script>
+		<browser id="Browse-a4c" name="Relational Data Explorer" confirm_updates="y" >
+			<browse_table schema="public" entity="object" x="-2147483648" y="-2147483648" width="-2147483648" height="-2147483648" >
+				<browse_table schema="public" entity="agent_object" fk="fk_agent_object_object" x="40" y="-2147483648" width="500" height="350" >
+					<browse_table schema="public" entity="agent" fk="fk_agent_object_agent" x="580" y="-2147483648" width="500" height="350" record_view="y" />
+				</browse_table>
+			</browse_table>
+		</browser>
+		<query id="Query-19c" name="Query Builder" >
+			<query_table schema="public" name="object" alias="o" x="72" y="72" >
+				<column name="object_id" />
+				<column name="object_class_id" />
+				<column name="class_confidence" />
+				<column name="associated_text" />
+				<column name="frame_id" />
+				<column name="loc_x" />
+				<column name="loc_y" />
+				<column name="loc_z" />
+				<column name="loc_confidence" />
+				<column name="colour" />
+				<column name="texture" />
+				<column name="region_id" />
+				<column name="size_id" />
+				<column name="shape_id" />
+				<column name="created" />
+				<column name="last_updated" />
+				<column name="pcd_path" />
+				<column name="img_path" />
+				<column name="is_current" />
+				<query_table schema="public" name="agent_object" alias="ao" x="336" y="72" fk="fk_agent_object_object" type="Inner Join" >
+					<column name="agent_id" />
+					<column name="object_id" />
+					<column name="created" />
+					<column name="last_updated" />
+					<column name="loc_x" />
+					<column name="loc_y" />
+					<column name="loc_z" />
+					<column name="loc_confidence" />
+					<query_table schema="public" name="agent" alias="a" x="576" y="72" fk="fk_agent_object_agent" type="Inner Join" >
+						<column name="agent_id" />
+						<column name="agent_name" />
+						<column name="height" />
+						<column name="gender" />
+						<column name="gender_conf" />
+						<column name="agent_type" />
+						<column name="last_seen" />
+					</query_table>
+				</query_table>
+			</query_table>
+		</query>
+		<form name="Report" id="Report-985" template="Page" css="container-fluid" view="frame" >
+			<var name="samplePageNumber" type="4" value="0" mandatory="n" />
+			<var name="sampleRecordsPerPage" type="4" value="100" mandatory="n" />
+			<body name="Body" template="Grid" pos="0,0,0,0,f,f" layout="{{-2,-2,-2,-2,-1},{-2,-2,-2,-2}}" scroll="n" html="n" >
+				<cell type="label" name="Object Data" template="H3" pos="0,0,1,0,l,c" />
+				<cell type="chart" name="Pie" template="Pie" pos="0,1,4,1,l,c" max_records="20" >
+					<form_script type="DataSource" language="SQL" >
+						<var name="object_id" type="4" />
+						<var name="object_class_id" type="4" />
+						<var name="class_confidence" type="7" />
+						<var name="name" type="-1" />
+						<var name="description" type="-1" />
+						<var name="associated_text" type="-1" />
+						<var name="frame_id" type="-1" />
+						<var name="bounding_box" type="-1" />
+						<var name="loc_x" type="7" />
+						<var name="loc_y" type="7" />
+						<var name="loc_z" type="7" />
+						<var name="loc_confidence" type="7" />
+						<var name="colour" type="-2" />
+						<var name="texture" type="-2" />
+						<var name="region_id" type="4" />
+						<var name="shape_id" type="4" />
+						<var name="size_id" type="4" />
+						<var name="img_path" type="-1" />
+						<var name="pc_path" type="-1" />
+						<var name="created" type="93" />
+						<var name="last_updated" type="93" />
+						<var name="is_current" type="5" />
+						<script ><![CDATA[SELECT * FROM "public"."object"]]></script>
+					</form_script>
+					<param name="item" value="frame_id" />
+					<param name="width" value="100%" />
+					<param name="title" value="Sample Chart" />
+					<param name="value" value="is_current" />
+					<param name="height" value="400px" />
+				</cell>
+				<tableview name="sample" template="Table" css="table table-striped table-sm table-hover" pos="0,2,4,2,f,f" layout="{{-2,-2,-2,-2,-2,-2,-2},{-2,-2}}" scroll="n" html="n" header_rows="1" >
+					<form_script type="DataSource" language="SQL" >
+						<var name="object_id" type="4" />
+						<var name="object_class_id" type="4" />
+						<var name="class_confidence" type="7" />
+						<var name="name" type="-1" />
+						<var name="description" type="-1" />
+						<var name="associated_text" type="-1" />
+						<var name="frame_id" type="-1" />
+						<var name="bounding_box" type="-1" />
+						<var name="loc_x" type="7" />
+						<var name="loc_y" type="7" />
+						<var name="loc_z" type="7" />
+						<var name="loc_confidence" type="7" />
+						<var name="colour" type="-2" />
+						<var name="texture" type="-2" />
+						<var name="region_id" type="4" />
+						<var name="shape_id" type="4" />
+						<var name="size_id" type="4" />
+						<var name="img_path" type="-1" />
+						<var name="pc_path" type="-1" />
+						<var name="created" type="93" />
+						<var name="last_updated" type="93" />
+						<var name="is_current" type="5" />
+						<script ><![CDATA[SELECT * FROM "public"."object"]]></script>
+					</form_script>
+					<cell type="label" name="object_id" template="Plain" pos="0,0,0,0,c,c" />
+					<cell type="label" name="object_class_id" template="Plain" pos="1,0,1,0,c,c" />
+					<cell type="label" name="class_confidence" template="Plain" pos="2,0,2,0,c,c" />
+					<cell type="label" name="name" template="Plain" pos="3,0,3,0,c,c" />
+					<cell type="label" name="description" template="Plain" pos="4,0,4,0,c,c" />
+					<cell type="label" name="associated_text" template="Plain" pos="5,0,5,0,c,c" />
+					<cell type="label" name="${object_id}" template="Plain" pos="0,1,0,1,l,c" />
+					<cell type="label" name="${object_class_id}" template="Plain" pos="1,1,1,1,l,c" />
+					<cell type="label" name="${class_confidence}" template="Plain" pos="2,1,2,1,l,c" />
+					<cell type="label" name="${name}" template="Plain" pos="3,1,3,1,l,c" />
+					<cell type="label" name="${description}" template="Plain" pos="4,1,4,1,l,c" />
+					<cell type="label" name="${associated_text}" template="Plain" pos="5,1,5,1,l,c" />
+					<cell type="button" name="More" template="Plain" css="btn btn-sm btn-secondary" pos="6,1,6,1,c,c" ref_id="Report-985" />
+				</tableview>
+				<cell type="href" name="" template="Plain" disabled="${samplePageNumber&lt;1}" pos="0,3,0,3,l,c" glyph="bi-chevron_double_left" ref_id="Report-985" >
+					<var name="samplePageNumber" value="0" />
+				</cell>
+				<cell type="href" name="" template="Plain" disabled="${samplePageNumber&lt;1}" pos="1,3,1,3,l,c" glyph="bi-chevron_left" ref_id="Report-985" >
+					<var name="samplePageNumber" value="${Math.max(0,samplePageNumber-1)}" />
+				</cell>
+				<cell type="label" name="Page ${samplePageNumber+1}" template="Plain" pos="2,3,2,3,l,c" />
+				<cell type="href" name="" template="Plain" disabled="${!sampleHasNextPage}" pos="3,3,3,3,l,c" glyph="bi-chevron_right" ref_id="Report-985" >
+					<var name="samplePageNumber" value="${( samplePageNumber+1 )}" />
+				</cell>
+			</body>
+		</form>
+	</layout>
+</project>

@@ -1,0 +1,11 @@
+article 11pt,
+graphicx final
+color 
+alltt 
+amsmath 
+amssymb 
+framed 
+textcomp 
+makeidx 
+hyperref 
+xcolor 

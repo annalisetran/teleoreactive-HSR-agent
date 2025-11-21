@@ -1,0 +1,8 @@
+float32 person
+float32 object
+float32 furniture
+---
+bool result
+float32 previous_person
+float32 previous_object
+float32 previous_furniture

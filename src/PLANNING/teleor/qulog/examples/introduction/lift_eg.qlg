@@ -1,0 +1,42 @@
+%% Consult the QuProlog file containing the required predicates
+?- pconsult(lift_eg_support).
+
+
+def time_t ::= time(nat, nat, nat, nat, nat, nat)
+
+%% lifting the prolog level gmtime - only one type allowed and so
+%% rel gmtime(!nat, ?time_t), gmtime(?nat, !time_t)
+%% can't be used
+rel time2gmtime(!nat, ?time_t)
+rel gmtime2time(!time_t, ?nat)
+
+%% Lifting atom_search
+rel atom_search(!atom, !nat, !atom, ?nat)
+
+
+%% Turn atom_search into a function that starts the search from the beginning
+%% of the atom of interest
+fun search_atom(SubAtom:atom, Atom:atom) -> nat
+"Return the position of SubAtom within Atom if found 
+and 0 otherwise"
+search_atom(SubAtom, Atom) :: 
+    atom_search(Atom, 1, SubAtom, Position) -> 
+        Position
+search_atom(_, _) -> 0  % making the function total
+
+
+def socket_t ::= socket(nat)
+def user_exception ::= tcp_exception(string)
+
+%% Because the QP version of tcp_server can take either an integer or
+%% localhost as the host and because we can't have multiple declarations for
+%% an action declared as a qulog2qp_map action then we need to define an 
+%% appropriate type
+def localhost_t ::= localhost
+def host_t == nat || localhost_t
+
+act tcp_server(Socket:?socket_t, Port:!nat default 0, 
+               Host:!host_t default localhost)
+"Create a Socket for a tcp_server for the given Port and Host"
+
+

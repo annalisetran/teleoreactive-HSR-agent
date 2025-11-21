@@ -1,0 +1,92 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Higher order QuLog with function rules and action sequence rules (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Higher order QuLog with function rules and action sequence rules (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Higher order QuLog with function rules and action sequence rules (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="History-of-QuLog_002fTeleoR.html" rel="up" title="History of QuLog/TeleoR">
+<link href="Programming-multi_002dtasking-communicating-robotic-agents-using-task-atomic-TeleoR-procedures.html" rel="next" title="Programming multi-tasking communicating robotic agents using task atomic TeleoR procedures">
+<link href="Types-and-modes-for-compile-time-guarantee-of-correct-robot-actions.html" rel="prev" title="Types and modes for compile time guarantee of correct robot actions">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Higher-order-QuLog-with-function-rules-and-action-sequence-rules">
+<div class="header">
+<p>
+Next: <a href="Programming-multi_002dtasking-communicating-robotic-agents-using-task-atomic-TeleoR-procedures.html" accesskey="n" rel="next">Programming multi-tasking communicating robotic agents using task atomic TeleoR procedures</a>, Previous: <a href="Types-and-modes-for-compile-time-guarantee-of-correct-robot-actions.html" accesskey="p" rel="prev">Types and modes for compile time guarantee of correct robot actions</a>, Up: <a href="History-of-QuLog_002fTeleoR.html" accesskey="u" rel="up">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Higher-order-QuLog-with-function-rules-and-action-sequence-rules-1"></span><h3 class="section">2.6 Higher order QuLog with function rules and action sequence rules</h3>
+<span id="index-Higher-order-QuLog-with-function-rules-and-action-sequence-rules"></span>
+
+<p>What we now had was a QuLog extension of Qu-Prolog implemented using operator declarations and the term expansion feature. This is a quick and straightforward way of implementing a language extension of a Prolog system.  To implement all the functionality of a multi-threaded robotic agent we needed to use the untyped Qu-Prolog as well as the typed TeleoR procedures and typed knowledge relation rules. 
+</p>
+<p>However, having to implement our agents half in a typed language and half in an untyped language was unsatisfactory.  We therefore decided to extend the embryonic QuLog to a much richer typed knowledge representation language.  We decided to make it higher order with function and well as relation definitions.  In addition, we added typed action sequence rules language with which we could implement the agent functionality for which we currently had to use untyped Qu-Prolog. This  new  QuLog would not be implemented as an operator extension of Qu-Prolog, but as a quite separate language <i>compiled</i> into Qu-Prolog.     The  key features of this stand alone typed higher-order QuLog, as described in this manual, are:
+</p><ul>
+<li> static relations and functions  can be defined by sequences of guarded rules, with the guards being relation queries
+</li><li> non-robotic actions  such as file I/O, thread forking, inter-thread communication and dynamic relation updates  cannot be called from relation or function rules but must be invoked from a new class of action sequence rules 
+</li><li> it has a special class of dynamic relations, that can only be defined by facts, which can be updated by primitive actions
+</li><li> named functions, relations, actions and TeleoR procedures can be passed as arguments and returned as values. The QuLog sub-type relation is extended to cover the four code types 
+</li><li> implicitly existentially quantified named variables of negated conditions, and implicitly universally quantified named variables in forall conditions, have to be explicitly quantified.   
+</li></ul>
+
+ 
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Programming-multi_002dtasking-communicating-robotic-agents-using-task-atomic-TeleoR-procedures.html">Programming multi-tasking communicating robotic agents using task atomic TeleoR procedures</a>, Previous: <a href="Types-and-modes-for-compile-time-guarantee-of-correct-robot-actions.html">Types and modes for compile time guarantee of correct robot actions</a>, Up: <a href="History-of-QuLog_002fTeleoR.html">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

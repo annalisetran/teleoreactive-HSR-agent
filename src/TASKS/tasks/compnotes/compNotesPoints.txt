@@ -1,0 +1,89 @@
+/points
+/hsrb/head_rgbd_sensor/rgb/image_rect_color
+/unsw_vision/detections/objects/positions
+
+table serve breakfast
+[ INFO] [1721131570.615230216]: Setting goal: Frame:map, Position(-8.733, -8.173, 0.000), Orientation(0.000, 0.000, 0.720, 0.694) = Angle: 1.606
+
+shelf store groceries view
+[ INFO] [1721131753.906189271]: Setting goal: Frame:map, Position(-7.109, -8.687, 0.000), Orientation(0.000, 0.000, 0.719, 0.695) = Angle: 1.606
+
+shelf
+Setting goal: Frame:map, Position(-6.396, -8.413, 0.000), Orientation(0.000, 0.000, -0.700, 0.714) = Angle: -1.552
+joints value
+arm_lift_joint, head_tilt_joint
+0.44 -0.11 - up
+0.44 -0.30 - down
+
+table pick_up point store groceries
+header: 
+  seq: 1
+  stamp: 
+    secs: 1721224332
+    nsecs: 553289096
+  frame_id: "map"
+pose: 
+  position: 
+    x: -6.660342216491699
+    y: -7.380279541015625
+    z: 0.0
+  orientation: 
+    x: 0.0
+    y: 0.0
+    z: -0.9999230930540627
+    w: 0.012401934413480243
+---
+0.44 -0.11
+0.44 -0.30
+
+
+
+kitchen beench
+[ INFO] [1721292293.489240233]: Setting goal: Frame:map, Position(-9.848, -8.382, 0.000), Orientation(0.000, 0.000, 0.734, 0.679) = Angle: 1.649
+arm_lift_joint, head_tilt_joint
+0.46, -0.25
+
+table
+[ INFO] [1721292473.827641682]: Setting goal: Frame:map, Position(-8.904, -7.626, 0.000), Orientation(0.000, 0.000, -0.710, 0.704) = Angle: -1.580
+arm_lift_joint, head_tilt_joint
+0.48, -0.28
+
+
+
+==================================================================================
+
+Viewing countertop
+-9.516, -8.257, 0.000 Orientation(0.000, 0.000, 0.726, 0.688)
+
+Pickup Countertop
+-9.413 -8.465 0 Orientation(0.000, 0.000, 1.000, 0.029)
+
+viewing dish washer
+-9.60 -7.42 Orientation(0.000, 0.000, 0.726, 0.688)
+
+
+Pickup dishwasher
+-9.399, -7.395 0.000 Orientation(0.000, 0.000, 1.000, 0.029)
+
+
+0.40 -0.20
+
+
+
+
+
+viewing table first half
+Position(-8.690, -7.098, 0.000), Orientation(0.000, 0.000, -0.737, 0.676)
+
+
+viewing second half
+Position(-8.771, -8.227, 0.000), Orientation(0.000, 0.000, -0.641, 0.768)
+
+
+
+0.40 -0.30
+
+
+
+PICKUP table(share)
+Position(-9.125, -7.573, 0.000), Orientation(0.000, 0.000, 0.006, 1.000)

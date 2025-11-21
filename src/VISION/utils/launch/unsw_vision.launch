@@ -1,0 +1,96 @@
+<launch>
+  <!-- <include file="$(find unsw_vision_utils)/launch/realsense.launch"/> -->
+  <!-- <include file="$(find unsw_vision_utils)/launch/rs_d435_camera_with_model.launch"/> -->
+
+  <!-- <include file="$(find hsrb_rosnav_config)/launch/hsrb_nav.launch"/> -->
+
+  <!-- <node pkg="unsw_vision_utils" type="republisher" name="republisher" output="screen">
+    <param name="input_rgb_topic" value="/hsrb/head_rgbd_sensor/rgb/image_rect_color"/>
+    <param name="input_pcd_topic" value="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/> -->
+    <!-- <param name="input_rgb_topic" value="/camera/color/image_raw"/>
+    <param name="input_pcd_topic" value="/camera/depth/color/points"/>   -->
+    <!-- <param name="output_rgb_topic" value="/unsw_vision/republisher/rgb"/>
+    <param name="output_pcd_topic" value="/unsw_vision/republisher/pcd"/>        
+    <param name="use_compressed" value="false"/>
+    <param name="use_exact" value="false"/>
+    <param name="framerate" value="5"/>
+  </node>  -->
+
+  <!-- <include file="$(find unsw_vision_utils)/launch/pcl-republisher.launch"/> -->
+  <!-- Core Process - Object/Person Detection -->
+  <!-- <include file="$(find yolov7_ros)/launch/yolov7.launch"/> -->
+  <include file="$(find yolov8_ros)/launch/tracker_2d.launch"/>
+  
+
+  <!-- Core - Position Generator 
+    Add position/coordinates to the bounding boxes for objects and people -->
+ <node pkg="unsw_vision_utils" type="PositionGenerator" name="PositionGenerator">
+    <param name="output_topic" type="str" value="/unsw_vision/detections/objects/positions"/>
+    <!-- <param name="input_pcd_topic" type="str" value="/unsw_vision/republisher/pcd"/> -->
+    <!-- <param name="input_pcd_topic" type="str" value="/hsrb/head_rgbd_sensor/depth_registered/rectified_points"/> -->
+    <param name="input_pcd_topic" type="str" value="/points"/>
+    <param name="input_obj_topic" type="str" value="/unsw_vision/detections/person"/>
+    <param name="target_frame_id" type="str" value="map"/>
+    <param name="source_frame_id" type="str" value="head_rgbd_sensor_rgb_frame"/>
+    <!-- <param name="source_frame_id" type="str" value="head_rgbd_sensor_rgb_frame"/> -->
+    <!-- <param name="target_frame_id" type="str" value="camera_depth_frame"/> -->
+    <!-- <param name="source_frame_id" type="str" value="base_link"/>  -->
+</node>
+
+  <node pkg="person_recognition" type="unsw_person_recognition_node.py" name="unsw_person_recognition_node" respawn="False" output="screen">
+        <!--param name="input_topic" value="/hsrb/head_center_camera/image_raw" /-->
+        <!--param name="input_topic" value="/hsrb/head_center_camera/image_compressed" /-->
+        <!-- <param name="input_topic" value="/unsw_vision/detections/objects/positions" /> -->
+        <param name="input_topic" value="/unsw_vision/detections/objects_final" />
+        <param name="output_topic" value="/unsw_vision/detections/person" />
+        <param name="vis_output_topic" value="/unsw_vision/detections/final/visualization2" />
+        <param name="use_world_model" value="False"/>
+        <param name="display_img" value="False" /> 
+        <param name="visualize" value="False"/>        
+        <param name="save_img" value="False"/> 
+        <param name="img_path" value="$(env UNSW_WS)/VISION/person_recognition/images/"/>
+        <param name="db_ini" value="$(env UNSW_WS)/WORLD_MODEL/world_model/world_model_kb/scripts/database.ini"/>
+        <param name="border_size" value="20"/>
+        <param name="queue_size" value="1" />
+        <param name="use_gpu" value="True"/>
+        <param name="scale" value="0.75" />
+        <param name="face_threshold" value="0.55" />
+        <param name="feature_threshold" value="1.5" />  <!-- VGG19 = 0.4; InceptionV3 = 0.8 -->
+    </node>
+
+  <!-- Person Recognition Node -->
+  <!-- <include file="$(find unsw_person_recognition)/launch/unsw_person_recognition_node.launch"/> -->
+
+  <!-- Core - Scene Manager Node -->
+  <!-- <include file="$(find world_model_kb)/launch/scene_manager.launch"/> -->
+
+  <!-- <node pkg="unsw_vision_utils" type="BagPointingDetector.py" name="BagPointingDetector" output="screen">
+    <param name="in_topic" type="str" value="/unsw_vision/detections/objects/positions"/>
+    <param name="out_topic" type="str" value="/unsw_vision/detections/bagPointDetection"/>
+  </node> -->
+  
+
+  <node pkg="unsw_vision_utils" type="BagHandleDetector.py" name="BagHandleDetector">
+    <param name="in_topic" type="str" value="/unsw_vision/detections/objects"/>
+    <param name="out_topic" type="str" value="/unsw_vision/detections/objects_final"/>
+  </node>
+
+  <!-- <node pkg = "unsw_vision_utils" type = "EmptySeatDetector.py" name= "EmptySeatDetector">
+    <param name="in_topic" type="str" value="/unsw_vision/detections/objects1"/>
+    <param name="out_topic" type="str" value="/unsw_vision/detections/objects_final"/>
+  </node> -->
+
+  <node pkg="unsw_vision_utils" type="PersonPointingDetector.py" name="PersonPointingDetector">
+    <param name="input_topic" type="str" value="/unsw_vision/detections/objects/positions"/>
+    <param name="output_topic" type="str" value="/unsw_vision/detections/personPointing"/>
+  </node>
+
+  <node pkg="unsw_vision_utils" type="BagScanner.py" name="BagScanner">
+    <param name="in_topic" type="str" value="/unsw_vision/detections/objects/positions"/>
+    <param name="out_topic" type="str" value="/unsw_vision/detections/pointedBag"/>
+    <param name="point_topic" type="str" value="/unsw_vision/detections/personPointing"/>
+    <param name="ready_topic" type="str" value="/bag_scan_ready"/>
+  </node>
+
+
+</launch>

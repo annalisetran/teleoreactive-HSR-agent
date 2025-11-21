@@ -1,0 +1,13 @@
+/************************************************************************/
+/*		Handle Postgres error then throw to Prolog error	*/
+/************************************************************************/
+
+static void db_error(PGresult *res)
+{
+	fprintf(stderr, "%s\n", PQerrorMessage(wm_db));
+
+	PQclear(res);
+	PQfinish(wm_db);
+
+	exit(1);
+}

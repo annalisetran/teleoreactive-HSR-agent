@@ -1,0 +1,188 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Input/Output Actions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Input/Output Actions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Input/Output Actions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Built_002dIns.html" rel="up" title="Built-Ins">
+<link href="Term-Tests-and-Manipulation.html" rel="next" title="Term Tests and Manipulation">
+<link href="Builtin-Introduction.html" rel="prev" title="Builtin Introduction">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Input_002fOutput-Actions">
+<div class="header">
+<p>
+Next: <a href="Term-Tests-and-Manipulation.html" accesskey="n" rel="next">Term Tests and Manipulation</a>, Previous: <a href="Builtin-Introduction.html" accesskey="p" rel="prev">Introduction</a>, Up: <a href="Built_002dIns.html" accesskey="u" rel="up">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Input_002fOutput-Actions-1"></span><h3 class="section">7.2 Input/Output Actions</h3>
+<span id="index-IO"></span>
+
+<p>Actions:
+</p>
+
+<p><code>write_list(List)</code>
+<span id="index-writeL"></span>
+</p><blockquote class="indentedblock">
+
+<p>Write the elements of <code>List</code>.
+If the atom <code>nl_</code> appears in <code>List</code> it is written as a newline.
+</p>
+<p>You  can also use <code>sp_(N)</code> where N is a positive integer to insert N spaces. Strings in <code>List</code> are displayed without the string quotes &quot;..&quot; unless you write them with <code>q_(&quot;...&quot;)</code>. The quotes are then put around the string.
+<br>
+<code>write_list : act(!list(@term)) </code>
+</p>
+<p>Example:
+</p>
+<div class="example">
+<pre class="example">| ?? write_list([&quot;List of atoms &quot;,[a,b], nl_,
+          &quot;Set of nats &quot;, {2,1,4,1}, nl_]).
+
+List of atoms [a, b]
+Set of nats {1, 2, 4}
+</pre></div>
+
+<p>with the next output on the same line.
+</p>
+<p><code>nl_</code> causes a new line to be output as would the string <code>&quot;\n&quot;</code>. In fact any of the C string control characters, such as <code>&quot;\t&quot;</code>, <code>&quot;\s&quot;</code> for tab and space respectively,  can be put into a string and will have the intended effect unless the string is wrapped inside a <code>q_</code> term. So we could have written the above query as:
+</p><div class="example">
+<pre class="example">
+
+| ?? write_list([&quot;List of atoms &quot;,[a,b],
+         &quot;\nSet of nats &quot;, {2,1,4,1}, &quot;\n&quot;]).
+</pre></div>
+
+<p>Other control term we can put in the list argument of <code>write_list</code> are:
+<br>
+</p>
+<p><code>sp_(n)</code>, n  positive integer. It will display n spaces.
+<br>
+</p>
+<p><code>uq_(Atom)</code>, where <code>Atom</code> is an atom that normally needs to be quoted. It will be displayed without the single quotes.
+<br>
+</p>
+<p><code>q_(String)</code>, where <code>String</code> is  string will be displayed with string quotes.
+<br>
+</p>
+<p><code>wr_(Var)</code>, will not display <code>Var</code>  as an underscore followed by a sequence of digits, as is normal, but will give it a name such as <code>A</code>, <code>B</code>, <code>C</code> when displayed and will give subsequent occurence of <code>Var</code> in the list to be output using the given name for <code>Var</code>.
+</p>
+
+<p>The following query illustrates the the use of <code>uq_</code>  and <code>wr_</code>.
+</p><div class="example">
+<pre class="example">
+
+| ?? write_list([uq_('Hello'),&quot; there\n&quot;,wr_(_895),sp_(2),
+              _895,sp_(2),wr_(_678),nl_]).
+
+Hello there
+A  A  B
+
+_895 = A : Ty1
+_678 = B : Ty2
+
+success
+</pre></div>
+
+</blockquote>
+
+
+<p><code>read_term(Term)</code>
+<span id="index-read_005fterm"></span>
+</p><blockquote class="indentedblock">
+
+<p>Matches <code>Term</code> with the next term denoted by the next sequence
+of characters  typed at the terminal followed by fullstop, return.
+<br>
+<code>read_term :act(??term)</code>
+</p>
+<p>Example:
+</p><div class="example">
+<pre class="example">| ?? read_term(X).
+
+[a,b].
+X = [a,b] : term
+</pre></div>
+
+
+
+<p>Note that the variables in the term being read are new variables, unconnected to variables in the query.
+</p><div class="example">
+<pre class="example">| ?? read_term(A).
+
+[A].
+A = [B] : list(Ty1)
+success
+</pre></div>
+
+</blockquote>
+
+<p>Also note that, for example, if the term being read is a compound term that
+has no type declaration then the query will raise an exception.
+</p><div class="example">
+<pre class="example">| ?? read_term(A).
+
+f(a).
+QuLog exception - exception term: input_term_type_error(read_term, &quot;f(a)&quot;)
+</pre></div>
+
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Term-Tests-and-Manipulation.html">Term Tests and Manipulation</a>, Previous: <a href="Builtin-Introduction.html">Introduction</a>, Up: <a href="Built_002dIns.html">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

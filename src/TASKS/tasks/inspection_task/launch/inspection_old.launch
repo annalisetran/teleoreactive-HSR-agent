@@ -1,0 +1,9 @@
+<launch>
+    <!-- <include file="$(find hsrb_rosnav_config)/launch/hsrb_nav.launch"/> -->
+    <include file="$(find speech_to_text)/launch/speech_to_text.launch"/>
+    <!-- <node name="ListDoors" pkg="utility" type="ListDoors.py" output="screen"/> -->
+    <node name="DoorChecker" pkg="utility" type="DummyDoorCheck.py" output="screen"/>
+    <!-- <node name="DoorChecker" pkg="utility" type="DoorCheck.py" output="screen"/> -->
+    <node name="wrist_press" pkg="utility" type="wrist_press.py" output="screen"/>
+    <node name="inspection_controller" pkg="inspection_task" type="inspection_controller.py" output="screen"/>
+</launch>

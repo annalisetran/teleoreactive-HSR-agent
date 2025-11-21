@@ -1,0 +1,76 @@
+% The wall following TR program (translation of Claude's program) 
+
+% Load in the foreign function interface
+?- pconsult(follower_interface)
+
+% Percept declarations
+tel_percept 
+    near_start(),
+    front(num),                % scan_data index = 0
+    front_left(num),           % scan_data index = 1
+    left_front(num),           % scan_data index = 2
+    front_right(num)           % scan_data index = 11
+
+% The (only) TR action
+tel_action drive(num, num)
+
+% Declaring types for the QP interface code
+act start_node_thread(list(tel_percept_term), tel_percept_term)
+act drive_action(num, num)
+rel get_percepts(?list(tel_percept_term))
+
+% Function added to make the TR code look very close to Claude's program
+fun scan(atom) -> num
+scan(front)       :: front(D)       -> D
+scan(left_front)  :: left_front(D)  -> D
+scan(front_left)  :: front_left(D)  -> D
+scan(front_right) :: front_right(D) -> D
+
+% The wall following TR program (essentially Claude's program)
+% Would be slightly faster to replace scan(left_front) > 0.9 with  
+% left_front(D) & D > 0.9
+tel wall_follower()    
+wall_follower() {
+    near_start()            ~> drive(0.0, 0.0)
+    scan(left_front) > 0.9  ~> drive(0.2, 1.5)
+    scan(front) < 0.7       ~> drive(0.0, -1.5)
+    scan(front_left) < 0.6  ~> drive(0.3, -1.5)
+    scan(front_right) < 0.6 ~> drive(0.3, 1.5)
+    scan(left_front) > 0.6  ~> drive(0.3, 1.5)
+    true                    ~> drive(0.3, 0.0)
+    }
+
+%% A Call to start the TR program
+act go()
+go() ~>
+    start_embedded_agent(0.01); %% poll sensors every 0.01 secs
+    %% start a wall following task
+    start_task(wall_follower(), _)
+
+% A system declared user defined action -
+% Called at the beginning of the percept handling thread.
+init_percept_handler() ~>
+    %% Note the term passed down to the FF code - the get_percept
+    %% call will update the args of the scan terms
+    %% Warning - the elements of the first arg list must be in this order
+    start_node_thread([front(0.0), front_left(0.0), 
+                       left_front(0.0), front_right(0.0)], 
+                      near_start()) ;
+    thread_sleep(1)  % make sure nodes has been fully created
+    %% Note - otherwise we will try to get percepts before the percept
+    %% node is created and get a sigfault
+    
+
+%% A system declared but user defined action - 
+%% must be defined for embedded agents
+poll_sensors(P) :: 
+    get_percepts(P) ~> {}
+
+%% A system declared but user defined action - 
+%% must be defined for embedded agents
+%% NOTE: This will probably need to change to support
+%% a later version of Qulog/Teleor
+control_device(_OldActions, [drive(S1, S2)]) ~>
+    drive_action(S1, S2)
+   
+

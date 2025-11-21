@@ -1,0 +1,14 @@
+# Define the goal
+geometry_msgs/PointStamped target_point
+string direction
+string class_name
+string object_id
+---
+# Define the result
+bool action_success
+float64 forward_distance
+---
+# Define a feedback message. 0 for not started, 1 for ongoing, 2 for failure.
+uint32 feedback
+
+

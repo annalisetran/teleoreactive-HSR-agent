@@ -1,0 +1,299 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Type Declarations (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Type Declarations (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Type Declarations (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Programs.html" rel="up" title="Programs">
+<link href="Complex-Conjunctions.html" rel="next" title="Complex Conjunctions">
+<link href="Type-Definitions.html" rel="prev" title="Type Definitions">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Type-Declarations">
+<div class="header">
+<p>
+Next: <a href="Complex-Conjunctions.html" accesskey="n" rel="next">Complex Conjunctions</a>, Previous: <a href="Type-Definitions.html" accesskey="p" rel="prev">Type Definitions</a>, Up: <a href="Programs.html" accesskey="u" rel="up">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Type-Declarations-1"></span><h4 class="subsection">4.10.2 Type Declarations</h4>
+<span id="index-Type-Declarations"></span>
+<p>All functions, relations, actions and TeleoR procedures have type declarations of the forms
+</p>
+<blockquote class="indentedblock">
+<p><code>fun</code> <i>Name</i><code>(</code><i>TypeTuple</i><code>)</code><code>-&gt;</code><i>Type</i>
+</p>
+<p><code>mfun</code> <i>Name</i><code>(</code><i>TypeTuple</i><code>)</code><code>-&gt;</code><i>Type</i>
+</p>
+<p><code>rel</code> <i>Name</i><code>(</code><i>ModedTypeTuple</i><code>)</code>
+</p>
+<p><code>dyn</code> <i>Name</i><code>(</code><i>TypeTuple</i><code>)</code>
+</p>
+<p><code>mrel</code> <i>Name</i><code>(</code><i>ModedTypeTuple</i><code>)</code>
+</p>
+<p><code>act</code> <i>Name</i><code>(</code><i>ModedTypeTuple</i><code>)</code>
+</p>
+<p><code>tel</code> <i>Name</i><code>(</code><i>TypeTuple</i><code>)</code>
+</p></blockquote>
+
+
+<p>As an example, below is the type declaration for the builtin <code>append</code>
+relation (with the same semantics as the standard Prolog append relation).
+</p>
+<div class="example">
+<pre class="example">rel append(!list(T), !list(T), ?list(T)),
+    append(?list(T), ?list(T), !list(T)),
+    append(!list(??T), !list(??T), ?list(??T)),
+    append(?list(??T), ?list(??T), !list(??T)),
+    append(??list(T), ??list(T), ??list(T))
+</pre></div>
+
+<p>The first type of <code>append</code> says that, if the first two arguments
+of the call on <code>append</code> are ground lists of a given type, then the third argument will be a ground list of the same type on exit from the call.
+</p>
+
+<p>The second type says that, if the third argument is a ground list of a given type, then the first and second arguments will be ground lists of the same type
+on exit from the call.
+</p>
+
+<p>The third type of <code>append</code> says that, if the first two arguments are lists
+of a known length (i.e. do not have a variable tail) but possibly containing non-ground elements, then
+the third argument will have a known length on exit from the call but that
+variables occurring in any of the arguments need not be ground.
+</p>
+
+<p>The fourth type is the &quot;append driven backwards&quot; version of the third type.
+</p>
+
+<p>The fifth type is the most general allowing variable length lists in all arguments. In this situation, nothing can be said about the modes on exit from
+the call.
+</p>
+
+<p>Note that when we say, for example, the first two arguments are of the same type we mean that the type inference system can find a suitable type as in the example interpreter query below.
+</p>
+<div class="example">
+<pre class="example">| ?? append([1,2], [a,b], X).
+
+X = [1, 2, a, b] : list(atom || nat)
+</pre></div>
+
+<p>Here, the suitable (minimal) type for <code>T</code> is the union of two types.
+</p>
+<ul class="section-toc">
+<li><a href="#Dynamic-Relations" accesskey="1">Dynamic Relations</a></li>
+<li><a href="#Global-Variables" accesskey="2">Global Variables</a></li>
+<li><a href="#Automatic-Memoization-of-Functions-and-Relations" accesskey="3">Automatic Memoization of Functions and Relations</a></li>
+<li><a href="#Doc-strings" accesskey="4">Doc strings</a></li>
+<li><a href="#Default-arguments" accesskey="5">Default arguments</a></li>
+</ul>
+<div class="subsubsection" id="Dynamic-Relations">
+<h4 class="subsubsection">4.10.2.1 Dynamic Relations</h4>
+<span id="index-Dynamic-Relations"></span>
+
+<p>Dynamic relations are fact defined relations that can be updated by actions. They are declared as follows.
+</p>
+<p><code>dyn</code> <i>Name</i><code>(</code><i>TypeTuple</i><code>)</code>
+</p>
+
+<p>The declaration
+</p><blockquote class="indentedblock">
+<p><code>dyn age_is(human,age)</code>
+</p></blockquote>
+<p>is essentially the declaration
+</p><blockquote class="indentedblock">
+<p><code>rel age_is(?human, ?age)</code>
+</p></blockquote>
+<p>together with an implicit declaration that <code>age_of</code> is defined only by facts that are action updatable. 
+</p>
+<p>Dynamic relations are updated by primitive actions <code>remember, forget</code> etc. 
+</p>
+</div>
+<div class="subsubsection" id="Global-Variables">
+<h4 class="subsubsection">4.10.2.2 Global Variables</h4>
+<span id="index-Global-Variables"></span>
+
+<p>Global variables are used to store either integer or number values and
+are declared as follows.
+</p>
+
+<blockquote class="indentedblock">
+<p><code>int </code><i>Name</i><code> := </code><i>IntValue</i>
+</p></blockquote>
+<p>or
+</p><blockquote class="indentedblock">
+<p><code>num </code><i>Name</i><code> := </code><i>NumValue</i>
+</p></blockquote>
+
+<p>The declaration
+</p>
+<blockquote class="indentedblock">
+<p><code>int count := 0</code>
+</p></blockquote>
+
+<p>is like a combination of the declaration
+</p>
+<blockquote class="indentedblock">
+<p><code>dyn count(int)</code>
+</p></blockquote>
+
+
+<p>and the definition
+</p>
+<blockquote class="indentedblock">
+<p><code>count(0)</code>
+</p></blockquote>
+
+<p>with the implicit restriction that the <code>count</code> dynamic relation is always defined with exactly
+one fact.
+</p>
+<p>Global variables are updated using primitive actions <code>:=, +:=, -:=</code>.
+</p>
+</div>
+<div class="subsubsection" id="Automatic-Memoization-of-Functions-and-Relations">
+<h4 class="subsubsection">4.10.2.3 Automatic Memoization of Functions and Relations</h4>
+<span id="index-Automatic-Memoization-of-Functions-and-Relations"></span>
+
+
+<p>By changing <code>fun</code> and <code>rel</code> in type declarations of functions and relations to <code>mfun</code> and <code>mrel</code> we are declaring that automatic memoization
+should take place during evaluation. For functions this means caching the results of specific calls and for relations this means caching all the answers to a given call on the relation.
+</p>
+<p>The idea being that if the same call is made again we get the same answers without having to recompute the function or call the relation. The problem with this is if the function or relation either directly or indirectly calls an impure function or relation.
+</p>
+<p>In QuLog there are three kinds of impure functions and relations. One kind of impurity arises when we call, for example, functions like <code>now()</code> or <code>rand()</code>. The second kind is when the function or relation queries the belief store. Since the belief store can change then the results of calling functions or relations that depend on the belief store facts can also change.
+The third kind is to use an action escape within some relational part of a definition.
+</p>
+<p>Memoization does not deal with either the first or third kind of impurity and so functions and
+relations with this sort of impurity should not be so declared.
+</p>
+<p>On the other hand, the second sort of impurity is automatically dealt with by the system. The system computes the dependencies on the belief store each declared memoizing function and relation has and each time the belief store is updated the system checks if the changes overlap with the depedencies of memoizing functions and relations and for
+those that overlap the cached results are removed and so the next call will use the original definition.
+</p>
+<p>We now discuss what is remembered when a call is made on one of these functions or relations. For this discussion we consider a function to be like a relation with one more argument (for the result) with all the function arguments being in <code>!</code> mode and the result argument in <code>?</code> mode. To construct the instances that are to be remembered from a given call we take all the arguments that are in non-<code>!</code> mode and replace them by new variables. We then call this and remember all such instances. Consider the following example.
+</p>
+<div class="example">
+<pre class="example">mrel p(!int, ?int)
+dyn d(int, int)
+
+p(A, B) &lt;= d(A, B)
+
+d(1, 1)
+d(1, 2)
+d(2, 4)
+d(2, 5)
+</pre></div>
+
+<p>If the first call on <code>p</code> is <code>p(1, 2)</code> then we first remember all the solutions of <code>p(1, X)</code>  (which is <code>p(1, 1), p(1, 2)</code>) and then we call
+<code>p(1, 2)</code> on this remembered information (which succeeds). If the original
+call was instead <code>p(1, 3)</code> we would still remember the same two solutions
+but then the call would fail.
+</p>
+<p>Note that nothing is remembered with the first argument being <code>2</code>. We would need to make a call like, for example, <code>p(2, X)</code> in order for such information to be remembered.
+</p>
+<p>Also note that if we now remember (or forget) facts about <code>d</code> then the
+above remembered information will be deleted and later recomputed when a new call on
+<code>p</code> is made.
+</p>
+<p>We take the above approach so as to preserve the semantics of the call i.e. any call on the relation (without remembering) should give the same answers as the same call using the remembered information.
+</p>
+<p>There is a problem with preserving semantics (similar to the use of impure functions) and that is certain non-logical relations may not satisfy the required semantics. In particular, if the relation of interest has both <code>!</code> moded and non-<code>!</code> moded arguments and we make a call with all arguments given and
+another call with the same <code>!</code> moded arguments but with the other arguments replaced by new variables and then follow the call with a collection of unifications
+which link the corresponding variable arguments with the values in the first call and get different sets of answers then the relation is non-logical.
+Such relations should not be declared as <code>mrel</code> relations.
+</p>
+<p>Because mixed moded arguments such as <code>!list(?int)</code> fall between having <code>!</code> mode and having <code>?</code> mode they are difficult to deal with and so we forbid such modes from appearing in <code>mrel</code> relation declarations.
+</p>
+<p>An expected use of memoizing functions and relations is in top-level TR procedure guards where calling the functions and relations is quite expensive but the belief store facts these functions and relations depend on don&rsquo;t change very often. This can increase performance when re-evaluating the call stack for the TR procedure.
+</p>
+
+</div>
+<div class="subsubsection" id="Doc-strings">
+<h4 class="subsubsection">4.10.2.4 Doc strings</h4>
+<span id="index-Doc-strings"></span>
+<p>Any declaration can be immediately followed by a string and this is taken to be a doc string for the declared relation/action/function. This is similar to doc strings in Python. When writing a doc string it is common to refer to arguments and we support this by allowing the user to attach a variable to the argument type so that it can be referred to in the doc string. As an example, below is a declaration from the builtin types.
+</p>
+<div class="example">
+<pre class="example">rel re_match(RE : !string, String : !string, Match : ?list((nat, nat)))
+&quot;RE is a regular expression, String is the string to match
+the RE against. If a match is found, Match is a list of 
+pairs representing the start and end of matches.
+On backtracking, Match is instantiated to the next list of matches.&quot;
+</pre></div>
+
+</div>
+<div class="subsubsection" id="Default-arguments">
+<h4 class="subsubsection">4.10.2.5 Default arguments</h4>
+<span id="index-Default-arguments"></span>
+
+<p>When declaring code we can add the <code>default</code> tag to an argument and specify a default value. Below is an example from the builtin types.
+</p>
+<div class="example">
+<pre class="example">act read_term(??term, Stream : !stream_type default stdin)
+&quot;Unifies its argument with the next term denoted by the next
+sequence of characters in the stream followed by fullstop, return.&quot;
+</pre></div>
+
+<p>This allows us to call <code>read_term</code> with just one argument with the implicit second argument being <code>stdin</code>.
+</p>
+<p>All default arguments must be listed at the end of the declaration and if we want to call the code with a specific value instead of a default argument then all
+the previous argument tagged as default must be explicitly given their default values.
+</p>
+</div>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Complex-Conjunctions.html">Complex Conjunctions</a>, Previous: <a href="Type-Definitions.html">Type Definitions</a>, Up: <a href="Programs.html">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

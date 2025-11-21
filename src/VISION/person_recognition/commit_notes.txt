@@ -1,0 +1,379 @@
+03/04/2025
+person.py
+- add skelton2d
+
+unsw_person_recognition.py
+- In the cosine similarity, during the comparison change to 1-similarity rather than simiarity >= thresh, as otherwise the threshold in launchfile is serving two purpose which is confusing to change everytime change the distance matrix. So now the launchfile threshold means distance thresh, if bigger than that, no match.
+- Populate skelton 2d
+
+person_recognition_torch.py(This is being used instead of unsw_person_recognition.py)
+- a replicated version of unsw_person_recognition.py but all tensorflow are replaced by torch to make dependecies easier to manage.
+- Use a different feature extractor by using torchreid. Available ones are ['resnet18', 'resnet34', 'resnet50', 'resnet101', 'resnet152', 'resnext50_32x4d', 'resnext101_32x8d', 'resnet50_fc512', 'se_resnet50', 'se_resnet50_fc512', 'se_resnet101', 'se_resnext50_32x4d', 'se_resnext101_32x4d', 'densenet121', 'densenet169', 'densenet201', 'densenet161', 'densenet121_fc512', 'inceptionresnetv2', 'inceptionv4', 'xception', 'resnet50_ibn_a', 'resnet50_ibn_b', 'nasnsetmobile', 'mobilenetv2_x1_0', 'mobilenetv2_x1_4', 'shufflenet', 'squeezenet1_0', 'squeezenet1_0_fc512', 'squeezenet1_1', 'shufflenet_v2_x0_5', 'shufflenet_v2_x1_0', 'shufflenet_v2_x1_5', 'shufflenet_v2_x2_0', 'mudeep', 'resnet50mid', 'hacnn', 'pcb_p6', 'pcb_p4', 'mlfn', 'osnet_x1_0', 'osnet_x0_75', 'osnet_x0_5', 'osnet_x0_25', 'osnet_ibn_x1_0', '	osnet_ain_x1_0', 'osnet_ain_x0_75', 'osnet_ain_x0_5', 'osnet_ain_x0_25']"
+- use segmented image from yolo now
+- opencv window for debug
+- different head feature crop try to get more feature on shoulder/chest
+
+07/10/2024
+person_recognition.launch
+- modify the threshold metrics
+  - face_threshold = 0.5
+  - feature_threshold = 0.65
+
+stats_node.py
+- add new node to count the number of match types each person handle
+- add signal handler to output the stats when node is killed
+
+unsw_person_recognition_node.py
+- publish to the stats topic
+- add signal handler to output the stats when node is killed
+
+unsw_person_recognition.py
+- add some stats counting
+- add for cosine distance, did not work as well as euclidean distance
+- add method for matching fetures using cosine distance, euclidean distance worked better
+- add publisher to publish stats 
+
+
+
+
+19/09/2024
+person_recognition.launch
+- update parameters
+  - face_threshold = 0.55
+
+unsw_person_recognition.py
+- add new variables
+  - self.bbox_threshold = 1200     # the area of the bounding box for the head 
+  - self.aspect_ratio = (11/20)    # the aspect ratio of the bounding box for the head
+- update check for processing person to include:
+  - person.bbox_head.occluded
+  - area of head bbox_head (too small won't provide enough features)
+  - aspect ratio of head, if it is too thin then it is probably occluded
+
+
+15/09/2024 11:15pm
+clean up code 
+- remove all reference to perspective extraction via CNN
+
+15/09/2024 9:30pm
+person_tracker.launch
+- update perspective weights
+- update thresholds - reduced the value for testing
+
+unsw_person_recognition.py
+- added new model for SixDRepNet360 for finding perspective 
+- add code for sharpening the image before processing and feature extraction (this did not work too well)
+- add get perspective based on keypoints for head skeleton
+- fix bug with get_feature_distances
+- fix bug in face distance
+- add relevant functions for cnn perspective 
+
+utils.py
+- add file that contains utility funxctions for CNN drawing and calculate angle stuff
+
+SixDRepNet360.py
+- add class for new model
+
+08/09/2024
+image_republisher.py
+- process individual images as a stream to a topic
+person_tracker.py
+- update VGG19 model initialisation
+- change skeleton to sekeleton_2d
+- fix bug with feature detection and face detection
+- sharpen image to hopefully extract better quality features (not tested yet)
+- utilise yolo tracking id to minimise feature matching
+- remove self.feature_type_list = ["head"] in init
+
+
+20/08/2024
+- rename unsw_person_recognition.launch to person_recognition.launch
+
+unsw_person_recognition_node.py
+ - move all person recognition functions to the unsw_person_recognition.py (PersonRecognition class)
+ - the node now subscribes and publishes messages only
+
+ unsw_person_recognition.py
+ - remove all methods that were not used
+ - cleanup code and comments
+ - add process_scene method which was taken from the unsw_person_recognition_node
+ - consolidate functions:
+   - save_img
+   - crop_roi is the only method to crop now
+08/08/2024
+- push up the code for update on 15/07.
+- debug the perspective function to use cnn getting perspective(whenet)
+- remove the use of tracking_Id by set match to None
+
+15/07/2024
+modify the perspective function to utilise cnn
+
+11/06/2024
+unsw_person_recognition_node.py
+  - in init, run face.locations on empty image to initialise it. Otherwise 1st frame takes very long time.
+unsw_person_recognition.py
+  - add gpu thresholds using tensorflow to allocates 10% avaialable gpu instead of all remaining
+  - change the preprocessing to vgg19
+TODO:
+  - check all the params and config distance thresholds
+
+28/05/2024
+unsw_person_recognition_node.py
+- update face_recognition.face_locations to use cnn
+
+24/05/2024
+unsw_person_recognition.launch
+- update path info to be generic
+
+unsw_person_recognition_node.py
+- update parameters for PersonRecognition object instantiation 
+- update references to Paths
+
+unsw_person_recognition.py
+- update references to Paths
+- crop_roi 
+  - remove keypoints from algorithm
+  - rewrite crop algorithm to use only bbox_head
+
+22/05/2024
+add files:
+- image_publisher.py
+- person_recognition_utils.py
+- pr_timer_node.py
+- image_publisher.launch
+
+17/05/2024
+unsw_person_recognition.py
+- adjust the crop_roi function
+- tune the crop parameters
+
+07/05/2024
+Updated the workflow to utilise bounding box of the persons head to assist 
+with determining the size of the crop to use for feature extraction.
+Feature extraction also uses a CNN (without the inferencing)
+
+13/03/2024
+unsw_person_recognition.launch
+- adjust face and feature thresholds
+
+feature.py
+- add colour to the feature
+
+person.py
+- change order of __init__ function to have name = "unknown" default value
+- fix get_feature function
+
+unsw_person_recognition_node.py
+- change the info message
+
+unsw_person_recognition.py
+- add colour to the feature attr list
+- remove get_texture function
+- remove get_texture_bbox function
+- reomve feateure_distances_lbp function
+- extract_person_features
+  - add extract colour function
+  - add colour to the Feature object
+- match_person
+  - add num_features when calling match_features function
+- concat_features_for_person
+  - concatenate encoding and colour to create single feature vector
+  - return num_features 
+- match_features
+  - add num_features to parameters
+  - adjust feature_distances parameters to include num_features
+- feature_distances
+  - add num_feartures to test if we are comparing feature vectors of same size
+- add_agent
+  - remove person.name assignment as it will default to "unknown" when the Person object is initialised
+- update_agent
+  - add colour to the Feature object
+- get_feature_colour 
+  - remove old code and replace with HSV colour space and normalising 
+
+
+
+10/03/2024
+unsw_person_recognition.launch
+- testing different face and feature thresholds
+
+person.py
+- update the get_feature function
+
+unsw_person_recognition_node.py
+- remove second result from pr.match_person function
+- changed the condition statement for if _person.features is not None
+
+person_recognition.py
+- __init__
+ - added the perspective list
+- extract_person_features
+  - change variable names from texture to encoding
+- match_person
+ - remove the return of 2nd variable number of features
+- match_face
+ - add extra conditions
+- concat_features_for_person
+ - fix some logic
+- concat_features_for_known_agents 
+ - fix some logic
+- feature_distance
+ - fix euclidean distance function
+- update_agent
+ - fix some logic so it updates correctly
+- get_feature
+ - added function to get feature for local binary pattern
+- get_feature_sift
+ - added function to get the SIFT features 
+ - not currently being used
+- get_feature_colour
+ - added function to get the colour of the feature
+ - not yet implemented in the code
+
+
+
+27/02/2024
+unsw_person_recognition_node.py
+- change path in import section
+- commented out deepface library import
+
+unsw_person_recognition
+- extract_person_features
+  - remove adding None features
+  - add test for texture is None
+
+- match_face
+  - rework to use face distance and index of known_agent
+
+- update_agent
+  - fix bug in logic
+
+- face_distance
+  - change to use face_recognition.api.face_distance
+  - change return value to  a list of distance to each known face and a list of index to known_agent to each known face
+
+- print_known_agents
+  - change to use agent.print_features()
+
+25/02/2024
+unsw_person_recognition.py
+- removed debug print statements
+- fixed bug in match_feature function
+
+24/02/2024
+unsw_person_recognition_node.py
+- fixed output message in case some values were missing
+
+
+21/02/2024
+- remove old/unused files
+
+unsw_person_recognition
+- added crop_head function 
+- add head to list of features to extract 
+
+13/04/2024 7.00pm
+person
+- clean up code a bit
+
+unsw_person_recognition_node
+- clean up code, remove uneccessary import statements
+- add some messages
+
+unsw_person_recognition
+- clean up import statements
+- remove load known agents function and put code back into init method
+
+
+13/02/2024 5.25pm
+unsw_person_recognition_node
+- remove references to database as this has now been pushed into the unsw_person_recognition class
+- the known_agent list has been moved to the unsw_person_recognition class
+
+unsw_person_recognition
+- include all database connectivity functions
+- include know_agent list
+- add load known agents from wm function
+
+person
+- change variable name of location -> position
+
+08/02/2024
+unsw_person_recognition
+  - added parameters for database initialisation and flag to use world model
+  - updated insert agent and update agent methods to include updates to the world model data
+
+
+06/02/2024 8.45pm
+unsw_person_recognition.py
+- match_person function 
+  added length of features to the return statement. this is to make sure features have been identified before a person is updated or added
+
+unsw_person_recognition_node.py
+- recognise function
+  add check that a feature exists when the match_person function is called. this will stop adding people with no features
+
+06/02/2024 - 8.15pm
+unsw_person_recognition
+- remove old functions that used texture and colour as only texture is being used at the moment
+
+06/02/2024 - 6.53pm
+unsw_person_recognition
+- remove colour from the list of feature attributes
+- affects various functions within this class:
+    - extract_person_features
+    - concat_features_for_person
+    - concat_features_for_known_agents
+    - update_agent
+- remove match_texture function as it was not being used and replaced with match feature function
+
+remove the following files to clean up as they were used for backups
+- feature_extraction.py
+- person_recognition_utils.py
+- unsw_person_recognition_bu.py
+- unsw_person_recognition_copy 2.py
+- unsw_person_recognition_copy.py
+- unsw_person_recognition_node copy 2.py
+- unsw_person_recognition_node copy 3.py
+- unsw_person_recognition_node copy 4.py
+- unsw_person_recognition_node copy.py
+- unsw_person_recognition_node_v1.py
+
+24/01/2024
+unsw_person_recognition_node
+- fix some logic in the recognise callback function
+
+unsw_person_recognition
+- extract_person_features method -> extract_person
+  - create person object in here
+  - bug fixes
+  - extracts the local binary pattern (LBP) and the colour but this doesn't match well 
+    when trying to find a match using LBP + colour, the distances seem to be quite far apart
+- match_person
+  - change logic to remove complexity of matching fetures
+- concat_features 
+  - add new method to handle complexity of building feature set to match
+- get_texture
+  - handle None values
+- get_colour
+  - handle None values
+
+12/01/2024
+new branch version1.3
+this branch will add Person and Feature classes to more easily handle the maintenance of people
+Person
+- new class that contains details of an instance of a person.
+
+Feature
+- new class that contains details of instances of features of a person.
+
+12/01/2024
+this code does not work well. it is becoming quite complex to manage.
+a new branch is created called version1.3 which will start to simplify the logic
+
+unsw_person_recognition_node
+- updaed recognise function to include update agent
+
+unsw_person_recognition
+- added the update_agent function
+- fixed some bugs

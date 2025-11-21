@@ -1,0 +1,86 @@
+
+
+QU_PROGRAM = /home/blinky/roboworkspace/src/PLANNING/teleor/qulog/bin/qulog
+TR_PROGRAM = /home/blinky/roboworkspace/src/PLANNING/teleor/qulog/bin/teleor
+BID_TRANSLATOR = /home/blinky/roboworkspace/src/PLANNING/teleor/qulog/src/bid_translator
+TRANSLATOR = /home/blinky/roboworkspace/src/PLANNING/teleor/qulog/bin/qlg2ql
+
+QU_SOURCES	= \
+	interpreter.ql \
+	consult.ql \
+	errors.ql \
+	library.ql \
+	builtin_decls.ql \
+	read.ql \
+	types.ql \
+	listings.ql \
+	watch.ql \
+	write.ql
+
+TR_SOURCES	= \
+	interpreter.ql \
+	consult.ql \
+	errors.ql \
+	library.ql \
+	builtin_decls.ql \
+	read.ql \
+	types.ql \
+	listings.ql \
+	watch.ql \
+	write.ql \
+	trSys.ql \
+	tr_checks.ql \
+	tr_translator.ql
+
+BID_SOURCES	= \
+	interpreter.ql \
+	consult.ql \
+	errors.ql \
+	library.ql \
+	read.ql \
+	types.ql \
+	listings.ql \
+	watch.ql \
+	write.ql	
+
+
+QU_BASES		= $(basename $(QU_SOURCES))
+QU_OBJECTS		= $(addsuffix .qo,$(QU_BASES))
+TR_BASES		= $(basename $(TR_SOURCES))
+TR_OBJECTS		= $(addsuffix .qo,$(TR_BASES))
+
+
+BID_BASES		= $(basename $(BID_SOURCES))
+BID_OBJECTS		= $(addsuffix .qo,$(BID_BASES))
+
+.PHONY:	all
+all: $(QU_PROGRAM) $(TR_PROGRAM) translator
+
+.PHONY: bid
+bid : $(BID_TRANSLATOR)
+
+.PHONY: trans_decls
+
+trans_decls: builtin_decls.ql 
+	$(BID_TRANSLATOR) builtin_decls
+
+
+$(BID_TRANSLATOR): bid_translator.qo
+	qc -d2500 -s300 -r -o $(BID_TRANSLATOR) $(BID_OBJECTS) bid_translator.qo
+
+.PHONY: translator
+translator: $(TRANSLATOR)
+
+$(TRANSLATOR): $(TR_OBJECTS) qlg2ql.qo
+	qc -d2500 -s300 -r -o $(TRANSLATOR) $(TR_OBJECTS) qlg2ql.qo
+
+
+
+$(QU_PROGRAM): $(QU_OBJECTS) qulog.qo
+	qc -d2500 -s300 -r -o $(QU_PROGRAM) $(QU_OBJECTS) qulog.qo
+
+$(TR_PROGRAM): $(TR_OBJECTS) teleor.qo
+	qc -d2500 -s300 -r -o $(TR_PROGRAM) $(TR_OBJECTS) teleor.qo
+
+%.qo: %.ql
+	qc -s300 -h2500 -c -o $@ $<

@@ -1,0 +1,311 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Type Definitions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Type Definitions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Type Definitions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Programs.html" rel="up" title="Programs">
+<link href="Type-Declarations.html" rel="next" title="Type Declarations">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Type-Definitions">
+<div class="header">
+<p>
+Next: <a href="Type-Declarations.html" accesskey="n" rel="next">Type Declarations</a>, Up: <a href="Programs.html" accesskey="u" rel="up">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Type-Definitions-1"></span><h4 class="subsection">4.10.1 Type Definitions</h4>
+<span id="index-Type-Definitions"></span>
+
+<p>A type definition is of one of the forms (with the second being a type macro)
+</p>
+<blockquote class="indentedblock">
+<p><code>def </code><i>type-name</i><code> ::= </code> <i>type-expression</i>
+</p></blockquote>
+
+<blockquote class="indentedblock">
+<p><code>def </code><i>type-name</i><code> == </code> <i>type-expression</i>
+</p></blockquote>
+
+<p><i>type-name</i> is either an alphanumeric atom or a  compound term whose arguments are distinct variables (each representing any type). A type definition with such a type name defines a parameterised type where the type variables stand for any type. Those type variables then appears in one or more of a disjunction of compound  terms with other arguments that are type names. We give examples below. 
+</p>
+
+<ul class="section-toc">
+<li><a href="#Integer-range-type-expression" accesskey="1">Integer range type expression</a></li>
+<li><a href="#Enumeration-of-constants-type-expression" accesskey="2">Enumeration of constants type expression</a></li>
+<li><a href="#Enumeration-of-constructor-type-expression" accesskey="3">Enumeration of constructor type expression</a></li>
+<li><a href="#Type-union-expression" accesskey="4">Type union expression</a></li>
+<li><a href="#Code-type-expressions" accesskey="5">Code type expressions</a></li>
+<li><a href="#Function-type-expression" accesskey="6">Function type expression</a></li>
+<li><a href="#Relation-type-expression" accesskey="7">Relation type expression</a></li>
+<li><a href="#Action-type-expression" accesskey="8">Action type expression</a></li>
+<li><a href="#TeleoR-procedure-type-expression" accesskey="9">TeleoR procedure type expression</a></li>
+</ul>
+<div class="subsubsection" id="Integer-range-type-expression">
+<h4 class="subsubsection">4.10.1.1 Integer range type expression</h4>
+<span id="index-Integer-range-type-expression"></span>
+
+<p>This is an expression of the form <code>M..N</code> where <code>M &lt; N</code> and both are integers. 
+</p>
+<p>Examples:
+</p>
+<div class="example">
+<pre class="example">def digit ::= 0..9
+def small_int ::= -10..10
+</pre></div>
+
+<p>As in the examples different range types may overlap but  only when one is completely contained inside the other. To have overlapping sets of integers corresponding to different types, type union must be used (see below).
+</p>
+
+
+</div>
+<div class="subsubsection" id="Enumeration-of-constants-type-expression">
+<h4 class="subsubsection">4.10.1.2 Enumeration of constants type expression</h4>
+<span id="index-Enumeration-of-constants-type-expression"></span>
+
+<p>This is an expression of the form <code>C1 | C2 | ... | Ck</code> where each <code>Ci</code> is the same kind of constant, except that we can mix different types of numbers.  
+</p>
+<p>Examples:
+</p>
+<div class="example">
+<pre class="example">def gender ::= male | female 
+def threeNums ::= 20 | 6.7 | -50
+def article ::= &quot;a&quot; | &quot;an&quot; | &quot;one&quot; | &quot;the&quot; | &quot;that&quot; | &quot;those&quot;
+</pre></div>
+
+<p>Different type definitions using overlapping disjunctions of constants are allowed providing  one is completely contained inside the other.  So, as well as the <code>article</code> type we could define
+</p>
+<div class="example">
+<pre class="example">def indef_article::= &quot;a&quot; | &quot;an&quot; | &quot;one&quot;
+</pre></div>
+
+<p>It is possible to have an enumerated type with just one element  as in
+</p><div class="example">
+<pre class="example">def def_article::= &quot;the&quot; 
+</pre></div>
+
+<p>A disjunction of integers can also overlap with a range type providing it either comprises a subset or a superset of the integers of the range type. 
+ These constraints ensure that each constant
+belongs to a unique minimal type. For example <code>&quot;a&quot;</code> would belong to the types <code>indef_article</code>, <code>article</code>, <code>string</code>, <code>atomic</code>, <code>term</code>.
+</p>
+
+<p>To have partially overlapping disjunctions of constants  corresponding to different types, type union expressions must be used to define each partially overlapping type (see below).
+</p>
+</div>
+<div class="subsubsection" id="Enumeration-of-constructor-type-expression">
+<h4 class="subsubsection">4.10.1.3 Enumeration of constructor type expression</h4>
+<span id="index-Enumeration-of-constructor-type-expression"></span>
+
+<p>This is an expression of the form <code>CT1 | CT2 | ... | CTk</code> where each <code>CTi</code> is a compound term with arguments that are type names, or type variables,  or a parameterised type name.  Such a type expression can only appear as the right hand side of a parameterised type definition with left hand side a compound term containing exactly the same type variables as appears on the right hand side. 
+</p>
+<p>Examples:
+</p>
+<div class="example">
+<pre class="example">def tree(T) ::= empty() | tr(tree(T),T,tree(T))
+def tree2(N,L) ::=  leaf(L) | node(tree2(N,L), N, tree2(N,L))
+def an_indexed(T)::= rec(int,T)
+def noun_exp_tree::= ne(adjective,noun_exp_tree) | n(noun)
+</pre></div>
+
+<p>Unlike type enumerations of atomics we do not allow type constructors to appear in multiple declarations and the functors of these constructors are not allowed to appear in any enumeration of atomics.
+</p>
+</div>
+<div class="subsubsection" id="Type-union-expression">
+<h4 class="subsubsection">4.10.1.4 Type union expression</h4>
+<span id="index-Type-union-expression"></span>
+
+<p>This is an expression of the form <code>Ty1 || Ty2 || ... || Tyk</code> where each <code>Tyi</code> a simple type name or a ground parameterised type name or a code type expression.  
+</p>
+<p>Examples:
+</p><div class="example">
+<pre class="example">def int_atom == int || atom
+
+</pre></div>
+
+
+
+</div>
+<div class="subsubsection" id="Code-type-expressions">
+<h4 class="subsubsection">4.10.1.5 Code type expressions</h4>
+<span id="index-Code-type-expressions"></span>
+
+<p>There are four code type expressions in <code>QuLog/TeleoR</code>. These are: a function type, a relation type, and action type and a TeleoR procedure type.
+</p>
+</div>
+<div class="subsubsection" id="Function-type-expression">
+<h4 class="subsubsection">4.10.1.6 Function type expression</h4>
+<span id="index-Function-type-expression"></span>
+
+<p>This has the form <code>fun(TE1,TE2,...,TEk) -&gt; TE</code> where each <code>TEi</code> and <code>TE</code> is any simple, or compound type name, or type union expression, or a code type expression.  Functions must be called by giving ground arguments of the required types and will return a ground value of the specified value type. 
+</p>
+<p>Examples:
+</p><div class="example">
+<pre class="example">fun(set(T), set(T)) -&gt; set(T)
+fun(string) -&gt; nat
+</pre></div>
+<p>The first example declares the type of a function that takes a pair of sets
+of some type and returns a set of the same type. The function <code>union</code> has this type.
+</p>
+<p>The second example takes a <code>string</code> and returns a <code>nat</code>. The function
+<code>#</code> (when applied to a string) has this type.
+</p> 
+
+</div>
+<div class="subsubsection" id="Relation-type-expression">
+<h4 class="subsubsection">4.10.1.7 Relation type expression</h4>
+<span id="index-Relation-type-expression"></span>
+
+
+<p>This has the form <code>rel(MTE1,MTE2,...,MTEk)</code> where each <code>MTEi</code> 
+is a moded type where the type is any simple, or compound type name, or type union expression, or a code type expression.
+</p>
+
+<p>The possible modes of a moded type are the prefixes <code>!</code>, <code>?</code>, 
+<code>??</code> and <code>@</code>. 
+</p>
+
+<p>The moded type <code>!</code><i>Type</i> used as an argument of a relation
+means, when called, the supplied argument must be ground and of type <i>Type</i>.
+</p>
+
+<p>The moded type <code>?</code><i>Type</i> used as an argument of a relation
+means, when called, the supplied argument may be  variable or a partial or ground and of type <i>Type</i>. If not ground in the call it will be ground to a term of type <i>Type</i> by the call.
+</p>
+
+
+<p>The moded type <code>??</code><i>Type</i>  used as an argument of a relation
+means, when called, the supplied argument may be  variable or a partial or ground and of type <i>Type</i>. It might not be ground  on success of the call.
+</p>
+<p>The moded type <code>@</code><i>term</i>  used as an argument of a relation
+means, when called, the supplied argument may be  variable or a partial or ground term. It will be left unchanged by the call.
+</p> 
+<p>For relations and actions, if no (outer) mode is given it is taken to be <code>!</code>.
+</p>
+<p>As we discuss in more detail in <a href="Modes-and-Moded-Types.html">Modes and Moded Types</a>, modes can be used multiple times in structured types as long as outer modes are more restrictive than inner modes. For example, the moded type
+</p><div class="example">
+<pre class="example">!list(?int)
+</pre></div>
+<p>means that the top-level list structure must be given (i.e. the number or elements are known at call time) but the elements of the list can be a mixture of 
+integers and variables with the variables instantiated to integers by the call.
+</p>
+<p>Examples:
+</p><div class="example">
+<pre class="example">rel(!list(T), !list(T), ?list(T))
+rel(!string, ??term)
+</pre></div>
+<p>which can also be be given as
+</p><div class="example">
+<pre class="example">rel(list(T), list(T), ?list(T))
+rel(string, ??term)
+</pre></div>
+<p>as <code>!</code> is the default mode for static relation arguments.
+</p>
+
+<p>The first example is the type of a relation whose first two arguments 
+must be given as ground lists of values of the same  type <code>T</code> and whose third argument can either be a variable or partial or ground list of values of type <code>T</code> that will be a ground list of <code>T</code> values if the relation call succeeds. 
+ This is one of the types of the
+<code>append</code> primitive. 
+The second example is the type of a relation that takes a string as its first 
+argument and whose second argument might be instantiated to a possibly 
+non-ground term. This is the type of the <code>string2term</code> primitive.
+</p>
+<p>If a mode is not given for an inner type it is taken to be the same as the outer mode - for example <code>!list(T)</code> is the same as <code>!list(!T)</code>.
+</p>
+</div>
+<div class="subsubsection" id="Action-type-expression">
+<h4 class="subsubsection">4.10.1.8 Action type expression</h4>
+<span id="index-Action-type-expression"></span>
+
+<p>This has the form <code>act(MTE1,MTE2,...,MTEk)</code> where 
+each <code>MTEi</code> 
+is a moded type where the type is any simple, or compound type name, or 
+type union expression, or a code type expression.
+</p>
+<p>The modes are as for a relation type.
+</p>
+<p>Examples:
+</p><div class="example">
+<pre class="example">act(??term, !handle)
+act()
+</pre></div>
+<p>The first example is the type of an action that takes a term that may be a 
+variable or contains variables and a ground handle. It is the type of the
+message send action <code>to</code>.
+The second example is the type of an action that takes no arguments. It is the type of <code>kill_agent</code>.
+</p>
+</div>
+<div class="subsubsection" id="TeleoR-procedure-type-expression">
+<h4 class="subsubsection">4.10.1.9 TeleoR procedure type expression</h4>
+<span id="index-TeleoR-procedure-type-expression"></span>
+
+<p>This has the form <code>tel(TE1,TE2,...,TEk)</code> where each <code>TEi</code> is any simple, or compound type name, or type union expression, or a code type expression. The types are implicitly <code>!</code> ground input moded.
+</p>
+<p>Example:
+</p><div class="example">
+<pre class="example">tel(list(block), slot)
+</pre></div>
+
+<p>This is the type of a TeleoR procedure that takes a list of blocks and a slot.
+This is the type of <code>makeTower</code> in one of the tower building programs in the examples directory where <code>block</code> and <code>slot</code> are user defined types.
+</p>
+</div>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Type-Declarations.html">Type Declarations</a>, Up: <a href="Programs.html">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

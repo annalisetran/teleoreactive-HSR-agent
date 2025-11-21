@@ -1,0 +1,9 @@
+# Request
+Details criteria
+---
+# Response
+string SUCCESS = "success"
+string FAIL = "fail"
+Details[] matches
+string status
+string error_msg

@@ -1,0 +1,6 @@
+if [ "`which rlwrap`" != "" ]; then
+exec rlwrap -b ' ' -C teleor -f /home/annalise/teleor/qulog/bin/rl_commands /home/annalise/qp10.10/bin/qem -d 2500 -s 300 -Q '/home/annalise/teleor/qulog/bin/teleor.qx' "$@" -- 
+else
+exec /home/annalise/teleor/qp10.10/bin/qem -d 2500 -s 300 -Q '/home/annalise/teleor/
+qulog/bin/teleor.qx' "$@" -- 
+fi

@@ -1,0 +1,139 @@
+% Load in the foreign function interface
+?- pconsult(clean_the_table_interface)
+
+% Load in the knowledge layer
+?- consult(world_knowledge)
+
+%% Defining object term structures
+def object_term ::= object(int, int, position_term, atom)
+def position_term ::= position(num, num, num)
+
+% percept declarations - direct percepts from sensors
+tel_percept
+	robot_base_x(num),
+	robot_base_y(num),
+	robot_base_z(num),
+	robot_base_r(num),
+	robot_base_p(num),
+	robot_base_yw(num),
+	driveable_state(atom),
+	holding_object_id(int),
+	region_id(int),
+	scene_objects(list(object_term))
+
+% Qulog interface declarations (lower level actions)
+act start_node_thread(list(tel_percept_term), tel_percept_term)
+act goto_region_action(atom)
+act goto_pose_action(atom, num, num, num, num, num, num, num)
+act pickup_action(int)
+act place_action(atom, int, num, num, num)
+rel get_percepts(?list(tel_percept_term))
+
+% Dynamic belief Store
+dyn object_info(int, int, atom) 
+
+% Flag for tracking if the subgoal has been achieved
+dyn object_placed()
+
+% Helper Relations for inferring guards
+rel holding(?atom)
+holding(Item) <=
+    holding_object_id(ObjId) & 
+    ObjId > 0 &
+    scene_objects(Objects) & 
+    member(object(ObjId, _, _, Item), Objects)
+
+rel holding_id(?int)
+holding_id(ObjId) <=
+	holding_object_id(ObjId) &
+	ObjId > 0
+
+rel not_holding()
+not_holding() <=
+	holding_object_id(ObjId) &
+	ObjId =< 0
+
+rel at(?atom)
+at(Location) <=
+	region_id(RegId) &
+	region_name(RegId, Location)
+
+rel near(!atom)
+near(Location) <=
+	robot_base_x(X) & robot_base_y(Y) & robot_base_z(Z) &
+	region_coords(Location, LocX, LocY, LocZ) &
+	Dist = distance_3d(X, Y, Z, LocX, LocY, LocZ) &
+	Dist < 1.5
+
+rel near_static(!atom)
+near_static(StaticObj) <=
+	robot_base_x(X) & robot_base_y(Y) & robot_base_z(Z) &
+	static_object_location(StaticObj, _, LocX, LocY, LocZ) &
+	Dist = distance_3d(X, Y, Z, LocX, LocY, LocZ) &
+	Dist < 1.0
+
+fun distance_3d(num, num, num, num, num, num) -> num
+distance_3d(X1, Y1, Z1, X2, Y2, Z2) ->
+	sqrt((X2-X1)*(X2-X1) + (Y2-Y1)*(Y2-Y1) + (Z2-Z1)*(Z2-Z1))
+
+rel can_see(??atom)
+can_see(ObjectName) <=
+	scene_objects(Objects) &
+	member(object(_, _, _, ObjectName), Objects)
+
+rel can_see_id(?int)
+can_see_id(ObjId) <=
+	scene_objects(Objects) &
+	member(object(ObjId, _, _, _), Objects)
+
+rel can_see_object(?atom, ?int)
+can_see_object(ObjectName, ObjId) <=
+	scene_objects(Objects) &
+	member(object(ObjId, _, _, ObjectName), Objects)
+
+rel robot_pose(?atom)
+robot_pose(safe) <= driveable_state(true)
+robot_pose(unsafe) <= driveable_state(false)
+
+rel is_ooi(!atom)
+is_ooi(Item) <=
+	object_category_mapping(Item, _)
+
+fun goes_to(atom) -> atom
+goes_to(Item) :: 
+	object_category_mapping(Item, Category) &
+	goes_to_location(Category, Destination) -> 
+	Destination
+
+rel placement_coords(!atom, ?int, ?num, ?num, ?num)
+placement_coords(Destination, FrameId, X, Y, Z) <=
+	static_object_location(Destination, FrameId, X, Y, Z)
+
+% Initialize percept handler to start getting sensor data
+init_percept_handler() ~>
+    start_node_thread([
+        robot_base_x(0.0),
+        robot_base_y(0.0),
+        robot_base_z(0.0),
+        robot_base_r(0.0),
+        robot_base_p(0.0),
+        robot_base_yw(0.0),
+        driveable_state(true),
+        holding_object_id(-1),
+        region_id(-1)
+    ], scene_objects([]));
+    thread_sleep(1)
+
+% Called at the beginning of the percept handling thread
+poll_sensors(P) ::
+	get_percepts(P) ~>
+	write_list(["[PERCEPTS] ", P, nl_])
+
+% Manual percept update for interactive testing
+act update_percepts_now()
+update_percepts_now() ::
+	get_percepts(P) ~>
+	write_list(["Percepts updated!", nl_])
+
+
+control_device(_OldActions, []) ~> {}

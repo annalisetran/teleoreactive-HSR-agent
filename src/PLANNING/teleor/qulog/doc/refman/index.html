@@ -1,0 +1,231 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Top (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Top (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Top (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="#Top" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Overview-of-QuLog_002fTeleoR.html" rel="next" title="Overview of QuLog/TeleoR">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<h1 class="settitle" align="center">The QuLog/TeleoR 1.0 Reference Manual</h1>
+
+
+
+
+
+<div class="top" id="Top">
+<div class="header">
+<p>
+Next: <a href="Overview-of-QuLog_002fTeleoR.html" accesskey="n" rel="next">Overview of QuLog/TeleoR</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="QuLog_002fTeleoR"></span><h1 class="top">QuLog/TeleoR</h1>
+
+<p>This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+</p>
+<p>Copyright &copy; 2015 Peter Robinson, Keith Clark
+</p>
+<blockquote>
+<p>Licensed under the Apache License, Version 2.0 (the &quot;License&quot;);
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+</p>
+<p>http://www.apache.org/licenses/LICENSE-2.0
+</p>
+<p>Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an &quot;AS IS&quot; BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+</p>
+</blockquote>
+ 
+<p>This reference manual assumes familiarity with rule programming languages, and particularly logic and functional programming languages.  It also assumes familiarity with polymorphic type systems with a sub-type hierarchy and  runtime time type checking for sub-type values.  Some familiarity with the concepts of communicating agent processes, as a generalisation of concurrent object oriented programming, is also assumed, as is the concept of multi-threaded programming.   Finally, familiarity with the concept of a reasoning robotic agent engaged in reactive but  goal directed external robotic device control, will be useful. In such an agent the next appropriate robotic device actions to achieve some  task goal - some desired state of the robotic devices and their environment - are decided by speedy but logical querying of frequently changing <i>percept facts</i>,   each time the facts are updated.  Percept facts record  task related interpretations of data from external sensors. They constitute the agent&rsquo;s current perceptual beliefs and are queried using logically expressed <i>knowledge</i>. The sensors are often attached to or embedded in the robotic devices.    
+</p>
+
+<div class="Contents_element" id="SEC_Contents">
+<h2 class="contents-heading">Table of Contents</h2>
+
+<div class="contents">
+
+<ul class="no-bullet">
+  <li><a id="toc-Overview-of-QuLog_002fTeleoR-1" href="Overview-of-QuLog_002fTeleoR.html">1 Overview of QuLog/TeleoR</a>
+  <ul class="no-bullet">
+    <li><a id="toc-What-is-QuLog_003f-1" href="What-is-QuLog_003f.html">1.1 What is QuLog?</a></li>
+    <li><a id="toc-What-is-TeleoR_003f-1" href="What-is-TeleoR_003f.html">1.2 What is TeleoR?</a></li>
+    <li><a id="toc-Unique-operational-semantics-of-a-TeleoR-procedure-call-1" href="Unique-operational-semantics-of-a-TeleoR-procedure-call.html">1.3 Unique operational semantics of a TeleoR procedure call</a></li>
+  </ul></li>
+  <li><a id="toc-History-of-QuLog_002fTeleoR-1" href="History-of-QuLog_002fTeleoR.html">2 History of QuLog/TeleoR</a>
+  <ul class="no-bullet">
+    <li><a id="toc-The-Qu_002dProlog-Ancestor-1" href="The-Qu_002dProlog-Ancestor.html">2.1 The Qu-Prolog Ancestor</a></li>
+    <li><a id="toc-Multi_002dthreaded-Qu_002dProlog-1" href="Multi_002dthreaded-Qu_002dProlog.html">2.2 Multi-threaded Qu-Prolog</a></li>
+    <li><a id="toc-High-level-inter_002dprocess-communication-using-Pedro-1" href="High-level-inter_002dprocess-communication-using-Pedro.html">2.3 High level inter-process communication using Pedro</a></li>
+    <li><a id="toc-Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms-1" href="Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms.html">2.4 Teleo-Reactive (T-R) procedures as Qu-Prolog terms</a></li>
+    <li><a id="toc-Types-and-modes-for-compile-time-guarantee-of-correct-robot-actions-1" href="Types-and-modes-for-compile-time-guarantee-of-correct-robot-actions.html">2.5 Types and modes for compile time guarantee of correct robot actions</a></li>
+    <li><a id="toc-Higher-order-QuLog-with-function-rules-and-action-sequence-rules-1" href="Higher-order-QuLog-with-function-rules-and-action-sequence-rules.html">2.6 Higher order QuLog with function rules and action sequence rules</a></li>
+    <li><a id="toc-Programming-multi_002dtasking-communicating-robotic-agents-using-task-atomic-TeleoR-procedures-1" href="Programming-multi_002dtasking-communicating-robotic-agents-using-task-atomic-TeleoR-procedures.html">2.7 Programming multi-tasking communicating robotic agents using task atomic TeleoR procedures</a></li>
+  </ul></li>
+  <li><a id="toc-Getting-Started-1" href="Getting-Started.html">3 Getting Started</a>
+  <ul class="no-bullet">
+    <li><a id="toc-Environment-Variables-1" href="Environment-Variables.html">3.1 Environment Variables</a></li>
+    <li><a id="toc-Data-Areas-1" href="Data-Areas.html">3.2 Data Areas</a></li>
+    <li><a id="toc-Using-the-QuLog-Interpreter-1" href="Using-the-QuLog-Interpreter.html">3.3 Using the QuLog Interpreter</a></li>
+    <li><a id="toc-Using-the-TeleoR-Interpreter-1" href="Using-the-TeleoR-Interpreter.html">3.4 Using the TeleoR Interpreter</a></li>
+  </ul></li>
+  <li><a id="toc-Syntax-1" href="Syntax.html">4 Syntax</a>
+  <ul class="no-bullet">
+    <li><a id="toc-Reserved-words-1" href="Reserved-words.html">4.1 Reserved words</a></li>
+    <li><a id="toc-Data-constants-_002d-the-atomic-term-values" href="Data-constants.html">4.2 Data constants - the atomic term values</a>
+    <ul class="no-bullet">
+      <li><a id="toc-Atoms-1" href="Atoms.html">4.2.1 Atoms</a></li>
+      <li><a id="toc-Numbers-1" href="Numbers.html">4.2.2 Numbers</a></li>
+      <li><a id="toc-Strings-1" href="Strings.html">4.2.3 Strings</a></li>
+    </ul></li>
+    <li><a id="toc-Variables-1" href="Variables.html">4.3 Variables</a></li>
+    <li><a id="toc-Compound-Terms-1" href="Compound-Terms.html">4.4 Compound Terms</a></li>
+    <li><a id="toc-Function-calls-1" href="Function-calls.html">4.5 Function calls</a></li>
+    <li><a id="toc-Lists-1" href="Lists.html">4.6 Lists</a></li>
+    <li><a id="toc-List-comprehension-expressions-1" href="List-comprehension-expressions.html">4.7 List comprehension expressions</a></li>
+    <li><a id="toc-Sets-1" href="Sets.html">4.8 Sets</a></li>
+    <li><a id="toc-Set-comprehension-expressions-1" href="Set-comprehension-expressions.html">4.9 Set comprehension expressions</a></li>
+    <li><a id="toc-Programs-1" href="Programs.html">4.10 Programs</a>
+    <ul class="no-bullet">
+      <li><a id="toc-Type-Definitions-1" href="Type-Definitions.html">4.10.1 Type Definitions</a>
+      <ul class="no-bullet">
+        <li><a id="toc-Integer-range-type-expression" href="Type-Definitions.html#Integer-range-type-expression">4.10.1.1 Integer range type expression</a></li>
+        <li><a id="toc-Enumeration-of-constants-type-expression" href="Type-Definitions.html#Enumeration-of-constants-type-expression">4.10.1.2 Enumeration of constants type expression</a></li>
+        <li><a id="toc-Enumeration-of-constructor-type-expression" href="Type-Definitions.html#Enumeration-of-constructor-type-expression">4.10.1.3 Enumeration of constructor type expression</a></li>
+        <li><a id="toc-Type-union-expression" href="Type-Definitions.html#Type-union-expression">4.10.1.4 Type union expression</a></li>
+        <li><a id="toc-Code-type-expressions" href="Type-Definitions.html#Code-type-expressions">4.10.1.5 Code type expressions</a></li>
+        <li><a id="toc-Function-type-expression" href="Type-Definitions.html#Function-type-expression">4.10.1.6 Function type expression</a></li>
+        <li><a id="toc-Relation-type-expression" href="Type-Definitions.html#Relation-type-expression">4.10.1.7 Relation type expression</a></li>
+        <li><a id="toc-Action-type-expression" href="Type-Definitions.html#Action-type-expression">4.10.1.8 Action type expression</a></li>
+        <li><a id="toc-TeleoR-procedure-type-expression" href="Type-Definitions.html#TeleoR-procedure-type-expression">4.10.1.9 TeleoR procedure type expression</a></li>
+      </ul></li>
+      <li><a id="toc-Type-Declarations-1" href="Type-Declarations.html">4.10.2 Type Declarations</a>
+      <ul class="no-bullet">
+        <li><a id="toc-Dynamic-Relations" href="Type-Declarations.html#Dynamic-Relations">4.10.2.1 Dynamic Relations</a></li>
+        <li><a id="toc-Global-Variables" href="Type-Declarations.html#Global-Variables">4.10.2.2 Global Variables</a></li>
+        <li><a id="toc-Automatic-Memoization-of-Functions-and-Relations" href="Type-Declarations.html#Automatic-Memoization-of-Functions-and-Relations">4.10.2.3 Automatic Memoization of Functions and Relations</a></li>
+        <li><a id="toc-Doc-strings" href="Type-Declarations.html#Doc-strings">4.10.2.4 Doc strings</a></li>
+        <li><a id="toc-Default-arguments" href="Type-Declarations.html#Default-arguments">4.10.2.5 Default arguments</a></li>
+      </ul></li>
+      <li><a id="toc-Complex-Conjunctions-1" href="Complex-Conjunctions.html">4.10.3 Complex Conjunctions</a></li>
+      <li><a id="toc-Action-Sequences-1" href="Action-Sequences.html">4.10.4 Action Sequences</a></li>
+      <li><a id="toc-Relation-Definitions-1" href="Relation-Definitions.html">4.10.5 Relation Definitions</a></li>
+      <li><a id="toc-Action-Definitions-1" href="Action-Definitions.html">4.10.6 Action Definitions</a></li>
+      <li><a id="toc-Function-Definitions-1" href="Function-Definitions.html">4.10.7 Function Definitions</a></li>
+      <li><a id="toc-TeleoR-Procedure-Definitions-1" href="TeleoR-Procedure-Definitions.html">4.10.8 TeleoR Procedure Definitions</a></li>
+    </ul></li>
+  </ul></li>
+  <li><a id="toc-Types-1" href="Types.html">5 Types</a>
+  <ul class="no-bullet">
+    <li><a id="toc-Modes-and-Moded-Types-1" href="Modes-and-Moded-Types.html">5.1 Modes and Moded Types</a></li>
+    <li><a id="toc-Built-In-Types-1" href="Built-In-Types.html">5.2 Built In Types</a></li>
+    <li><a id="toc-User-Defined-Types-1" href="User-Defined-Types.html">5.3 User Defined Types</a></li>
+    <li><a id="toc-Type-Checking-and-Inference-1" href="Type-Checking-and-Inference.html">5.4 Type Checking and Inference</a>
+    <ul class="no-bullet">
+      <li><a id="toc-Type-Checking-Examples" href="Type-Checking-and-Inference.html#Type-Checking-Examples">5.4.1 Type Checking Examples</a></li>
+      <li><a id="toc-Type-Inference-Example" href="Type-Checking-and-Inference.html#Type-Inference-Example">5.4.2 Type Inference Example</a></li>
+    </ul></li>
+  </ul></li>
+  <li><a id="toc-Semantics-1" href="Semantics.html">6 Semantics</a>
+  <ul class="no-bullet">
+    <li><a id="toc-Introduction" href="Semantics-Introduction.html">6.1 Introduction</a></li>
+    <li><a id="toc-Relations" href="Semantics-of-Relations.html">6.2 Relations</a></li>
+    <li><a id="toc-Actions" href="Semantics-of-Actions.html">6.3 Actions</a>
+    <ul class="no-bullet">
+      <li><a id="toc-Message-Sends_002fReceives-and-Message-Addresses-1" href="Message-Sends_002fReceives-and-Message-Addresses.html">6.3.1 Message Sends/Receives and Message Addresses</a></li>
+      <li><a id="toc-Receive-Action-1" href="Receive-Action.html">6.3.2 Receive Action</a></li>
+      <li><a id="toc-Remote-Querying-1" href="Remote-Querying.html">6.3.3 Remote Querying</a></li>
+    </ul></li>
+    <li><a id="toc-Semantics-of-TeleoR-Procedures-1" href="Semantics-of-TeleoR-Procedures.html">6.4 Semantics of TeleoR Procedures</a>
+    <ul class="no-bullet">
+      <li><a id="toc-Example-TeleoR-program" href="Semantics-of-TeleoR-Procedures.html#Example-TeleoR-program">6.4.1 Example TeleoR program</a></li>
+      <li><a id="toc-Reactive-TeleoR-Rules" href="Semantics-of-TeleoR-Procedures.html#Reactive-TeleoR-Rules">6.4.2 Reactive TeleoR Rules</a></li>
+    </ul></li>
+  </ul></li>
+  <li><a id="toc-Built_002dIns-1" href="Built_002dIns.html">7 Built-Ins</a>
+  <ul class="no-bullet">
+    <li><a id="toc-Introduction-1" href="Builtin-Introduction.html">7.1 Introduction</a></li>
+    <li><a id="toc-Input_002fOutput-Actions-1" href="Input_002fOutput-Actions.html">7.2 Input/Output Actions</a></li>
+    <li><a id="toc-Term-Tests-and-Manipulation-1" href="Term-Tests-and-Manipulation.html">7.3 Term Tests and Manipulation</a>
+    <ul class="no-bullet">
+      <li><a id="toc-Comparison-of-Terms-1" href="Comparison-of-Terms.html">7.3.1 Comparison of Terms</a></li>
+      <li><a id="toc-Testing-of-Terms-1" href="Testing-of-Terms.html">7.3.2 Testing of Terms</a></li>
+      <li><a id="toc-List-Processing-1" href="List-Processing.html">7.3.3 List Processing</a></li>
+    </ul></li>
+    <li><a id="toc-Arithmetic-Functions-and-Relations-1" href="Arithmetic-Functions-and-Relations.html">7.4 Arithmetic Functions and Relations</a></li>
+    <li><a id="toc-Other-Functions-1" href="Other-Functions.html">7.5 Other Functions</a></li>
+    <li><a id="toc-Other-Relations-1" href="Other-Relations.html">7.6 Other Relations</a></li>
+    <li><a id="toc-Other-Actions-1" href="Other-Actions.html">7.7 Other Actions</a></li>
+    <li><a id="toc-TeleoR-Specific-Actions-1" href="TeleoR-Specific-Actions.html">7.8 TeleoR Specific Actions</a></li>
+  </ul></li>
+  <li><a id="toc-Standard-Operators-1" href="Standard-Operators.html">8 Standard Operators</a></li>
+  <li><a id="toc-Listing-of-Builtin-Types-1" href="Listing-of-Builtin-Types.html">Appendix A Listing of Builtin Types</a></li>
+  <li><a id="toc-Listing-of-Builtin-Exceptions-1" href="Listing-of-Builtin-Exceptions.html">Appendix B Listing of Builtin Exceptions</a></li>
+  <li><a id="toc-EBNF-Grammar-for-QuLog_002fTeleoR-1" href="EBNF-Grammar-for-QuLog_002fTeleoR.html">Appendix C EBNF Grammar for QuLog/TeleoR</a></li>
+  <li><a id="toc-QuLog-Index-1" href="QuLog-Index.html" rel="index">QuLog Index</a></li>
+</ul>
+</div>
+</div>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Overview-of-QuLog_002fTeleoR.html" accesskey="n" rel="next">Overview of QuLog/TeleoR</a> &nbsp; [<a href="#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

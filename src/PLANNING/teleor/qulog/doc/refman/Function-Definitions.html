@@ -1,0 +1,116 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Function Definitions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Function Definitions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Function Definitions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Programs.html" rel="up" title="Programs">
+<link href="TeleoR-Procedure-Definitions.html" rel="next" title="TeleoR Procedure Definitions">
+<link href="Action-Definitions.html" rel="prev" title="Action Definitions">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Function-Definitions">
+<div class="header">
+<p>
+Next: <a href="TeleoR-Procedure-Definitions.html" accesskey="n" rel="next">TeleoR Procedure Definitions</a>, Previous: <a href="Action-Definitions.html" accesskey="p" rel="prev">Action Definitions</a>, Up: <a href="Programs.html" accesskey="u" rel="up">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Function-Definitions-1"></span><h4 class="subsection">4.10.7 Function Definitions</h4>
+<span id="index-Function-Definitions"></span>
+<p>A function definition consists of a sequence of rules of the form
+</p>
+
+<blockquote class="indentedblock">
+<p><i>Head</i><code> :: </code><i>Commit</i><code> -&gt; </code><i>Expression</i>
+</p></blockquote>
+
+
+<p>where <i>Head</i> and  <i>Commit</i> are the same as for relation rules
+and <i>Expression</i> is a term. The
+<code> :: </code><i>Commit</i> 
+part of the rule is optional.
+The heads of each rule of a function have the same 
+functor and arity.
+</p>
+<p>When the function is called, the rules are tried and the first rule whose
+<i>Head</i> unifies with the function call and where <i>Commit</i> is
+true then the result returned is the evaluation of  <i>Expression</i>. Note that rules without an explicit <i>Commit</i> have an implicit <code>true</code>
+commit and so no backtracking occurs.
+</p>
+<p>As with action definitions, a catchall clause is added to the end so that if a function call does not match any of the rules then an exception is raised.
+</p> 
+
+
+<p>As examples, the definitions of the functions <code>factorial</code> and <code>tree2list</code> are given below (using the tree type given above).
+</p>
+
+<div class="example">
+<pre class="example">fun factorial(nat) -&gt; nat 
+factorial(0) -&gt; 1
+factorial(N) ::  N1 = N-1 &amp; type(N1,nat) -&gt; N*factorial(N1)
+
+fun tree2list(tree(T)) -&gt; list(T)
+tree2list(empty()) -&gt; []
+tree2list(tr(LT, V, RT)) -&gt; tree2list(LT) &lt;&gt; [V] &lt;&gt; tree2list(RT)
+</pre></div>
+
+
+
+
+<p>Note that <code>type(N1,nat)</code> is necessary above in order that the type checker can type check the recursive call on <code>factorial</code>.
+</p>
+</div>
+
+
+
+</body>
+</html>

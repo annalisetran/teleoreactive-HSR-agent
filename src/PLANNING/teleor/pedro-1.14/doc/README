@@ -1,0 +1,9 @@
+Running
+make
+will produce the info version of the manual.
+
+For the html version:
+make html
+
+For the pdf version:
+make pdf

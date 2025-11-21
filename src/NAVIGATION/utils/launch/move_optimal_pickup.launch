@@ -1,0 +1,7 @@
+<launch>
+    <node name="move_optimal_pickup" pkg="nav_utils" type="move_optimal_pickup.py" output="screen">
+    <param name = "object_class" type = "str" value = "apple"/>
+    <param name = "laser_topic" type = "str" value = "/merged_laser"/>
+    <param name = "detection_topic" type = "str" value = "/unsw_vision/detections/objects/positions"/>
+    </node>
+</launch>

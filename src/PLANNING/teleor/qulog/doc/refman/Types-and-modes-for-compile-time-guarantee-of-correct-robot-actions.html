@@ -1,0 +1,94 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Types and modes for compile time guarantee of correct robot actions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Types and modes for compile time guarantee of correct robot actions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Types and modes for compile time guarantee of correct robot actions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="History-of-QuLog_002fTeleoR.html" rel="up" title="History of QuLog/TeleoR">
+<link href="Higher-order-QuLog-with-function-rules-and-action-sequence-rules.html" rel="next" title="Higher order QuLog with function rules and action sequence rules">
+<link href="Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms.html" rel="prev" title="Teleo-Reactive (T-R) procedures as Qu-Prolog terms">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Types-and-modes-for-compile-time-guarantee-of-correct-robot-actions">
+<div class="header">
+<p>
+Next: <a href="Higher-order-QuLog-with-function-rules-and-action-sequence-rules.html" accesskey="n" rel="next">Higher order QuLog with function rules and action sequence rules</a>, Previous: <a href="Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms.html" accesskey="p" rel="prev">Teleo-Reactive (T-R) procedures as Qu-Prolog terms</a>, Up: <a href="History-of-QuLog_002fTeleoR.html" accesskey="u" rel="up">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Types-and-modes-for-compile-time-guarantee-of-correct-robot-actions-1"></span><h3 class="section">2.5 Types and modes for compile time guarantee of correct robot actions</h3>
+<span id="index-Types-and-modes-for-compile-time-guarantee-of-correct-robot-actions"></span>
+
+<p>Once the T-R procedures extension was up and running our application interest switched to using the 
+T-R extended Qu-Prolog and the Pedro communication server for programming reasoning robotic device control agents. 
+We made use of the Pedro Java and Python APIs to allow such agents to send action commands and receive sensor readings as fully instantiated (ground) Qu-Prolog terms. One of our first experiments was the control of a second generation Lego Mindstorms robot.  We used a Qu-Prolog/T-R programmed agent running on an Android mobile phone mounted on the robot.  
+</p>
+<p>The camera on the phone, using simple image analysis, provided a stream of percept facts regarding relative direction (left, right or centre), and approximate distance from robot.  Objects were identified by their distinct colour and assumed to have a fixed size. The robot control was provided by a non-terminating T-R procedure call. On each update of the agent&rsquo;s percepts the call was re-evaluated and the action  it determined was sent to the robot via the on-board Pedro process. The robot task was to locate, approach and capture a red ball and then deliver the red ball to be close to a blue ball. The action repertoire allowed it to turn on the spot in either direction, move backwards or forwards with an optional turn to left or right, and to raise and lower a rectangular grid at the front of the robot.  Lowering the raised grid when the ball was immediately in front of the robot usually captures the ball. 
+</p>
+<p>That was a toy control application for which failure to send a fully instantiated action term, or an action term with wrongly typed or wrongly ordered arguments, could be tolerated.  For control of industrial robots, always sending fully instantiated correctly constructed and typed action terms is essential. 
+</p>
+<p>We therefore decided to  type the T-R procedures, the robotic actions, and the relations that were queried directly or indirectly from the T-R rules.  The  relations defined by rules and fixed facts comprised the <i>knowledge</i> of the robotic agent. The relations defined by percept facts comprised its <i>beliefs</i>.  This type system, with system defined types for all primitive relations, and compulsory declaration of types for all program defined relations and T-R procedures,   allowed us to guarantee at compile time that the action terms sent to robotic devices would be correctly typed. 
+</p>
+<p>To guarantee they would also be fully instantiated, relation type declarations also had to include mode annotations. These indicated which arguments must be given in any call to the relation, which  of these arguments could be given as a partially instantiated term or as an unbound  variable, and which of these arguments would become fully instantiated if the call succeeded. The moded type declarations enabled a compile time check, using abstract interpretation of each T-R procedure call,  that each of its action rules would have a fully instantiated and correctly typed action if it was fired.  
+</p>
+<p>We also slightly modified the syntax of the typed declared knowledge relation rules and T-R rules.  We changed  the <code>:-</code> operator of knowledge relation rules to the word <code>if</code>,  and  replaced the use of comma for conjunction in these rules, and in T-R rules, by <code>&amp;</code>.  This was the state of the software around 2014.  The typed and moded knowledge relations rules were our embryonic QuLog, and the typed T-R procedures our embryonic TeleoR.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Higher-order-QuLog-with-function-rules-and-action-sequence-rules.html">Higher order QuLog with function rules and action sequence rules</a>, Previous: <a href="Teleo_002dReactive-_0028T_002dR_0029-procedures-as-Qu_002dProlog-terms.html">Teleo-Reactive (T-R) procedures as Qu-Prolog terms</a>, Up: <a href="History-of-QuLog_002fTeleoR.html">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

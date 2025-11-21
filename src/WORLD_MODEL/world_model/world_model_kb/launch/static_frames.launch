@@ -1,0 +1,4 @@
+<launch> 
+<node pkg="tf2_ros" type="static_transform_publisher" name="head_l_stereo_camera_frame_publisher" args="4.31461219104e-05 -0.000776848411297 -0.0189714464329 0.0362822784931 0.00403405899561 0.000159665969354 0.999333426411 head_l_stereo_camera_link head_l_stereo_camera_frame"/>
+<node pkg="tf2_ros" type="static_transform_publisher" name="head_rgbd_sensor_rgb_frame_publisher" args="0.0297183988865 -0.154200586659  -0.085241840713 -0.0131491 -0.0135261 -0.0078904 0.9997842 head_l_stereo_camera_frame head_rgbd_sensor_rgb_frame" />
+</launch>

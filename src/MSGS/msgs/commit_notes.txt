@@ -1,0 +1,22 @@
+20/09/2024
+- add vector to PersonDetection.msg for gaze and left_pointing
+
+26/08/2024
+ObjectDetection.msg
+- add boolean occluded
+
+PersonDetection.msg
+- add boolean occluded
+
+14/08/2024
+ObjectDetection.msg
+ - add comment
+
+PersonDetection.msg
+ - remove bbox_face
+ - add skeleton2d
+  - add comments
+
+17/05/2024
+PersonDetection.msg
+- add bbox_head to message structure

@@ -1,0 +1,153 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Relation Definitions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Relation Definitions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Relation Definitions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Programs.html" rel="up" title="Programs">
+<link href="Action-Definitions.html" rel="next" title="Action Definitions">
+<link href="Action-Sequences.html" rel="prev" title="Action Sequences">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Relation-Definitions">
+<div class="header">
+<p>
+Next: <a href="Action-Definitions.html" accesskey="n" rel="next">Action Definitions</a>, Previous: <a href="Action-Sequences.html" accesskey="p" rel="prev">Action Sequences</a>, Up: <a href="Programs.html" accesskey="u" rel="up">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Relation-Definitions-1"></span><h4 class="subsection">4.10.5 Relation Definitions</h4>
+<span id="index-Relation-Definitions"></span>
+
+<p>A relation definition consists of a sequence of rules (clauses) of the form
+</p>
+
+<blockquote class="indentedblock">
+<p><i>Head</i><code> :: </code><i>Commit</i><code> &lt;= </code><i>Body</i>
+</p></blockquote>
+
+<p><i>Head</i> is a compound term of the form <i>RelNm(Term1,...,Termk)</i>, 
+where <i>RelNm</i> is usually an atom but might also be a compound term  when defining a higher-order relation. Function expressions are not allowed in the arguments of the rule head.  <i>Commit</i>
+is a simple conjunction, and <i>Body</i> is a complex conjunction. Both the
+<code> :: </code><i>Commit</i> and <code> &lt;= </code><i>Body</i>
+parts of the rule are optional.
+The rules  for  each relation name <i>RelNm</i> must be contiguous and have the same 
+number of arguments in the <i>Head</i>.  
+</p>
+
+
+<p>When a goal <i>Goal</i> with the same functor and arity as <i>Head</i>
+is called, the rules of the relation are tried in order. If <i>Goal</i>
+unifies with the head of the rule then the <i>Commit</i> part is called.
+If that succeeds then this rule is committed to (i.e. no subsequent rules
+are tried on backtracking) and <i>Goal</i> succeeds if and only if
+<i>Body</i> succeeds. If <i>Body</i> is not present it is treated as being
+the goal <code>true</code>.
+</p>
+
+
+<p>If <i>Commit</i> is not present then <i>Goal</i> succeeds if
+<i>Body</i> succeeds but, on backtracking, subsequent rules will be tried.
+</p>
+
+
+<p>The rule has the same semantics as the Prolog rule
+</p>
+<blockquote class="indentedblock">
+<p><i>Head</i><code> :- </code><i>Commit</i><code>, !, </code><i>Body</i>
+</p></blockquote>
+
+<p>if <i>Commit</i> is given and
+</p>
+<blockquote class="indentedblock">
+<p><i>Head</i><code> :- </code><i>Body</i>
+</p></blockquote>
+
+<p>otherwise.
+</p>
+<p>Note, however, that cut (<code>!</code>) is not part of QuLog.
+</p>
+
+<p>As examples, the definitions of the relations <code>greater</code> and <code>sum_list</code> are given below.
+</p>
+
+<div class="example">
+<pre class="example">rel greater(!num, !num, ?num)
+greater(A, B, C) :: A &gt; B &lt;= C = A
+greater(A, B, C) :: B &gt;= A &lt;= C = B
+
+rel sum_list(!list(num), ?num)
+sum_list([], 0)
+sum_list([H,..T], N) &lt;= sum_list(T, M) &amp; N = H+M
+</pre></div>
+
+
+
+<p>Note that in <code>N = H+M</code>, <code>H+M</code> is evaluated before unification
+and that the second rule of <code>greater</code> could have been written as
+</p>
+<blockquote class="indentedblock">
+<p><code>greater(A, B, B)</code>
+</p></blockquote>
+
+<p>because the second rule will not be chosen (on backtracking) if <code>A &gt; B</code>.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Action-Definitions.html">Action Definitions</a>, Previous: <a href="Action-Sequences.html">Action Sequences</a>, Up: <a href="Programs.html">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

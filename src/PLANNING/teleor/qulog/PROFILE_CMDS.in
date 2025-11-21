@@ -1,0 +1,5 @@
+# Add this file to your ~/.profile or ~/.bashrc or whatever
+
+PATH=@QULOGHOME@/bin:$PATH
+export PATH
+

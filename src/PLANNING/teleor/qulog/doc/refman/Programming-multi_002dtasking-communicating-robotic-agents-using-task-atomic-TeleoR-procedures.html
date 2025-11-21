@@ -1,0 +1,86 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Programming multi-tasking communicating robotic agents using task atomic TeleoR procedures (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Programming multi-tasking communicating robotic agents using task atomic TeleoR procedures (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Programming multi-tasking communicating robotic agents using task atomic TeleoR procedures (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="History-of-QuLog_002fTeleoR.html" rel="up" title="History of QuLog/TeleoR">
+<link href="Higher-order-QuLog-with-function-rules-and-action-sequence-rules.html" rel="prev" title="Higher order QuLog with function rules and action sequence rules">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Programming-multi_002dtasking-communicating-robotic-agents-using-task-atomic-TeleoR-procedures">
+<div class="header">
+<p>
+Previous: <a href="Higher-order-QuLog-with-function-rules-and-action-sequence-rules.html" accesskey="p" rel="prev">Higher order QuLog with function rules and action sequence rules</a>, Up: <a href="History-of-QuLog_002fTeleoR.html" accesskey="u" rel="up">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Programming-multi_002dtasking-communicating-robotic-agents-using-task-atomic-TeleoR-procedures-1"></span><h3 class="section">2.7 Programming multi-tasking communicating robotic agents using task atomic TeleoR procedures</h3>
+<span id="index-Programming-multi_002dtasking-communicating-robotic-agents-using-task-atomic-TeleoR-procedures"></span>
+
+<p>We now had a very expressive and clean language for programming multi-threaded communicating robotic agents. A typical agent architecture comprised three threads. One thread, programmed using QuLog action rules,  was dedicated to receiving percept facts and atomically updating the agent&rsquo;s beliefs. Another handled all incoming messages from other agents, atomically updating the agent&rsquo;s beliefs, and/or sending reply messages, as required. The third  evaluated a single TeleoR procedure call. The call was re-evaluated each time the agent&rsquo;s beliefs were updated, as required by the TeleoR operational semantics <a href="Unique-operational-semantics-of-a-TeleoR-procedure-call.html">Unique operational semantics of a TeleoR procedure call</a>, and periodically new action commands were sent out to the controlled external robotic devices. 
+</p>
+<p>The TeleoR call evaluation thread could be extended to interleave the evaluation of more than one TeleoR procedure call providing each call was controlling a quite different robotic device. For example, there could be two calls, two TeleoR tasks, each controlling a different mobile robot. This is an alternative to have a separate agent for each robot. It has the advantage that all  sense data percepts from both robots can be accessed by each TeleoR task without the need for inter-agent communication.  
+</p>
+<p>Our next enhancement was to allow agent&rsquo;s to be programmed that could multi-task where the tasks fairly <i>shared</i> the robotic resources with just one task in control of each resource at any given time.  This required the declaration  of the robotic resources that could be shared by the tasks, and the  declaration  of certain TeleoR procedures  as <i>task atomic</i>. No task can enter a task atomic procedure call until all the robotic resources it might use are free, and no other task has been waiting longer for one of the resources. The resources become free when the call is no longer active in that task.   This is the TeleoR described in this manual.  
+</p>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="Higher-order-QuLog-with-function-rules-and-action-sequence-rules.html">Higher order QuLog with function rules and action sequence rules</a>, Up: <a href="History-of-QuLog_002fTeleoR.html">History of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

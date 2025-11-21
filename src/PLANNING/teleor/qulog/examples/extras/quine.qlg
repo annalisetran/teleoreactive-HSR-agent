@@ -1,0 +1,236 @@
+
+/*
+ * Based on  Quine “Elementary Logic” 
+ */
+
+%%%%%%%%%%%%%
+% User declared predicates
+
+def predicate ::= gs(formula_term) | ent(formula_term) |
+        mem(formula_term) | acc(formula_term, formula_term) |
+        fior(formula_term)
+
+%%%%%%%%%%%%%%
+def formula == compound_formula || predicate || atom
+
+def formula_objvar ::= x | y | z | x1 | x2 | x3 | y1 | y2 | y3 | z1 | z2 | z3
+def formula_var ::= var(string)
+def skolem ::= sk(int, list(formula_var))
+def formula_term == formula_objvar || formula_var || skolem
+
+def compound_formula ::=
+        and(formula, formula) |
+        or(formula, formula) |
+        imp(formula, formula) |
+        ~(formula) |
+        all(formula_objvar, formula) |
+        ex(formula_objvar, formula)
+
+def prop ::= -->(list(formula), formula)
+
+
+def status ::= completed | abandoned | failed
+
+
+act show_status(status)
+show_status(completed) ~> {}
+show_status(Status) ~>
+    write_list(["Proof ", Status, nl_])
+
+rel valid_formula(??formula)
+valid_formula(F) :: ground(F) & F = no_formula <= false
+valid_formula(_)
+       
+        
+
+
+%% Parsing and pretty printing
+
+
+rel string2list_formula(string, list(formula))
+rel string2prop(string, prop)
+
+rel tokenize_formula(string, ?list(string))
+
+tokenize_formula("", []) :: true
+tokenize_formula(Str, Tokens) ::
+    Str =? _Whites/"(\\s+)" ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, []) ::
+    Str =? "." ++ _ 
+tokenize_formula(Str, [","|Tokens]) ::
+    Str =? "," ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, ["("|Tokens]) ::
+    Str =? "(" ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, [")"|Tokens]) ::
+    Str =? ")" ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, ["=>"|Tokens]) ::
+    Str =? "=>" ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, ["~"|Tokens]) ::
+    Str =? "~" ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, [T|Tokens]) <=
+    Str =? T/"\\w+" ++ Rest & tokenize_formula(Rest, Tokens)
+
+rel string2formula(string, ??formula)
+string2formula(Str, Formula) ::
+    tokenize_formula(Str, Tokens) &
+    {write_list([Tokens,nl_])} &
+    parse(Tokens, [], Formula)
+string2formula(_Str, no_formula) <= {put_line("Can't parse formula")} 
+
+rel parse(!list(string), ?list(string), ??formula)
+
+parse(Tokens, Rest, Formula) <=
+    parse_atomic(Tokens, RestTokens, Atomic) &
+    parse_aux(RestTokens, Atomic, Rest, Formula)
+
+rel parse_aux(!list(string), ??formula, ?list(string), ??formula)
+
+parse_aux([], F, [], F)
+parse_aux([Op|Tokens], Atomic1, Rest, Formula) <=
+    op(Op) &
+    parse_atomic(Tokens, RestTokens, Atomic2) &
+    parse_rest(RestTokens, Atomic1, Op, Atomic2, Rest, Formula)
+
+rel parse_rest(list(string), ??formula, string, ??formula, ?list(string), ??formula)
+        
+
+parse_rest([Op|Tokens], Formula1, PrevOp, Formula2, Rest, Formula) :: 
+    op(Op) &  lower_precedence(Op, PrevOp) <=
+        construct_formula(PrevOp, Formula1, Formula2, Formula3) &
+        parse_atomic(Tokens, RestTokens, Atomic) &
+        parse_rest(RestTokens,  Formula3, Op, Atomic, Rest, Formula)
+parse_rest([Op|Tokens], Formula1, PrevOp, Formula2, Rest, Formula) :: 
+    op(Op) <=
+        parse_atomic(Tokens, RestTokens, Atomic) &
+        parse_rest(RestTokens, Formula2, Op, Atomic, Rest, Formula3) &
+        construct_formula(PrevOp, Formula1, Formula3, Formula)
+parse_rest(Tokens, Formula1, Op, Formula2, Tokens, Formula) <=
+    construct_formula(Op, Formula1, Formula2, Formula)
+
+rel parse_atomic(list(string), ?list(string), ??formula)
+parse_atomic(["("|Tokens], Left, Formula) :: true <=
+        parse(Tokens, LeftTokens, Formula) &
+        LeftTokens = [")"|Left]
+parse_atomic(["~", "("|Tokens], Left, ~(Formula)) :: true <=
+        parse(Tokens, LeftTokens, Formula) &
+        LeftTokens = [")"|Left]
+parse_atomic(["~"|Tokens], Left, ~(P)) :: true <=
+        parse_atomic(Tokens, Left, P)
+parse_atomic(["all", OvToken|Tokens], Left, all(Ov, Body)) :: true <=
+        string2term(OvToken, O) & type(O, ?formula_objvar) & Ov = O &
+        parse_atomic(Tokens, Left, Body)
+parse_atomic(["ex", OvToken|Tokens], Left, ex(Ov, Body)) :: true <=
+        string2term(OvToken, O) & type(O, ?formula_objvar) & Ov = O &
+        parse_atomic(Tokens, Left, Body)
+parse_atomic([F, "("|Tokens], Left, Compound) :: 
+    Tokens =? Body <> [")"] <> Left <=
+        string2term( F ++ "(" ++ strlist2str(Body) ++ ")", C) &
+        type(C, ?formula) & Compound = C
+parse_atomic([T|Tokens], Tokens, P) :: true <=
+        string2term(T, P1) & type(P1, ??formula) & P = P1
+
+fun strlist2str(list(string)) -> string
+strlist2str([]) -> ""
+strlist2str([S|Rest]) -> S ++  strlist2str(Rest)
+
+                
+rel construct_formula(string, ??formula, ??formula, ??formula)
+construct_formula("=>", F1, F2, imp(F1, F2))
+construct_formula("or", F1, F2, or(F1, F2))
+construct_formula("and", F1, F2, and(F1, F2))
+
+rel op(!string)
+op("and")
+op("or")
+op("=>")
+
+rel lower_precedence(string, string)
+lower_precedence("=>", "and") :: true
+lower_precedence("=>", "or") :: true
+lower_precedence("or", "and") :: true
+
+
+
+rel proplist2string(!list(prop), ?string)
+rel prop2string(!prop, ?string)
+
+proplist2string([], "")
+proplist2string([-->(H, C)|Props] , Str) <=
+    formula_list2string(H, HStr) &
+    formula2string(C, none, CStr) &
+    proplist2string(Props, PropsStr) &
+    Str = HStr ++ " --> " ++ CStr ++ "\n" ++ PropsStr
+
+rel formula_list2string (!list(formula), ?string)
+
+formula_list2string([], "")
+formula_list2string([F], Str) :: true <= formula2string(F, none, Str)
+formula_list2string([F|Rest], Str) <=
+    formula2string(F, none, FStr) &
+    formula_list2string(Rest, RestStr) &
+    Str = FStr ++ ", " ++ RestStr
+
+rel formula2string (!formula,  !atom, ?string)
+formula2string(~(A), _, Str) :: type(A, !atom) <=
+        term2string(A, AS) & Str = "~"++AS
+formula2string(~(A), _, Str)  :: true <=
+    formula2string(A, none, AS) & Str = "~(" ++ AS ++ ")"
+
+formula2string(and(P, Q), Op, Str) :: true <=
+        formula2string(P, and, PStr) &    
+        formula2string(Q, and, QStr) &
+        join_formulas(Op, and, PStr, QStr, Str)
+formula2string(or(P, Q), Op, Str) :: true <=    
+        formula2string(P, or, PStr) &    
+        formula2string(Q, or, QStr) &
+        join_formulas(Op, or, PStr, QStr, Str)
+formula2string(imp(imp(P1, Q1) , Q), Op, Str) :: true <=    
+        formula2string(imp(P1, Q1), imp, PStr) &  
+        formula2string(Q, imp, QStr) &
+        join_formulas(Op, imp, "("++PStr++")", QStr, Str)
+formula2string(imp(P, Q), Op, Str) :: true <=    
+        formula2string(P, imp, PStr) &    
+        formula2string(Q, imp, QStr) &
+        join_formulas(Op, imp, PStr, QStr, Str)
+formula2string(P, _, PStr) <=
+    term2string(P, PStr)
+
+rel join_formulas(atom, atom, string, string, ?string)
+join_formulas(_, and, PStr, QStr, Str) ::
+    Str =  PStr ++ " and " ++ QStr
+join_formulas(and, or, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " or " ++ QStr ++ ")"
+join_formulas(_, or, PStr, QStr, Str) ::
+    Str =  PStr ++ " or " ++ QStr
+join_formulas(and, imp, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " => " ++ QStr ++ ")"
+join_formulas(or, imp, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " => " ++ QStr ++ ")"
+join_formulas(_, imp, PStr, QStr, Str) ::
+    Str =  PStr ++ " => " ++ QStr
+
+
+/*
+
+all X ex Y (ent(X) => gs(X) or (mem(Y) and acc(Y,X)))
+ex x all y (fior(x) and ent(x) and (acc(y,x) =>  fior(y)))
+all x (fior(x) =>  ~gs(x))
+all x (fior(x) => ~mem(x))
+*/
+
+%rel transform_subterms(rel(??term, ??term), ??term, ??term)
+
+rel trans_var(term, ?term)
+trans_var(x, var("X")) :: true
+trans_var(X, X)
+
+fun transX(term) -> rel(??term, ??term)
+transX(X)(X, y) :: true
+transX(_)(X, X)
+

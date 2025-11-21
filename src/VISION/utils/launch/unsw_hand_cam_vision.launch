@@ -1,0 +1,31 @@
+<launch>
+
+
+
+  <!-- Core Process - Object/Person Detection -->
+  <include file="$(find yolov7_ros)/launch/yolov7-handcam.launch"/>
+
+<node pkg="image_rotate" type="image_rotate" name="image_rotater">
+        <remap from="image" to="/hsrb/hand_camera/image_raw" />
+        <param name="source_frame_id" value="hand_camera_frame" />
+        <param name="target_frame_id" value="hand_camera_frame" />
+        <remap from="rotated/image" to="/hsrb/hand_camera/image_raw_rotated" />
+        <param name="target_x" value="0.0" />
+        <param name="target_y" value="-1.0" />
+        <param name="target_z" value="0.04" /> <!-- Adjust this value to reduce the rotation angle -->
+        <param name="source_x" value="-1.0" />
+        <param name="source_y" value="0.0" />
+        <param name="source_z" value="0.04" />  <!-- Adjust this value to reduce the rotation angle -->
+        <param name="max_angular_rate" value="1"/>
+
+    </node>
+
+</launch>
+
+
+
+  
+  
+
+
+

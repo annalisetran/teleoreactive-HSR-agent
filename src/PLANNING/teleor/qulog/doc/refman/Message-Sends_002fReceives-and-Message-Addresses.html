@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Message Sends/Receives and Message Addresses (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Message Sends/Receives and Message Addresses (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Message Sends/Receives and Message Addresses (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Semantics-of-Actions.html" rel="up" title="Semantics of Actions">
+<link href="Receive-Action.html" rel="next" title="Receive Action">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Message-Sends_002fReceives-and-Message-Addresses">
+<div class="header">
+<p>
+Next: <a href="Receive-Action.html" accesskey="n" rel="next">Receive Action</a>, Up: <a href="Semantics-of-Actions.html" accesskey="u" rel="up">Actions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Message-Sends_002fReceives-and-Message-Addresses-1"></span><h4 class="subsection">6.3.1 Message Sends/Receives and Message Addresses</h4>
+<span id="index-Message-Sends_002fReceives-and-Message-Addresses"></span>
+
+<p>QuLog uses Pedro for sending and receiving messages. For peer-to-peer messages QuLog uses addresses of the form <i>ThreadName</i> <code>:</code> <i>ProcessName</i> <code>@</code> <i>MachineName</i> for sending messages to threads and <i>ProcessName</i> <code>@</code> <i>MachineName</i> for sending messages to agents.
+For agent messages, the message is sent to the default message thread of the agent. By default, this is the initial thread (<code>thread0</code>) but can be changed by the agent using <code>set_default_message_thread</code>.
+</p>
+<p>Agent messages can be shortened to <i>ProcessName</i> if the recipient is on the same machine. The special agent address <code>pedro</code> is for publish-subscribe messages. A publisher would publish using <i>term</i> <code>to pedro</code> and a subscriber would get a message whose sender address is also <code>pedro</code>.
+</p>
+<p>Subscriptions are made using
+</p>
+<p><code>subscribe(<i>SubscriptionString</i>, ID)</code>
+</p>
+<p>where ID will be bound to the a Pedro gnerated subscription identifier. <i>SubscriptionString</i> is a string representing a Prolog term with an optional <code>::</code> followed by a Prolog test that is acceptable to Pedro. As an example the call
+</p>
+<span id="index-subscribe"></span>
+<p><code>subscribe(&quot;temperature(kitchen, Temp) :: Temp &gt; 30&quot;, ID)</code>
+</p>
+<p>will subscribe to temperature messages about the kitchen where the temperature is above 30.
+<span id="index-unsubscribe"></span>
+The action <code>unsubscribe(ID)</code> will unsubscribe to the subscription with the Pedro identifier ID.
+</p>
+<p>Thread messages can be shortened to  <i>ThreadName</i> <code>:</code> <i>ProcessName</i>
+if the receiver is on the same machine and further to <i>ThreadName</i> if the receiver is on the same process.
+</p>
+<p>In the examples below we assume that appropriate type definintions have been made and the processes have registered their names with Pedro. If this type definition is not made then when an attempt to read such a message is made then the system will raise an <code>input_term_type_error</code> exception.
+</p>
+<p>The action <code>tell(age_of(tim, 3)) to server</code>
+will send the message to the agent named server on the same machine.
+</p>
+<p>The action <code>seen(&quot;Blue Wren&quot;) to_thread messages:twitcher@'192.168.0.42'</code>
+will send the message to the <code>messages</code> thread on the process <code>twitcher</code> on the machine with IP address <code>192.168.0.42</code>.
+</p>
+<p>Now consider the <code>messages</code> thread on the <code>twitcher</code> process.
+It could receive the above message in either form below.
+</p>
+<div class="example">
+<pre class="example">Msg from ClientAgent
+
+Msg from_thread ClientThread
+</pre></div>
+
+<p>In either case the  <code>messages</code> thread would suspend until the message arrived and then <code>Msg</code> would be instantiated to <code>seen(&quot;Blue Wren&quot;)</code>.
+In the first case <code>ClientAgent</code> would be instantiated to the address of the client agent - i.e. it would not contain the thread name.
+In the second case <code>ClientThread</code> would be instantiated to the full address (including the thread name).
+It would depend on what the receiver wanted to do with the sender address in order to decide which of the above receive actions would be best.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Receive-Action.html">Receive Action</a>, Up: <a href="Semantics-of-Actions.html">Actions</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,358 @@
+#!/usr/bin/env python3
+
+# Dependencies:
+# filterpy - https://github.com/rlabbe/filterpy
+#
+# pip install filterpy==1.1.0
+#
+
+from math import sqrt
+import numpy as np
+import sys
+import filterpy
+from dbase import DBase
+from object_class_api import ObjectClassApi
+from object_api import ObjectApi
+from tracks import Tracks
+from object import Object
+from scene_api import SceneApi
+
+import matplotlib.pyplot as plt
+import matplotlib
+import matplotlib.patches
+import scipy
+import rospy
+import scene_utils
+
+class Tracker(object):
+    """docstring for Tracker"""
+    def __init__(self, step_size, db_config_path, cost_threshold):
+        super(Tracker, self).__init__()
+        #self.new_object_association_cost_threshold = 5
+        self.new_object_association_cost_threshold = cost_threshold # check description: using mahalanobis dist i.e. 10 std. dev's
+        self.tracks = []        # list of objects being tracked
+        self.db = DBase(db_config_path)
+        self.objcls = ObjectClassApi()
+        self.obj = ObjectApi()
+        self.iterations = 0
+        self.step_size = step_size
+        self.last_detections = []
+        self.last_plot_objects = []
+
+        self.scn = SceneApi()
+
+        self.import_objects_from_db()
+
+    def init_plot(self):
+        plt.show()
+
+    def import_objects_from_db(self):
+        # TODO: Check this list is generated correctly once some objects have been stored in database
+        object_list = self.obj.get_object_list(self.db.con_pool)[0][0]
+
+        num_imported = 0
+        if object_list is not None: 
+            for obj in object_list:
+                object_exists = any(o.objectId == obj["object_id"] \
+                        for o in self.tracks)
+                if not object_exists:
+                    num_imported += 1
+                    point = np.array([obj["loc_x"], obj["loc_y"], obj["loc_z"]])
+                    class_id = obj["object_class_id"]
+
+                    detection = Object(point, class_id=class_id)
+                    track = Tracks(self.step_size, detection, obj["object_id"])
+                    # track = Tracks(self.step_size, detection, obj["object_id"], class_id)
+                    self.tracks.append(track)
+
+        print(f"Imported {num_imported} objects from the DB")
+
+    def update(self, seq_id, msg_objs,img_width, img_height):
+        self.iterations += 1 
+        self.last_detections = []
+
+        # list of objects (based on Object class: point,class_id,class_name,class_confidence,track id=None) from the DetectionList message         
+        obj_list = self.extract_detection_objects(msg_objs,img_width, img_height)
+        
+        # for obj in obj_list:
+        #     rospy.loginfo(f"Class: {obj.class_name}; Point: {obj.point}")
+
+        # create a new scene
+        self.scn.insert_scene(self.db.con_pool, seq_id)
+                        
+        # cost list for each object being tracked
+        # store list of tuples <<assosciated_track, observation, cost>, ...>
+        # associations is a list containing track, object, distance between objects in the frame and currently tracked objects
+        associations = self.assosciate_tracks_detections_hungarian(obj_list)
+        #print(f"Associations: {associations}")   
+
+        # process subsequent frames      
+        # iterate over each element in the cost array        
+        for [associated_track, observation, dist] in associations:  # check if we need to have dist variable
+            if (observation.point[0] != 0 or observation.point[1] != 0 or observation.point[2] != 0):
+                if associated_track is None:
+                    # insert new object and return the id                    
+                    obj_id = self.obj.insert_object(self.db.con_pool, observation)
+
+                    # add the new object to the scene
+                    self.scn.insert_scene_object(self.db.con_pool, seq_id, obj_id) 
+
+                    # add a new object to track and give an id
+                    # step_size, detection, objectId, object_class_id
+                    associated_track = Tracks(self.step_size, observation, obj_id)
+                    self.tracks.append(associated_track)
+                else:   
+                    # update the object
+                    associated_track.update(observation) # update the position of the tracked object in memory
+                    # add the existing object to the scene
+                    self.scn.insert_scene_object(self.db.con_pool, seq_id, associated_track.objectId) 
+                    # update object in the world model
+                    self.obj.update_object_last_seen(self.db.con_pool, associated_track.objectId, observation)
+                    
+                observation.set_track(associated_track)               
+
+        self.last_detections = obj_list    
+
+
+    #   Method to extract objects from the scene. Details are generated by object detection library 
+    #   and further annotated with bounding box x,y,z coordinates and other optional annotation methods (e.g. texture, colour)
+    #   Parameters:
+    #       scene_objects - objects in the DetectionList message
+    def extract_detection_objects(self, detection_objs,img_width, img_height):
+        det_obj_list = []
+                
+        #rospy.loginfo(f"Num Objects: {len(detection_objs)}")
+
+        # scene_objs contain list of objects in the DetectionList message
+        for det_obj in detection_objs:            
+            # make sure objects have a position before processing them
+            if (det_obj.position.x != 0 or det_obj.position.y != 0 or det_obj.position.z != 0):
+
+                obj_class_id = None    # reset for each object in scene
+
+                # get the correct object_class
+                obj_class_id = self.objcls.get_object_class_id_by_name(self.db.con_pool, det_obj.object_class)
+
+                if obj_class_id is None:
+                    rospy.logwarn("Failed to lookup object class {}".format(det_obj.object_class))       
+
+                # check for occlusions
+                occluded = scene_utils.check_occlusion(det_obj, detection_objs, img_width, img_height)         
+
+                #rospy.loginfo(f"Scene Object: {det_obj}")
+                detection_obj = Object.convert_scene_object(det_obj.position, 'map', obj_class_id, det_obj.object_class, det_obj.object_class_conf,
+                                        det_obj.bbox.x, det_obj.bbox.y, det_obj.bbox.width, det_obj.bbox.height, img_width, img_height, occluded)
+
+                det_obj_list.append(detection_obj)
+                # print(f"{detection_obj} \nDistance={det_obj.distance}")
+
+        return det_obj_list
+
+    def predict(self):
+        # Update KF predictions with process model
+        for track in self.tracks:
+            track.predict()
+
+    
+    def assosciate_tracks_detections(self, obj_list):
+        ''' 
+        Returns List[[assosciated_track, obj, dist]]
+        '''
+        N = len(self.tracks)  # number of objects tracking
+        M = len(obj_list)     # number of objects detected in the scene/frame
+        
+        rospy.loginfo(f"Number of objects tracking {N}; Number of objects detected {M}")
+
+        # this section performs the data association between objects in the current frame and previous frame
+        # find the distance between pose_x, pose_y, pose_z, object_class_id
+
+        associations = []
+        # determine a threshold as to an appropriate distance to be new object
+        # M = number of pbjects in detected current scene
+        # N = number of objects currently being tracked
+        for i in range(M):
+            obj = obj_list[i]
+
+            dist = sys.maxsize
+            min_dist_track = None
+            assosciated_track = None
+            #oc_id = -1
+            # Find the closest object to the detection of the same class and assosciate these two
+            for j in range(N):
+                # Grab tuple <x, y, z> of track j
+                tdist = self.tracks[j].calculate_assosciation_cost(obj)
+                if tdist < dist:
+                    dist = tdist 
+                    min_dist_track = self.tracks[j]   
+                    
+            #rospy.loginfo(f"Min Dist Track: {min_dist_track}")
+            #rospy.loginfo(f"Min Dist Track Type = {type(min_dist_track)}")
+
+            if dist < self.new_object_association_cost_threshold:
+                if (obj.class_id != min_dist_track.objectClassId):
+                    rospy.logwarn("Insane assosciation made: {} {} to {} {}".format(
+                        obj.class_name, obj.class_id, min_dist_track.class_name, min_dist_track.class_id))
+                #print("Assosciated {} with {}".format(obj.class_name, min_dist_track.objectClassName))
+                assosciated_track = min_dist_track
+            else:
+                assosciated_track = None   # new
+                dist = None
+                oc_id = obj_list[i].class_id 
+                print("Creating a new track for object id {} because over dist. {} > {}".format(
+                    obj.class_name, dist, self.new_object_association_cost_threshold))
+        
+            associations.append([assosciated_track, obj, dist])
+
+        return associations
+
+    # Method for associating an exisitng tracked object with a detected object in the current scene 
+    # This allows us to determine if similar objects are 
+    # Paramters:
+    #   obj_list    - list of detected objects in the current scene
+    #
+    # Returns:
+    #   associations- list of associations between tracked objects and detected objects in the current scene in the form
+    #               [tracked object, detected object, cost]
+    def assosciate_tracks_detections_hungarian(self, obj_list):
+        '''
+        Setup cost matrix for hungarian algorithm to solve assignment problem on
+        Each element is the cost of assosciation between detection and track
+        If we have 3 detections and 2 tracks could look like:
+
+        0.5     1       2       # Track 1
+        1       2       4       # Track 2
+        max     inf     inf     # New object from detection 1
+        inf     max     inf     # New object from detection 2
+        inf     inf     max     # New object from detection 3
+        '''
+        N = len(self.tracks)    # number of objects currently tracking
+        M = len(obj_list)       # number of objects detected in the scene/frame
+        
+        rospy.loginfo(f"Number of objects tracking {N}; Number of objects detected {M}")
+        #rospy.loginfo(f"Object List: {obj_list}")
+
+        # initialise the cost matrix
+        costs = np.ones((N+M, M)) * self.new_object_association_cost_threshold
+
+        # get the cost for each track against the detected objects
+        # i.e. if there are 4 detected objects, the cost for each detected object is is calculated against the tracked object
+        for i in range(N):  # rows represent each track
+            for j in range(M):  #cols represent each detected object
+                costs[i][j] = self.tracks[i].calculate_assosciation_cost(obj_list[j])
+
+        # rospy.loginfo(f"Calculated Costs: {costs}")
+        self.print_costs(obj_list, costs)
+        
+        row_ind = []
+        col_ind = []
+        try:
+            # find the minimum cost from the associated cost array
+            row_ind, col_ind = scipy.optimize.linear_sum_assignment(costs)      # check to see if working
+            # rospy.loginfo(f"Row: {row_ind} \n Col: {col_ind}")
+          #  print(costs)
+        except ValueError as e:
+            print("Error calculating linear_sum_assignment: {}".format(e))
+            print(costs)
+            
+        # Assosciate row_#ind[0] with col_ind[0] etc.
+        assosciations = []
+        for (row, col) in zip(row_ind, col_ind):
+            assosciated_track = None
+            dist = None
+            if (row >= N):
+                # set these values to None so the calling function will create a new track 
+                # as there is no associated track for this detected object
+                assosciated_track = None
+                dist = None
+            else:
+                # update the associations with the distances
+                assosciated_track = self.tracks[row]
+                dist = costs[row][col]
+            assosciations.append([assosciated_track, obj_list[col], dist])  # tracked object, object in current scene, distance between them
+
+        return assosciations
+
+        
+
+    ##########
+    #
+    #   Methods for visualisation
+    #
+    ##########
+    def plot_world(self): 
+        #print("Producing plot...")
+        plt.axis('equal')
+        ax = plt.gca()
+
+        for track in self.tracks:
+            mean = track.kf.x[[0, 2]]
+            P = track.kf.P
+            cov = P[[0, 2], :][:, [0, 2]]
+
+            ellipse = filterpy.stats.covariance_ellipse(cov)
+            angle = np.degrees(ellipse[0])
+            width = ellipse[1] * 2
+            height = ellipse[2] * 2
+            sd = 1 # plot 1 std dev ellipse
+
+            e = matplotlib.patches.Ellipse(xy=mean, width=sd*width, height=sd*height, 
+                    angle=angle, facecolor='g', edgecolor='#004080', alpha=0.5)
+            if track.plot_patch is None:
+                track.plot_patch = e
+                ax.add_patch(e)
+                track.plot_text = plt.text(mean[0], mean[1], track.object_class_name)
+            else:
+                #print(e)
+                #track.plot_patch.update_from(e)
+                track.plot_patch.remove()
+                track.plot_patch = ax.add_patch(e)
+                track.plot_text.set_position((mean[0], mean[1]))
+
+            #filterpy.stats.plot_covariance_ellipse(mean, cov=cov, fc='g', std=1, alpha=0.5, ylim=(-5, 5), xlim=(-5, 5))
+            #filterpy.stats.plot_covariance_ellipse(mean, cov=cov, fc='g', std=1, alpha=0.5, ylim=(-10, 10), xlim=(-10, 10))
+
+        # Remove old detections
+        for obj in self.last_plot_objects:
+            obj.remove()
+        self.last_plot_objects = []
+
+        for detectionMatch in self.last_detections:
+            point = detectionMatch.point
+            if not point[0] is None and not point[1] is None:
+                # observation
+                self.last_plot_objects.append(plt.plot(point[0], point[1], 'r+')[0])
+                if not detectionMatch.assosciated_track is None:
+                    (t_x, t_y, _) = detectionMatch.assosciated_track.get_position()
+                    # line from observation to object
+                    self.last_plot_objects.append(plt.plot((point[0], t_x), (point[1], t_y))[0])
+
+            if (not not detectionMatch.class_name and point[0] is not None and point[1] is not None):
+                self.last_plot_objects.append(plt.text(point[0], point[1], detectionMatch.class_name))
+
+        plt.draw()
+        plt.pause(0.001)
+
+    def print_tracked_objects(self):
+        world_str = "World: "
+        for track in self.tracks:
+            world_str += "\n\t{}\t{}".format(track.objectClassName, track.objectClassId)
+        return world_str
+         
+    def print_associations(self, associations):
+        for association in associations:
+            if association.assosciated_track is None:
+                rospy.loginfo(f"None; {association[1].object_id}; {association[2]}")
+            else:
+                rospy.loginfo(f"{association[0].objectId}; {association[1].object_id}; {association[2]}")           
+         
+    def euclidean_distance(x, y):
+        ed = sqrt(sum(pow(a-b,2) for a, b in zip(x, y)))
+        return ed
+
+    def print_costs(self, obj_list, costs):
+        N = len(self.tracks)    # number of objects currently tracking
+        M = len(obj_list)       # number of objects detected in the scene/frame
+
+        for i in range(N):  # rows represent each track
+            for j in range(M):  #cols represent each dietected object
+                print(f"Track {i}; Class {self.tracks[i].objectClassId}; Object {self.tracks[i].objectId}; ->; Obj Class {obj_list[j].class_id}; Cost {costs[i][j]:.8f}")

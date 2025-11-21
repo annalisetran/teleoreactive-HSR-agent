@@ -1,0 +1,226 @@
+
+<tex2html_mydb_mark>#1#%It is also {\em multi-threaded} in that a \QL\ process can comprise multiple time-shared threads each execting an action call.  
+
+<tex2html_mydb_mark>#2#%As already mentioned, the special class of {\it dynamic} relations are defined solely by sequences of facts: variable free unconditional assertions. 
+
+<tex2html_mydb_mark>#3#%Similarly if there is no rule that can be used to evaluate an action call inside a rule being used to evaluate an action call there is a runtime error. The same applies if there is no rule that can be used to evaluate a function call inside the function call expression of a function rule, or a function call inside action call of an action rule, there is a runtime error.
+
+<tex2html_mydb_mark>#4#%\subsection{More on agent applications}
+ 
+<tex2html_mydb_mark>#5#%Each agent thread has a
+
+<tex2html_mydb_mark>#6#%name, which is unique within the agent, and  executes an action call. Each thread can
+
+<tex2html_mydb_mark>#7#%atomically query the agent's current belief facts using  the agent's fixed knowledge.  It can also atomically update these belief facts using {\tt remember}, {\tt forget} and {\tt forget\_remember} actions.  Typically one thread, the initial thread within an agent process, spawns and occasionally terminates the other threads.  The other threads answer queries or undertake tasks. The tasks can be {\it achieve once} tasks, or {\it achieve and maintain} tasks. The task succeeds when the agent can infer the goal of the task from its current beliefs. This may be because another trusted agent has told it something, or because some sensor interface sends a new perception belief to the agent.  
+
+<tex2html_mydb_mark>#8#%klc
+
+<tex2html_mydb_mark>#9#%Changing the shared memory of dynamic
+
+<tex2html_mydb_mark>#10#%facts is the main way that the agent's threads communicate. As mentioned earlier, a
+
+<tex2html_mydb_mark>#11#%thread can also asynchronously communicate with other internal agent threads my sending messages.  They are sent  
+
+<tex2html_mydb_mark>#12#%using the {\tt to\_thread}  action, and picked up from the threads message queue using a {\tt from\_thread} action.  Here the receiver and sender are identified by their unique thread names.  
+
+<tex2html_mydb_mark>#13#%Each thread has a message queue that only it can access. 
+
+<tex2html_mydb_mark>#14#%A sent message, which is a  \QL\  data term,  is copied and placed
+
+<tex2html_mydb_mark>#15#%at the back of the destination thread's message queue.   A {\tt receive} primitive allows a thread to search its message queue from front to
+
+<tex2html_mydb_mark>#16#%back for a message term that unifies with one or more message pattern + optional test constraints.  
+
+<tex2html_mydb_mark>#17#%The thread may suspend waiting for a particular message, with an optional timeout.  
+
+<tex2html_mydb_mark>#18#%message satisfying the test is sent to it by another thread, with an optional timeout.  
+
+<tex2html_mydb_mark>#19#%\subsection{Inter-agent communication}
+
+<tex2html_mydb_mark>#20#%The same {\tt to\_thread} message send action can be used to send a copy of a 
+
+<tex2html_mydb_mark>#21#%message to a thread in another agent process providing both have registered their agent process names with the same \PD\ server.   When an agent is launched it typically connects and registers its  agent name with the {\tt Pedro} server to which all the agents to which it will exchange messages will also connect and register their names\footnote{If the agents will only need to communicate using publish/subscribe communication they only need connect to the \PD\ server or to an MQTT server.}. This name must be unique for the host on which it is running.  In this case the
+
+<tex2html_mydb_mark>#22#%destination thread must be identified by a term  {\it Thread\_name:Agent\_name} that gives not only the
+
+<tex2html_mydb_mark>#23#%thread name, but the agent process name.  If the agent is running on a
+
+<tex2html_mydb_mark>#24#%host different from the one on which the sending agent process is
+
+<tex2html_mydb_mark>#25#%running, the different host must also be identified using a destination
+
+<tex2html_mydb_mark>#26#%address of the form {\it Thread\_name:Agent\_name}@{\it Host\_identifier}\footnote{For example {\tt thread2:agent1@`zeus.doc.ic.ac.uk'}}. 
+
+<tex2html_mydb_mark>#27#%Sometimes it is best to send a message to a default message handling thread
+
+<tex2html_mydb_mark>#28#%within an agent process. The default message handling thread is the initial thread of the agent but this can be dynamicaly changed using the {\tt set\_default\_message\_thread} action primitive. To send a message to the default thread, the {\tt to} action can be used with destination 
+
+<tex2html_mydb_mark>#29#%just the agent identified as {\it Agent\_name}@{\it Host\_identifier}, or just {\it Agent\_name}
+
+<tex2html_mydb_mark>#30#%if the destination agent is running on the same host as the sending agent.
+
+<tex2html_mydb_mark>#31#%Such inter-agent
+
+<tex2html_mydb_mark>#32#%communication routes the message via a {\tt Pedro} communication server\footnote{See {\tt https://staff.itee.uq.edu.au/pjr/HomePages/PedroHome.html}}.  
+
+<tex2html_mydb_mark>#33#% When an agent is launched it typically connects and registers its  name with a {\tt Pedro} server. This name must be unique for the host on which it is running,  The server may be located anywhere on
+
+<tex2html_mydb_mark>#34#%the internet of hosts reachable from the agent's host machine. A message sent to a thread in another \QL\ process, which has registered with the same {\tt Pedro} server, is routed to the other \QL\ process via the server which puts it at the back of the message buffer for the named thread. It is put into a default message handling thread, usually the initial thread within the agent,  if the destination address  for the message has the form {\it AgentNm@HostNm}, with no thread name. 
+
+<tex2html_mydb_mark>#35#%A \QL\ application can also receive and send MQTT notifications routed via an MQTT publish/subscribe server.
+
+<tex2html_mydb_mark>#36#%All \QL\  code has to have its type declared using system and user declared types. Code is defined using a sequence of relation, function and action defining rules. At this time \QL\  has no module system, so each consulted file must use different type and code names for its definitions.  
+
+<tex2html_mydb_mark>#37#%Debugging is done by putting a {\tt watch} on any number of relations, functions and actions. This invisibly transforms their code to display each call, the input and output bindings of the unification or match of the call with each rule that can be used, and optionally the instantiated body of the rule
+
+<tex2html_mydb_mark>#38#%before it is used. An {\tt unwatch} command reverses the code transformation. 
+
+<tex2html_mydb_mark>#39#%The declarative kernel was developed to complement our robotic agent programming language \TR, to provide a \TR\ programmed robotic agent with its reasoning capability.   \TR\ was inspired by and builds upon Nilsson's Teleo-Reactive Procedures language.
+
+<tex2html_mydb_mark>#40#%This guide assumes familiarity with logic programming and with functional programming in a typed language, and with   A tutorial introduction to the QuLog declarative subset is given in, @code{doc/tutorial/QuLog.pdf}.
+
+<tex2html_mydb_mark>#41#% and each program statement must start  at the left end of a new line and a continuation of a program statement must always be indented by at least one space of tab character. In other words what is a good program layout for a Prolog program is a syntax requirement.
+
+<tex2html_mydb_mark>#42#%\subsection{Terminating an interpreter query or command}
+
+<tex2html_mydb_mark>#43#%\subsection{Editor support}
+
+<tex2html_mydb_mark>#44#%In a similar way that doc string in Python are shown when the user uses {\tt help}, the doc string is displayed when the interpreter command {\tt types} is used.  {\tt types} followed by a comma separated sequence of program defined relation, function or action names, given in any order,  will display the type declaration of each named definition followed by any ;SPMquot;...;SPMquot; comment associated with the definition.  {\tt stypes} does the same for \QL's built in code.
+
+<tex2html_mydb_mark>#45#%Note the use of double backslashes in these regular expression strings.
+
+<tex2html_mydb_mark>#46#%For the next example we consider converting between lists and ordered trees. Note that this code does not produce balanced trees.
+
+<tex2html_mydb_mark>#47#%As discussed in the reference manual, we constrain the use of {\tt ?} and {\tt ??} moded arguments for actions as follows.
+
+<tex2html_mydb_mark>#48#%\begin{enumerate}
+
+<tex2html_mydb_mark>#49#%\item Non-variables are not allowed in {\tt ?} and {\tt ??} moded arguments.
+
+<tex2html_mydb_mark>#50#%\item Variables that are {\tt !} moded are not allowed in {\tt ?} and {\tt ??} moded arguments.
+
+<tex2html_mydb_mark>#51#%\item Variables that have already occurred in the body of a rule are not allowed in {\tt ?} and {\tt ??} moded arguments.
+
+<tex2html_mydb_mark>#52#%\end{enumerate}
+
+<tex2html_mydb_mark>#53#%For example, the call
+
+<tex2html_mydb_mark>#54#%
+
+<tex2html_mydb_mark>#55#%\par
+
+<tex2html_mydb_mark>#56#%\noindent violates the first constraint. The following rule with the given declaration violates the second constraint.
+
+<tex2html_mydb_mark>#57#%
+
+<tex2html_mydb_mark>#58#%\par
+
+<tex2html_mydb_mark>#59#%Given the declaration
+
+<tex2html_mydb_mark>#60#%
+
+<tex2html_mydb_mark>#61#%\par
+
+<tex2html_mydb_mark>#62#%the call
+
+<tex2html_mydb_mark>#63#%
+
+<tex2html_mydb_mark>#64#%\par
+
+<tex2html_mydb_mark>#65#%violates the third constraint as the second {\tt X} occurs earlier (in the first argument).
+
+<tex2html_mydb_mark>#66#%In fact any relation that has exactly one argument in {\tt ?} mode and all the other arguments in {\tt !} mode can be turned into a function using the above approach.
+
+<tex2html_mydb_mark>#67#%% \subsection{Mixed Level Applications}
+
+<tex2html_mydb_mark>#68#%% \label{Mixed Level Applications}
+
+<tex2html_mydb_mark>#69#%% In designing \QL\ we made the decision to completely separate relations and actions - relations can't call actions and actions are deterministic. A consequence of this decision is that there is a class of applications that can't be implemented purely at the \QL\ level without introducting a mixed relation/action code type. Examples  in this class include interactive applications that contain state that is updated, but backtracking to find alternative solutions is required. The \QL\ interpreter itself is not one of these since there is no state that needs
+
+<tex2html_mydb_mark>#70#%% to be updated. On the other hand the simple interactive natural deduction prover
+
+<tex2html_mydb_mark>#71#%% in {\tt examples/prover} is one such application as it maintains proof state that is updated when rules are applied and backtracking is required when a sequence of rule applications lead to a dead end.
+
+<tex2html_mydb_mark>#72#%% \par
+
+<tex2html_mydb_mark>#73#%% Our feeling is that programmers using \QL\ would very rarely need to write such applications and it is not worth ;SPMldquo;polluting;SPMrdquo; the language by introducting a mixed relation/action type to support such applications. Instead we provide support
+
+<tex2html_mydb_mark>#74#%% for these sorts of applications by allowing the programmer to write a mixture of \QL\ and \QuP\ code. Of course, such applications could be completely written in \QuP\ but then the programmer would not get any type/mode checking.
+
+<tex2html_mydb_mark>#75#%% \par
+
+<tex2html_mydb_mark>#76#%% The approach we suggest is to  write as many relations and actions at the \QL\ level as possible in order to maximise type and mode checking. In fact all
+
+<tex2html_mydb_mark>#77#%% relations should be written at the \QL\ level (unless the relation is a lifting
+
+<tex2html_mydb_mark>#78#%% of a \QuP\ predicate as described in the previous section).
+
+<tex2html_mydb_mark>#79#%% \par
+
+<tex2html_mydb_mark>#80#%% We illustrate the suggested approach by considering the interactive prover example in {\tt examples/prover}. The \QL\ file \verb~natural_deduction.qlg~ contains most the implementation and takes advantage of type and mode checking.
+
+<tex2html_mydb_mark>#81#%% Because the proof interpreter itself is a mixed relation/action predicate it cannot be given a declaration at the \QL\ level. We therefore put such code at the \QuP\ level in the file \verb~natural_deduction_support.ql~.
+
+<tex2html_mydb_mark>#82#%% \par
+
+<tex2html_mydb_mark>#83#%% The predicates \verb~interactive_proof~, \verb~interactive_proof_step~ and \\ 
+
+<tex2html_mydb_mark>#84#%% \verb~do_auto~ are examples of mixed relation/action predicates because they use I/O (an action) to interact with the user and backtracking (a relation) to deal with proof dead ends, for example, when the user undoes a proof step. Note that \verb~do_auto~ could have been made a relation if we leave out the output showing the progress of \verb~do_auto~. 
+
+<tex2html_mydb_mark>#85#%% The remaining predicate \verb~start_proof~ provides the interface between the \QL\ level and the \QuP\ level. It is declared as an action in \verb~natural_deduction.qlg~ and so it can be called at the \QL\ level. As discussed in the previous section, any choicepoints for \verb~start_proof~ will be removed on termination. When an interaction is completed, either because a proof is found or the user gives up then all choicepoints are removed anyway and so this is not an issue.
+
+<tex2html_mydb_mark>#86#%% \par
+
+<tex2html_mydb_mark>#87#%% Note that the relation/action predicates above call relations and actions at the \QL\ level.  Given all \QL\ code is compiled to the \QuP\ level then, in principle, these mixed relation/action predicates could simply call \QuP\ relations and actions. The problem is that, because type and mode checking is not carried out at the \QuP\ level then calls could be made to the \QL\ level with arguments that have incorrect types or modes.
+
+<tex2html_mydb_mark>#88#%% \par
+
+<tex2html_mydb_mark>#89#%% To avoid this problem, when a \QuP\ file is consulted using \verb~pconsult~ from a \QL\ program file,
+
+<tex2html_mydb_mark>#90#%% code transformations are automatically applied to wrap calls to  \QL\ relations from within the \QuP\ file. It is important to note that that wrapping that happens here is not the same as the call wrapping from the previous section. The wrapping from the previous section is to type and mode check the call output (because we are calling from \QL\ to \QuP), while the wrapping in this section is to type and mode check the call input (because we are calling from \QuP\ to \QL).  
+
+<tex2html_mydb_mark>#91#%% A consequence of wrapping calls to the \QL\ level is that, as well as programmer declarations, all system level declarations are also wrapped, including \QuP\ predicates that have been lifted using the same name. For example \verb~append~ has a type declaration and so any use of  \verb~append~ in the consulted \QuP\ code will be wrapped with type checking.
+
+<tex2html_mydb_mark>#92#%% Note that some lifted predicates like \verb~get_line~ have the same name
+
+<tex2html_mydb_mark>#93#%% but the arguments are in a different order to take advantage of default arguments.
+
+<tex2html_mydb_mark>#94#%% \par
+
+<tex2html_mydb_mark>#95#%% Consider a simple example where the programmer makes the declaration
+
+<tex2html_mydb_mark>#96#%% 
+
+<tex2html_mydb_mark>#97#%% \noindent
+
+<tex2html_mydb_mark>#98#%% and, at the \QuP\ level writes the following
+
+<tex2html_mydb_mark>#99#%% 
+
+<tex2html_mydb_mark>#100#%% \noindent
+
+<tex2html_mydb_mark>#101#%% then the \QL\ call \verb~get_from_stdin(S)~ will produce the exception
+
+<tex2html_mydb_mark>#102#%% 
+
+<tex2html_mydb_mark>#103#%% because the \verb~get_line~ call will be wrapped (and therefore type checked).
+
+<tex2html_mydb_mark>#104#%% \par
+
+<tex2html_mydb_mark>#105#%% Hopefully, by looking at the type declaration of \verb~get_line~ the programmer
+
+<tex2html_mydb_mark>#106#%% will realize the predicate definition should have been
+
+<tex2html_mydb_mark>#107#%% 
+
+<tex2html_mydb_mark>#108#%% \noindent
+
+<tex2html_mydb_mark>#109#%% or, since \verb~stdin~ is the default,
+
+<tex2html_mydb_mark>#110#%% 
+
+<tex2html_mydb_mark>#111#%% \par
+
+<tex2html_mydb_mark>#112#%% For efficiency reasons the programmer might want to stop some \QuP\ code from being wrapped. This can be done by moving such code to another \QuP\ file, compiling
+
+<tex2html_mydb_mark>#113#%% that to object code and then using \verb~load~ rather than \verb~consult~ in the interface \QuP\ file.

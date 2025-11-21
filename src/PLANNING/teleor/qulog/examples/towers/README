@@ -1,0 +1,138 @@
+This folder contains several tower building agents.
+
+For the two arm tower builders the visualizer is programmed to stop arms
+from clashing. Without this it's difficult to determine when it's OK for an
+arm to move into the shared area without having extra percepts (sensors) and
+having even more complicated code.
+
+-----------------------------------
+
+This group deals with a single table and single arm as in the original Nilsson
+paper:
+
+towerBuilder.qlg - a direct translation of Nilsson's original tower
+  builder program. This agent has a single task (for building one tower).
+
+oneArmTowerBuilders.qlg - a multi-task tower builder obtained by simply adding
+  start_tel and atomic_tel declarations to towerBuilder.qlg.
+  Each task builds a tower.
+
+oneArmTowerBuildersIterUnpile.qlg - a variation of oneArmTowerBuilders.qlg
+  with an iterative version of unpile -
+  similar to oneArmTowerBuildersWith1by1Unpile.qlg but without cooperation.
+  
+oneArmTowerBuildersWithCoop.qlg - a variation of oneArmTowerBuilders.qlg where
+  each task can cooperate with other tasks in the situation where a block that
+  is covering a needed block is itself needed by another task to add to its
+  partial tower. In this case the task will put the block on the partial tower
+  for the other task rather than putting it on the table.
+
+oneArmTowerBuildersWith1by1Unpile.qlg - a variation of
+  oneArmTowerBuildersWithCoop.qlg where the mutually recursion between unpile
+  and move_to_table_or_partly_built_tower has been replaced by an iterative
+  version of unpile that moves the top unwanted block (and then iteratively
+  removes the new unwanted top block). By making unpile iterative we remove
+  a problem with oneArmTowerBuildersWithCoop.qlg - when 2 tasks have their
+  towers covered by blocks unpile of the first task to become running will
+  completely unpile before the other one gets a chance to unpile because
+  unpile is called from within a atomic_tel procedure. 
+
+iterOneArmTowerBuildersWithCoop.qlg - a completely iterative version of
+  oneArmTowerBuildersWithCoop.qlg. This completely removes the remaining
+  issues addressed in oneArmTowerBuildersWith1by1Unpile.qlg related to
+  calling unpile from inside an atomic_tel as the atomic_tel procedures
+  in this program don't require any unpiling. Making the program completely
+  iterative has caused makeTower to become more complicated (one more rule)
+  while move_to_block and move_to_table_or_partly_built_tower have become
+  simpler (2 less rules and 1 less rule respectively). This program uses
+  a generalization of regression as discussed in the user manual and the
+  "regression cost function" has been included that can be used to show that
+  makeTower will eventually achieve its goal under reasonable assumptions.
+  The file fsm.pdf shows a pseudo nondeterministic finite state machine
+  representation of the makeTower procedure where, for example, the node
+  labelled rule 2 represents all states for which the guard of rule 2 is true
+  (and the guard of rule 1 is false) and the transitions are the actions of
+  the rules.
+
+-----------------------------------
+
+This group deals with two arms and three tables where arm 1 can access table 1
+and the shared table and arm 2 can access table 2 and the shared table. This
+means that some blocks need to be moved from, for example, table 2 to table 1
+via the shared table using both arms. All of these variants except the
+first are multi-tasking.
+
+twoArmTowerBuilder.qlg -
+   A close-to direct translation of towerBuilder.qlg using two arms and
+   three tables.
+   
+twoArmTowerBuilders.qlg -
+   A multi-task tower builder with 2 arms and 3 tables.
+   makeTower is more complicated than the one arm tower builders because
+   we need to move blocks across tables but otherwise is similar to
+   the one arm recursive tower builders.
+
+twoArmCoopTowerBuilders.qlg -
+   Like twoArmTowerBuilders.qlg but unpile is replaced
+   with a cooperative version. This is also similar to
+   oneArmTowerBuildersWithCoop.qlg but cooperation is more involved because
+   cooperation can involve moving an unwanted block to, for example,
+   the shared table so that a task building a tower on the other table can
+   access this block with one move.
+   One major difference to twoArmTowerBuilders.qlg is we use 
+   commit_while when unpiling so that we (mostly) commit to completing a 
+   cooperative move of a block before firing a different rule. 
+
+twoArmCoopTowerBuildersMod1.qlg -
+   This is similar to twoArmCoopTowerBuilders.qlg except
+   unpiling is iterative (coop_move) and the code is reorganized somethat:
+    makeTower, move_across_to_table and move_across_to_block are move
+    complicated (more rules) but coop_move is simpler than unpile_C.
+   As with twoArmTowerBuilders.qlg we use commit_while
+   when doing a coop_move so that we commit to completing a cooperative move
+   of a block before firing a different rule. This means that (mostly) a task
+   will not give up resources until the move is complete which means another
+   task does not need to complete the move.
+
+twoArmTowerBuildersMod2.qlg -
+   A variant of twoArmCoopTowerBuildersMod1.qlg. As noted in the user guide
+   there is a problem with twoArmCoopTowerBuilderMod1s.qlg
+   when clearing blocks off a partial tower (this problem also exists in many 
+   other of the two arm tower builder programs). This program addresses this
+   problem by slightly changing when makeTower does a recursive call.
+   In this program we do not "exit the recursive call" until the covering
+   blocks have been put on the table.
+
+iterTwoArmCoopTowerBuilders.qlg -
+   This is a completely iterative version of twoArmCoopTowerBuildersMod1.qlg
+   This eliminates the problem discussed in the user manual in a different way 
+   to twoArmCoopTowerBuildersMod2.qlg - simply because it is iterative and not
+   recursive.
+   This can also be considered as a two arm version of 
+   iterOneArmTowerBuildersWithCoop.qlg
+
+helpedTowerBuilders.qlg - a variant of twoArmTowerBuilders.qlg where each tower
+  builder task is responsible for building a tower with only blocks on its
+  table. A helper task is responsible for transfering blocks to the required
+  table so that the tower building tasks can use those blocks.
+
+twoArmSlotTowerBuilders.qlg - two arms, one table containing slots with the
+  middle set of slots reachable by both arms (similar to the shared table).
+  Each tower is to be built on a specified slot.
+  Each resource is a combination of an arm and a slot.
+
+--------------------------------
+
+In all of the Python simulators the SPACE bar can be used to toggle
+running/supsending the simulation.
+
+When the simulation is suspended the left mouse button can be used to move
+blocks within a stack and to other places (including inside other stacks).
+
+The left and right arrow keys are used to respectively decrease and increase
+the speed of the arm(s).
+
+In simulations with multiple tasks and resources, the task colours (the colour
+of the task tower displayed in the simulation) are used to colour the resources
+currently being used by the task in order to give the user visual feedback on
+which task(s) have grabbed which resource(s).

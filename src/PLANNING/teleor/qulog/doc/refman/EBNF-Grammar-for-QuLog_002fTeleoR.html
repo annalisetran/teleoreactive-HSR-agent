@@ -1,0 +1,524 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>EBNF Grammar for QuLog/TeleoR (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="EBNF Grammar for QuLog/TeleoR (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="EBNF Grammar for QuLog/TeleoR (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="QuLog-Index.html" rel="next" title="QuLog Index">
+<link href="Listing-of-Builtin-Exceptions.html" rel="prev" title="Listing of Builtin Exceptions">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="appendix" id="EBNF-Grammar-for-QuLog_002fTeleoR">
+<div class="header">
+<p>
+Next: <a href="QuLog-Index.html" accesskey="n" rel="next">QuLog Index</a>, Previous: <a href="Listing-of-Builtin-Exceptions.html" accesskey="p" rel="prev">Listing of Builtin Exceptions</a>, Up: <a href="index.html" accesskey="u" rel="up">QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="EBNF-Grammar-for-QuLog_002fTeleoR-1"></span><h2 class="appendix">Appendix C EBNF Grammar for QuLog/TeleoR</h2>
+
+<pre class="verbatim">
+(* The EBNF grammar for qulog/teleor *)
+
+(*
+Notation used as in:
+   https://en.wikipedia.org/wiki/Extended_Backus%E2%80%93Naur_form
+
+We assume the following non-terminals that group tokens. All other
+tokens in the grammar are given as strings.
+
+atom:  the allowed atoms of qulog
+string:  double-quoted strings
+var: the variables of qulog
+int: integers
+float: floating point numbers
+
+*)
+
+anynum = int | float; 
+
+(* ------ query ------ *)
+
+query =
+    (
+       ( int, &quot;of&quot;, var_seq, &quot;::&quot;, conditions ) |
+       ( int, &quot;of&quot;, conditions ) |
+       ( int, &quot;of&quot;, &quot;exists&quot;, var_seq, conditions ) |
+       ( var_seq, &quot;::&quot;, conditions ) |
+       ( &quot;exists&quot;, var_seq, conditions ) |
+       basic_query 
+     );
+
+basic_query =
+    ( &quot;prolog&quot; ) |
+    ( &quot;bs&quot; ) |
+    ( &quot;logging&quot;, atom ) |  
+    ( &quot;logging&quot;, &quot;(&quot;, atom , &quot;)&quot; ) |  
+    ( &quot;logging&quot;, atom, &quot;@&quot;, atom ) |  
+    ( &quot;logging&quot;, &quot;(&quot;, atom, &quot;@&quot;, atom , &quot;)&quot; ) |
+    ( &quot;unlog&quot; ) |
+    ( &quot;types&quot;, {atom_seq} ) |
+    ( &quot;stypes&quot;, {atom_seq} ) |
+    ( &quot;show&quot;, {atom_seq} ) |
+    ( &quot;watch&quot;, {atom_seq} ) |
+    ( &quot;watch&quot;, &quot;(&quot;, {atom_seq}, &quot;)&quot; ) |
+    ( &quot;unwatch&quot;, {atom_seq} ) |
+    ( &quot;unwatch&quot;, &quot;(&quot;, {atom_seq}, &quot;)&quot; ) |
+    ( &quot;watched&quot; ) |
+    ( &quot;answers&quot;, int ) |
+    ( &quot;consult&quot;, atom ) |
+    ( &quot;consult&quot;, &quot;(&quot;, atom, &quot;)&quot; ) |
+    ( &quot;pconsult&quot;, atom ) |
+    ( &quot;pconsult&quot;, &quot;(&quot;, atom, &quot;)&quot; ) |
+    ( &quot;[&quot;, atom, &quot;]&quot; ) |
+    conditions |
+    action_seq;
+    
+    
+
+(* ------ program item ------ *)
+(* Note: a program file is parsed one program item at a time *)
+
+program_item =
+    ( &quot;?-&quot;, term ) |
+    enum_definition |
+    macro_definition |
+    declaration |
+    ( compound_term, rel_rule_body ) |
+    ( compound_term, act_rule_body ) |
+    ( compound_term, fun_rule_body ) |
+    ( simple_compound, tel_procedure_body );
+
+(* ------ type definitions ------ *)
+
+enum_definition = &quot;def&quot;, definition_head, &quot;::=&quot;, enum_type {string};
+
+macro_definition = &quot;def&quot;, definition_head, &quot;==&quot;, macro_type {string};
+
+(* either atom type or polymorphic type with args *)
+definition_head =  atom |  ( atom, bracketed_var_seq ); 
+
+(* ------ types ------ *)
+
+enum_type =
+      ( int, &quot;..&quot;, int ) | 
+      ( atom, &quot;|&quot;, atom, {&quot;|&quot;, atom} ) |
+      ( string, &quot;|&quot;, string , {&quot;|&quot;, string} ) |
+      ( anynum, &quot;|&quot;, anynum, {&quot;|&quot;, anynum} ) |
+      ( simple_compound, {&quot;|&quot;, simple_compound} ) |
+      ( &quot;(&quot;, enum_type, &quot;)&quot; ) ;
+      
+macro_type =
+       ( atom_or_simple_compound,  &quot;||&quot;, 
+          atom_or_simple_compound,  {&quot;||&quot;, atom_or_simple_compound} ) |
+      macro_type_expression;
+
+macro_type_expression =
+    simple_type_compound |
+    atom |
+     ( &quot;(&quot;, type_expression, &quot;,&quot;, type_expression, 
+             {&quot;,&quot;, type_expression}, &quot;)&quot; ) |  
+     code_type_expression;
+     
+type_expression =
+     code_type_expression |
+     var |
+     simple_type_compound |
+     atom |
+     ( &quot;(&quot;, type_expression, &quot;)&quot; ) |
+     ( &quot;(&quot;, type_expression, &quot;,&quot;, type_expression,
+         {&quot;,&quot;, type_expression}, &quot;)&quot; );
+
+code_type_expression =
+     fun_type_expression |
+     dyn_type_expression |
+     rel_type_expression |
+     act_type_expression |
+     tel_type_expression;
+
+fun_type_expression = 
+    ( &quot;fun&quot;, bracketed_type_seq, &quot;-&gt;&quot;,  type_expression ) ;
+
+rel_type_expression = 
+    ( &quot;rel&quot;, bracketed_annotated_type_seq);
+
+dyn_type_expression = 
+    ( &quot;dyn&quot;, bracketed_type_seq);
+
+act_type_expression = 
+    ( &quot;act&quot;, bracketed_annotated_type_seq);
+
+tel_type_expression = 
+    ( &quot;tel&quot;, bracketed_type_seq);
+   
+bracketed_type_seq =
+    ( &quot;(&quot;, &quot;)&quot; ) |
+    ( &quot;(&quot;, type_expression, { &quot;,&quot;, type_expression}, &quot;)&quot; );
+
+mode_annotation = &quot;!&quot; | &quot;?&quot; | &quot;??&quot; ;
+
+bracketed_annotated_type_seq =
+    ( &quot;(&quot;, &quot;)&quot; ) |
+    ( &quot;(&quot;, annotated_type_expression,
+        { &quot;,&quot;, annotated_type_expression}, &quot;)&quot; );
+
+annotated_type_expression =
+    mode_annotation |
+    ( mode_annotation , inner_annotated_type_expression ) |
+    inner_annotated_type_expression;
+
+inner_annotated_type_expression =
+   type_expression |
+   ( atom, bracketed_annotated_type_seq);
+
+(* ------ declarations ------ *)
+
+declaration =
+    ( &quot;fun&quot;, fun_declaration, {&quot;,&quot;, fun_declaration}, [ string ] ) |
+    ( &quot;act&quot;, annotated_declaration, {&quot;,&quot;, annotated_declaration}, [string]) |
+    ( &quot;rel&quot;, annotated_declaration, {&quot;,&quot;, annotated_declaration}, [string]) |
+    ( &quot;dyn&quot;, unannotated_declaration,
+             {&quot;,&quot;, unannotated_declaration}, [ string ] ) |
+    ( &quot;mrel&quot;, annotated_declaration,
+             {&quot;,&quot;, annotated_declaration}, [ string ] ) |
+    ( &quot;mfun&quot;, fun_declaration, {&quot;,&quot;, fun_declaration}, [ string ] ) |
+    ( ( &quot;tel&quot; | &quot;tel_start&quot; | &quot;tel_atomic&quot; ), unannotated_declaration,
+             {&quot;,&quot;, unannotated_declaration}, [ string ] ) |
+    ( &quot;tel_percept&quot;, unannotated_declaration,
+             {&quot;,&quot;, unannotated_declaration} ) |
+    ( &quot;tel_action&quot;, ( unannotated_declaration,
+             {&quot;,&quot;, unannotated_declaration} ) |
+    global_num_declaration;
+
+(* Note: tel_percept and tel_action only accept ground terms *)
+
+fun_declaration =
+    unannotated_declaration, &quot;-&gt;&quot;, type_expression;
+
+unannotated_declaration =
+    atom, (
+        ( &quot;(&quot;, &quot;)&quot; ) |
+        ( &quot;(&quot;, [var, &quot;:&quot;], type_expression, [&quot;default&quot;, term],
+           { &quot;,&quot;,  [var, &quot;:&quot;], type_expression}, &quot;)&quot; )
+        );
+       
+annotated_declaration =
+    atom, (
+        ( &quot;(&quot;, &quot;)&quot; ) |
+        ( &quot;(&quot;, [var, &quot;:&quot;], annotated_type_expression, [&quot;default&quot;, term],
+           { &quot;,&quot;,  [var, &quot;:&quot;],
+                annotated_type_expression, [&quot;default&quot;, term]}, &quot;)&quot; )
+        );
+
+global_num_declaration =
+    (&quot;int&quot;, atom, &quot;:=&quot;, int) |
+    (&quot;num&quot;, atom, &quot;:=&quot;, num);
+  
+
+(* ------ rule definitions ------ *)
+
+rel_rule_body =
+    [&quot;::&quot;, conditions], [&quot;&lt;=&quot;, conditions];
+
+act_rule_body =
+    [&quot;::&quot;, conditions], &quot;~&gt;&quot;, action_seq;
+
+fun_rule_body =
+    [&quot;::&quot;, conditions], &quot;-&gt;&quot;, term;
+
+tel_procedure_body =
+    &quot;{&quot;, tel_rule, { tel_rule }, &quot;}&quot;;
+
+
+(* ------ conjunction and conditions ------ *)
+
+conditions = a_condition, { &quot;&amp;&quot;, a_condition };
+
+a_condition =
+    ( &quot;forall&quot;, var_seq,
+       &quot;(&quot;, exists_conditions, &quot;=&gt;&quot;, exists_conditions, &quot;)&quot; ) |
+    ( &quot;not&quot;, exists_a_condition ) |
+    ( &quot;not&quot;, &quot;(&quot;, exists_conditions, &quot;)&quot; ) |
+    ( &quot;once&quot;, a_condition ) |
+    ( &quot;once&quot;, &quot;(&quot;, conditions, &quot;)&quot; ) |
+    ( &quot;(&quot;, int, &quot;of&quot;, var_type_seq, &quot;::&quot;,
+         exists_conditions__, &quot;)&quot; , &quot;query_at&quot;, pedro_handle ) |
+    (&quot;(&quot;, var_type_seq, &quot;::&quot;,
+         exists_conditions__, &quot;)&quot;, &quot;query_at&quot;, pedro_handle ) |
+    ( simple_condition, &quot;query_at&quot;, pedro_handle ) |
+    simple_condition;
+
+exists_a_condition =
+    ( &quot;exists&quot;, var_seq, simple_condition ) |
+    a_condition;
+
+exists_conditions =
+    ( &quot;exists&quot;, var_seq, a_condition ) |  conditions;
+
+simple_condition =
+    ( &quot;(&quot;, conditions, &quot;)&quot; ) |
+    &quot;true&quot; | &quot;false&quot; |
+    ( &quot;type&quot;, &quot;(&quot;, term, &quot;,&quot;, annotated_type_expression, &quot;)&quot; ) |
+    ( &quot;listof&quot;, &quot;(&quot;, term, &quot;,&quot;, term, &quot;::&quot;, exists_conditions, &quot;)&quot; ) |
+    compound_term |
+    ( term, &quot;=?&quot;, qeqrhs) |
+    ( term, test_op, term );
+
+qeqrhs =
+    ( qeqrhs_string_term, &quot;++?&quot;, qeqrhs_string_term,
+                  {&quot;++?&quot;, qeqrhs_string_term} ) |
+    ( qeqrhs_list_term, &quot;&lt;&gt;?&quot;, qeqrhs_list_term, {&quot;&lt;&gt;?&quot;, qeqrhs_list_term} );
+(* qeqrhs_string_term and qeqrhs_list_term are not allowed to include *)
+(* &quot;=?&quot; terms ))
+
+qeqrhs_string_term =
+    ( simple_string_term, &quot;::&quot;, conditions ) |
+    simple_string_term;
+
+qeqrhs_list_term =
+    ( simple_list_term, &quot;::&quot;, conditions ) |
+    simple_list_term;
+
+(* ------ actions ------ *)
+
+action_seq = action, {&quot;;&quot;, action};
+
+action =
+    ( &quot;forall&quot;,  var_seq, &quot;{&quot;, 
+       exists_conditions, &quot;~&gt;&quot;, action_seq, &quot;}&quot;) |
+    ( &quot;{&quot;, &quot;}&quot; ) |
+    ( &quot;{&quot;, action_seq, &quot;}&quot; ) |
+    ( &quot;atomic_action&quot;, action ) |
+    ( &quot;case&quot;, &quot;{&quot;, case_alt, { case_alt }, &quot;}&quot; ) |
+    ( &quot;wait&quot;, &quot;(&quot;, conditions, &quot;)&quot; ) |
+    ( &quot;wait_case&quot;, &quot;{&quot;, case_alt, { case_alt },
+                      [ &quot;timeout&quot;, term, &quot;~&gt;&quot;, action_seq ], &quot;}&quot; ) |
+    ( &quot;receive&quot;, &quot;{&quot;, receive_alt, { receive_alt },
+                      [ &quot;timeout&quot;, term, &quot;~&gt;&quot;, action_seq ], &quot;}&quot; ) |
+    ( &quot;try&quot;, action, &quot;except&quot;,
+                      &quot;{&quot;, except_alt, { except_alt }, &quot;}&quot; ) |
+    ( &quot;repeat&quot;, action, [ &quot;until&quot;, a_condition ] ) |
+    ( &quot;?&quot;, &quot;(&quot;, exists_conditions, &quot;)&quot; ) |
+    ( term, &quot;from&quot;, agent_handle, [&quot;::&quot;, conditions ] ) |
+    ( term, &quot;from_thread&quot;, pedro_handle, [&quot;::&quot;, conditions ] ) |
+    tr_pp_action;
+
+case_alt =
+   conditions, &quot;~&gt;&quot;, action_seq;
+
+
+receive_alt =
+    ( term, &quot;from&quot;, agent_handle, [ &quot;::&quot;, conditions ], &quot;~&gt;&quot;, action_seq ) |
+    ( term, &quot;from_thread&quot;, pedro_handle, [ &quot;::&quot;, conditions ],
+           &quot;~&gt;&quot;, action_seq ) |
+    ( &quot;query&quot;, term, &quot;from_thread&quot;, pedro_handle, [ &quot;::&quot;, conditions ],
+           &quot;~&gt;&quot;, action_seq );
+           
+except_alt =
+    term, [ &quot;::&quot;, conditions ], &quot;~&gt;&quot;, action_seq;
+
+(* ------ TR rule ------ *)
+
+tel_rule =
+    ( tr_rule_LHS, &quot;~+&gt;&quot;,  tr_pp_action) |
+    tr_rule_LHS, &quot;~&gt;&quot;, tr_rule_RHS;
+
+tr_rule_LHS =
+    conditions,
+    [( &quot;commit_while&quot;, while_commit) | (&quot;or_while&quot;, while_commit)]; 
+    
+
+while_commit =
+    conditions |
+    ( &quot;min_time&quot;, term ) |
+    (conditions, &quot;min_time&quot;, term );
+
+tr_rule_RHS = tr_action, [ &quot;++&quot;, simple_tr_pp_action ];
+
+tr_action =
+    ( &quot;(&quot;, &quot;)&quot; ) |
+    ( simple_tr_action, {&quot;,&quot;, simple_tr_action} ) |
+    ( &quot;(&quot;, simple_tr_action, {&quot;,&quot;, simple_tr_action}, &quot;)&quot; ) |
+    ( &quot;[&quot;, tr_timed_seq, &quot;]&quot; );
+
+tr_timed_seq =
+    simple_tr_action, &quot;:&quot;, term, {&quot;,&quot;,  simple_tr_action, &quot;:&quot;, term },
+        [&quot;,&quot;, simple_tr_action];
+
+simple_tr_action = var | compound_term;
+
+tr_pp_action =
+    ( simple_tr_pp_action { &quot;;&quot; simple_tr_pp_action } )
+
+simple_tr_pp_action =
+     ( term, &quot;to&quot;, agent_handle ) |
+     ( term, &quot;to_thread&quot;, pedro_handle ) |
+     ( atom, global_num_op, term) |
+     compound_term;
+
+(* ------ term ------ *)
+
+term =
+    simple_term | 
+    ( simple_term, &quot;&lt;&gt;&quot;, simple_term, { &quot;&lt;&gt;&quot;, simple_term } ) |
+    ( simple_term, &quot;++&quot;, simple_term, { &quot;++&quot;, simple_term } ) |
+    ( simple_term, set_op, simple_term, { set_op, simple_term } ) |
+    ( simple_term, arith_op, simple_term, { arith_op, simple_term } );
+
+simple_term =
+    var |
+    atom |
+    anynum |
+    string |
+    compound_term |
+    agent_handle | pedro_handle |
+    ( &quot;(&quot;, term, &quot;)&quot; ) |   
+    tuple |      
+    ( &quot;$&quot;, atom ) |
+    set_term |
+    set_comprehension |
+    list_term |
+    list_comprehension |
+    ( &quot;-&quot;, simple_term ) |
+    ( &quot;#&quot;, simple_term );
+
+set_comprehension =
+   &quot;{&quot;, simple_term, &quot;::&quot;, exists_conditions, &quot;}&quot;;
+    
+list_comprehension = 
+    ( &quot;[&quot;, simple_term, &quot;::&quot;, exists_conditions, &quot;]&quot; );
+
+
+
+(* ------ auxilary rules -------*)
+
+atom_seq = atom, {&quot;,&quot;, atom};
+
+var_seq = ( var, {&quot;,&quot;, var} ) | ( &quot;(&quot;, var, {&quot;,&quot;, var}, &quot;)&quot; );
+
+var_type_seq = ( var, &quot;:&quot;, type_expression,
+                   {&quot;,&quot;, var,&quot;:&quot;, type_expression} ) |
+                   ( &quot;(&quot;, var, &quot;:&quot;, type_expression,
+                   {&quot;,&quot;, var,&quot;:&quot;, type_expression}, &quot;)&quot; );
+
+atom_or_simple_compound = atom | simple_compound;
+
+simple_compound = atom, bracketed_arg_seq;
+
+simple_type_compound = atom, bracketed_type_arg_seq;
+
+
+compound_term = ( atom | var ), bracketed_arg_seq, { bracketed_arg_seq };
+
+(* compound means ultimate functor is an atom *)
+
+bracketed_arg_seq  = (&quot;(&quot;, { term, &quot;,&quot; }, &quot;)&quot;) | (&quot;(&quot;, arg_seq, &quot;)&quot;);
+
+bracketed_type_arg_seq = (&quot;(&quot;, type_expression, {&quot;,&quot;, type_expression}, &quot;)&quot;);
+
+tuple = ( &quot;(&quot;, &quot;)&quot; ) |  (&quot;(&quot;, term, &quot;,&quot;, arg_seq, &quot;)&quot;);
+
+bracketed_var_seq  = (&quot;(&quot;, &quot;)&quot;) | (&quot;(&quot;, var_seq, &quot;)&quot;);
+
+arg_seq = term, {&quot;,&quot;, term};
+
+test_op =
+    &quot;=&quot; | &quot;==&quot; | &quot;\=&quot; | &quot;=@&quot; | &quot;&gt;&quot; | &quot;&lt;&quot; | &quot;&gt;=&quot; | &quot;=&lt;&quot; |
+    &quot;@&gt;&quot; | &quot;@&lt;&quot; | &quot;@&gt;=&quot; | &quot;@=&lt;&quot; | &quot;in&quot;;
+
+global_num_op =
+    &quot;:=&quot; | &quot;+:=&quot; | &quot;-:=&quot;;
+
+simple_string_term =
+    string | var | ( var, &quot;/&quot;, ( string | var ) ) | compound_term;
+    
+simple_list_term =
+    var | compound_term | list_term | list_comprehension ;
+
+set_term =
+    ( &quot;{&quot;, &quot;}&quot; ) |
+    ( &quot;{&quot;, arg_seq, &quot;}&quot; );
+    
+list_term =
+    ( &quot;[&quot;, &quot;]&quot; ) |
+    &quot;[&quot;, term, list_tail;
+
+list_tail =
+    &quot;]&quot; |
+    ( &quot;|&quot;, term, &quot;]&quot; ) |
+    ( &quot;,..&quot;, &quot;]&quot; ) |
+    ( &quot;,..&quot;, term, &quot;]&quot; ) |
+    ( term, &quot;,&quot;, list_tail );
+
+pedro_handle = (atom | var), [&quot;:&quot;, (atom | var)], [&quot;@&quot;, (atom | var)];
+agent_handle = (atom | var), [&quot;@&quot;, (atom | var)];
+
+
+set_op = &quot;union&quot; | &quot;diff&quot; | &quot;inter&quot;;
+
+arith_op =
+    &quot;**&quot; | &quot;*&quot; | &quot;+&quot; | &quot;-&quot; | &quot;/&quot; | &quot;//&quot; | &quot;&gt;&gt;&quot; | &quot;&lt;&lt;&quot; |
+    &quot;mod&quot; | &quot;rem&quot; | &quot;/\\&quot; | &quot;\\/&quot;;
+
+
+</pre>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="QuLog-Index.html">QuLog Index</a>, Previous: <a href="Listing-of-Builtin-Exceptions.html">Listing of Builtin Exceptions</a>, Up: <a href="index.html">QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

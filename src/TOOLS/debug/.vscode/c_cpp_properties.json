@@ -1,0 +1,25 @@
+{
+  "configurations": [
+    {
+      "browse": {
+        "databaseFilename": "${default}",
+        "limitSymbolsToIncludedHeaders": false
+      },
+      "includePath": [
+        "/opt/ros/noetic/include/**",
+        "/home/blinky/roboworkspace/devel/include/**",
+        "/opt/ros/noetic/share/tmc_julius/include/**",
+        "/home/blinky/roboworkspace/src/VISION/utils/include/**",
+        "/home/blinky/roboworkspace/src/TOOLS/common_utils/include/**",
+        "/home/blinky/roboworkspace/src/VISION/yolov8/include/**",
+        "/usr/include/**"
+      ],
+      "name": "ROS",
+      "intelliSenseMode": "gcc-x64",
+      "compilerPath": "/usr/bin/gcc",
+      "cStandard": "gnu11",
+      "cppStandard": "c++14"
+    }
+  ],
+  "version": 4
+}

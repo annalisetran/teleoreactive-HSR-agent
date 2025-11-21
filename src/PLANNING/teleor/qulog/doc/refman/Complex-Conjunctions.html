@@ -1,0 +1,165 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Complex Conjunctions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Complex Conjunctions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Complex Conjunctions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Programs.html" rel="up" title="Programs">
+<link href="Action-Sequences.html" rel="next" title="Action Sequences">
+<link href="Type-Declarations.html" rel="prev" title="Type Declarations">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Complex-Conjunctions">
+<div class="header">
+<p>
+Next: <a href="Action-Sequences.html" accesskey="n" rel="next">Action Sequences</a>, Previous: <a href="Type-Declarations.html" accesskey="p" rel="prev">Type Declarations</a>, Up: <a href="Programs.html" accesskey="u" rel="up">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Complex-Conjunctions-1"></span><h4 class="subsection">4.10.3 Complex Conjunctions</h4>
+<span id="index-Complex-Conjunctions"></span>
+
+<p>An interpreter relation query is a <i>Complex Conjunction</i>. 
+</p>
+<p>This has the form:
+</p>
+
+<p><i>Cond1</i> <code>&amp;</code> <i>Cond2</i> <code>&amp; ... &amp;</code> <i>Condn</i>, <code>n&gt;1</code> where each <i>Condi</i> is one of:
+</p><ul>
+<li> a <i>predication</i> <i>RelExp</i><code>(</code><i>Exp1</i><code>,...,</code><i>Expk</i>), <code>k&gt;=0</code>, 
+where each <i>Expi</i> is an expression - a term that may contain function calls and 
+ <i>RelExp</i> is an expression returning a k-ary relation <i>rel&rsquo;</i>  such that the values of the argument expressions will satisfy the mode and type constraints of <i>rel&rsquo;</i> when it is called. Certain binary primitive relations, for example <code>=,=?,in</code>, can be written with the relation name between the arguments.  
+</li><li> a <code>not (exists</code> <i>VarSeq</i> <i>SConj</i> <code>)</code> 
+<i>negated condition</i>, 
+where <i>VarSeq</i> is a sequence of local variables of <i>SConj</i>, which is a <i>Simple Conjunction</i>. <code>not</code> is the QuLog negation-as-failure operator.
+
+</li><li> a predication, or a <code>(..)</code> bracketed <i>Simple Conjunction</i>, prefixed with <code>once</code> - find one solution only
+</li><li> a universally quantified implication of the form
+
+<p><code>forall</code> <i>UVars</i> <code>(exists</code> <i>EVars1</i> <i>SConj1</i> <code>=&gt;</code> <code>exists</code> <i>EVars2</i> <i>SConj2</i> )
+<span id="index-forall"></span>
+</p>
+
+<p>The <i>UVars</i> variables are <i>universally</i> quantified over the implication.  The sequence of variables of <i>EVarsi</i>
+are existentially quantified over  <i>SConji</i>, <code>i=1,2</code>. Each <i>SConji</i> is a <i>Simple Conjunction</i>.
+</p></li><li> a remote query of the form
+
+<p><code>(<i>Cond</i>) query_at <i>Agent</i></code>
+</p>
+<p><code>(<i>Var1</i> ... <i>Varn</i> :: <i>Cond</i>) query_at <i>Agent</i></code>
+</p>
+<p><code>(<i>Num</i> of <i>Var1</i> ... <i>Varn</i> :: <i>Cond</i>) query_at <i>Agent</i></code>
+</p>
+
+<p>Remote queries are queries that are evaluated using  relation definitions local to another QuLog process that the querying QuLog process is allowed to query. <i>Cond</i> is a complex conjunction except that its must not contain a remote query.
+<span id="index-query_005fat"></span>
+</p>
+</li><li> an action escape of the form
+
+<p><code>{<i>ActionSequence</i>}</code>
+</p>
+<p>This is the dual of the query action call <code>?(</code><i>Cond</i><code>)</code> and is used
+to allow the programmer to access action code within relation definitions such
+as performing I/O within a relational interpreter.
+</p>
+</li></ul>
+
+<p>A <i>Simple Conjunction</i> is a <i>Complex Conjunction</i> which does not contain any <code>forall</code>
+</p>
+<p>In a <code>not (exists</code> <i>VarSeq</i> <i>SConj</i> <code>)</code> negated condition the existentially quantified
+ variable sequence <i>VarSeq</i> must contain all the named <i>local</i>
+ variables of <i>SConj</i>. These are the variables that do not appear elsewhere in the query or rule body in which the negation appears. All other variables of <i>SimpleConj</i>, except underscore anonymous variables, must be given ground values before the condition is evaluated. Underscore variables  are always implicitly existentially quantified just before the predication in which they appear.
+ If there are no named local variables in <i>SConj</i> the <code>exists</code> <i>VarSeq</i> is absent.  
+</p>
+<p>In a <code>forall</code>, each variable in <i>UVars</i> <i>must</i> appear in both <i>SimpleConj1</i> and <i>SimpleConj2</i>.  It must be a local variable of the <code>forall</code>. All other variables of the <code>forall</code>, except the  existentially quantified variables and underscore variables, must have ground values when the <code>forall</code> condition is  evaluated. Each <i>EVarsi</i> contains variables local to 
+<i>SimpleConji</i>.
+If there are no existentially quantified variable, for either the antecedent or consequent, the <code>exists</code> operator is dropped. 
+</p>
+<p>Suppose we have a collection of <code>child_of(C, P)</code>, <code>age_is</code> and <code>male</code> dynamic relation facts. The following query will
+return as an answer each parent who only has male children age over 17. 
+</p><div class="example">
+<pre class="example"> child_of(_, P) &amp; forall C (child_of(C,P) =&gt; 
+                          exists A (male(C) &amp; age_is(C,A) &amp; A&gt;17))
+</pre></div>
+
+
+<p>Note that <code>P</code> will be given a value before the evaluation of the <code>forall</code>, as required.
+</p>
+<p>The special relation <code>=?</code> is used to split up lists and string based on patterns and tests.
+</p>
+<p>For lists the general form is
+</p>
+<p><i>GroundList</i> <code>=?</code> <i>ListPattern1</i>  <code>::</code> <i>Cond1</i> <code>&lt;&gt;</code> ... <code>&lt;&gt;</code>  <i>ListPatternn</i>  <code>::</code> <i>Condn</i>
+</p>
+<p>where <i>GroundList</i> is a ground list, <i>ListPatterni</i> are list patterns - a variable, a list possibly containing variables or have a variable tail.
+<i>Condi</i> are conditions and the <code>::</code> <i>Condi</i> can be elided if <i>Condi</i>
+is simply <code>true</code>.
+</p>
+<p>For strings the general form is
+</p>
+<p><i>String</i> <code>=?</code> <i>StringPattern1</i> <code>/</code> <i>REString1</i> <code>::</code> <i>Cond1</i> <code>++</code> ... <code>++</code>  <i>StringPatternn</i> <code>/</code> <i>REStringn</i>   <code>::</code> <i>Condn</i>
+</p>
+<p>where <i>String</i> is a string, <i>StringPatterni</i> are either variables or strings, <i>REStringi</i> are strings (regular expressions)  and <i>Condi</i> are conditions.
+Both the <code>/</code> <i>REStringi</i> and <code>::</code> <i>Condi</i> can be elided.
+</p>
+<p>Examples of use of conditions that can be used in a complex conjunction and semantics are given in the semantics section.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Action-Sequences.html">Action Sequences</a>, Previous: <a href="Type-Declarations.html">Type Declarations</a>, Up: <a href="Programs.html">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

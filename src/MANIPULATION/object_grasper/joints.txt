@@ -1,0 +1,11 @@
+arm_flex_joint -0.48
+arm_lift_joint 0.44 *VARIABLE*
+arm_roll_joint -1.63
+base_l_drive_wheel_joint 639.30
+base_r_drive_wheel_joint 646.06
+base_roll_joint 6.51 
+hand_motor_joint 0.69
+head_pan_joint 1.53
+head_tilt_joint -0.30 *VARIABLE*
+wrist_flex_joint -1.57
+wrist_roll_joint 1.91

@@ -1,0 +1,222 @@
+%% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+% A multi-task version of  a variation of
+% oneArmTowerBuildersWithCoop.qlg where the mutually recursion between unpile
+% and move_to_table_or_partly_built_tower has been replaced by an iterative
+% version of unpile that moves the top unwanted block (and then iteratively
+% removes the new unwanted top block). By making unpile iterative we remove
+% a problem with oneArmTowerBuildersWithCoop.qlg - when 2 tasks have their
+% towers covered by blocks unpile of the first task to become running will
+% completely unpile before the other one gets a chance to unpile because
+% unpile is called from within a tel_atomic procedure. 
+
+%% To run:
+%% Start the Python simulator in one terminal:
+%% python oneArmSim.py
+%% Start the Teleor interpreter in another terminal:
+%% teleor -Atowers
+%% In interpreter:
+%% [oneArmTowerBuildersWith1by1Unpile].
+%% go().
+
+%% See README for how to interact with simulator
+
+def block ::= (1 .. 16)
+
+tel_percept holding(block), on_table(block), on(block,block)        
+
+tel_action pickup(block),  put_on_block(block), put_on_table()
+
+def resources_message_ ::= locked_resources(term) | waiting_resources(term)
+
+resources_hook() :: 
+    get_active_resources(Resources) &
+    get_waiting_resources(WResources) ~> 
+        locked_resources(Resources) to oneArmSim ;
+        waiting_resources(WResources) to oneArmSim  
+% Called by evaluator, when defined, to send info to the simulator
+
+
+rel stack(?list(block))  
+% The  ? means list of labels may be given or generated     
+stack([Block]) <= on_table(Block)
+stack([Block1,Block2,..Blocks]) <=
+    on(Block1,Block2) & stack([Block2,..Blocks])
+
+rel tower(list(block))
+tower([Block,..Blocks]) <= 
+    not on(_,Block) & stack([Block,..Blocks])
+
+rel clear(block)
+clear(B) <= not on(_,B)
+
+
+tel_start makeTower(list(block))    
+makeTower(Blocks){
+    tower(Blocks) ~> ()  
+    
+    stack(Blocks) & Blocks=[Block,..] ~> unpile(Block) 
+    
+    Blocks=[Block1,Block2,..Rest] & tower([Block2,..Rest]) ~>
+        move_to_block(Block1,Block2)  
+    
+    Blocks=[Block]   ~> move_to_table_or_partly_built_tower(Block) 
+    % Block will always be put directly on the table
+    
+    Blocks = [_,..Rest] ~> makeTower(Rest)  
+    }
+
+rel above(?block, block)
+above(Above, Block) <= on(Above, Block)
+above(Above, Block) <= on(On, Block) & above(Above, On)
+
+rel top_block_above(?block, block)
+top_block_above(TopBlock, Block) <=
+    above(TopBlock, Block) & not on(_, TopBlock)
+
+tel unpile(block)  
+unpile(Block){
+    clear(Block) ~> ()  
+    
+    top_block_above(TopBlock, Block) ~> 
+        move_to_table_or_partly_built_tower(TopBlock)      
+    }
+ 
+
+tel_atomic move_to_block(block, block) 
+% Moves Block1 from wherever to be on Block2
+move_to_block(Block1,Block2){   
+    % Only active if Block2 is clear in makeTower tasks   
+    on(Block1,Block2) ~> ()         % The goal is achieved
+    
+    holding(Block1)  ~> put_on_block(Block2)
+        
+    holding(AnotherBlock) ~> move_to_table_or_partly_built_tower(AnotherBlock)
+
+    clear(Block1)  ~> pickup(Block1) 
+    
+    true ~> unpile(Block1)
+     % Need to clear  Block1 to pick it up
+    } 
+ 
+tel_atomic move_to_table_or_partly_built_tower(block)
+move_to_table_or_partly_built_tower(Block){
+    on_table_or_top_of_partly_built_tower(Block) ~> ()  
+    % Goal is achieved. Block is now either on top of a partly built tower
+    % or sitting directly on the table and clear
+    
+    holding(Block) & 
+    needed_next_by_another_task(Block,TopBlockOtherTower) ~> 
+        put_on_block(TopBlockOtherTower)
+    
+    holding(_) ~> put_on_table()
+        
+    clear(Block) ~> pickup(Block)
+    
+    true ~> unpile(Block)
+    }
+
+rel on_table_or_top_of_partly_built_tower(block)
+on_table_or_top_of_partly_built_tower(Block) <=
+    on_table(Block)
+on_table_or_top_of_partly_built_tower(Block) <=
+    task(_,makeTower(BlocksList)) & 
+    BlocksList =? _ <> [Block] <> Blocks &    
+    % The above splits BlockList at Block if this block is on BlockList
+    % with Blocks the sub-list below Block. It fails if Block not on BlockList  
+    tower([Block,..Blocks])
+
+
+rel needed_next_by_another_task(block,?block)
+needed_next_by_another_task(AnyBlock,TopBlockOtherTower) <=
+    % Another task can be helped by putting AnyBlock on top of 
+    % TopBlockOtherTower
+    
+    task(_,makeTower(BlocksList)) &
+    BlocksList =? _ <> [AnyBlock] <> [TopBlockOtherTower,..Blocks] &
+    
+    % The above splits BlockList at AnyBlock if this block is on BlockList
+    % with [TopBlock,..Blocks] the sub-list below AnyBlock. 
+    % It fails if AnyBlock not on BlockList
+    
+    tower([TopBlockOtherTower,..Blocks])
+
+    % where [TopBlockOtherTower,..Blocks] is a tower 
+
+
+rel being_used(list(block),?list(block))
+being_used(Blocks,InUse) <= 
+    InUse = [Block :: exists TBlocks (task(_,makeTower(TBlocks)) & 
+                                      Block in TBlocks & Block in Blocks)]
+
+def message ::=  
+        newTower(list(block)) | kill(atom)
+
+def msg_t_ ::= tel_started(atom, term) | 
+        task_rejected(term, term) |
+        task_killed(atom) |
+        remove_task(atom) |
+        in_use(term) |
+        not_a_current_task(atom) |
+        invalid(term)
+
+handle_message(newTower(Blocks),Agent) :: 
+    being_used(Blocks,[]) ~>
+        start_task(makeTower(Blocks), T, makeTower); 
+        task_data(T,Blocks) to oneArmSim;
+        tel_started(T,makeTower(Blocks)) to Agent
+handle_message(newTower(Blocks),Agent) :: 
+    being_used(Blocks,InUse) ~>
+        task_rejected(makeTower(Blocks),in_use(InUse)) to Agent
+handle_message(kill(TaskName),Agent) :: 
+    task(TaskName,_) ~>
+        kill_task(TaskName);
+        remove_task(TaskName) to oneArmSim;
+        task_killed(TaskName) to Agent
+handle_message(kill(TaskName),Agent)  ~>
+    not_a_current_task(TaskName) to Agent
+
+handle_invalid_message(Message,Agent)  ~>  
+    invalid(Message) to Agent
+
+def task_desc ::= task_data(atom, list(block)) 
+
+act go1()
+go1() ~>
+    start_agent(oneArmSim, updates);
+    task_data(t1, [2,5,9,6]) to oneArmSim;
+    start_task(makeTower([2,5,9,6]), _, t)
+
+act go2()
+go2() ~>
+    start_task(makeTower([12,15,8,1]), T1, t);
+    task_data(T1, [12,15,8,1]) to oneArmSim;
+    start_task(makeTower([14,13,7,16]), T2, t);
+    task_data(T2, [14,13,7,16]) to oneArmSim
+
+act go()
+go() :: 
+    Tasks = [task_data(t1, [2,5,9,6]),
+             task_data(t2, [12,15,8,1]),
+             task_data(t3, [14,13,7,16])] 
+            ~> 
+            start_agent(oneArmSim, updates);
+            forall T {T in Tasks ~> T to oneArmSim} ; 
+            forall Task,Tower {
+                    task_data(Task, Tower) in Tasks  ~>
+                        start_named_task(makeTower(Tower), Task)}
+            
+
+

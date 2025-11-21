@@ -1,0 +1,1028 @@
+\input texinfo   @c -*-texinfo-*-
+@c %**start of header    
+@setfilename pedro.info
+@include version.texi
+@settitle The Pedro @value{VERSION} Reference Manual 
+@c %**end of header
+@copying
+This manual is for Pedro (version @value{VERSION}, @value{UPDATED}),
+a subscription/notification system.
+
+Copyright @copyright{} 2006-2011 Peter Robinson
+
+@quotation
+Permission is granted to copy, distribute and/or modify this
+document under the terms of the GNU Free Documentation License,
+Version 1.1 or any later version published by the Free Software
+Foundation; with no Invariant Sections, no Front-Cover Texts and
+no Back-Cover Texts.  A copy of the license is included in the
+section entitled "GNU Free Documentation License".
+
+@end quotation
+@end copying
+
+@titlepage
+@title Pedro
+@subtitle version @value{VERSION}, @value{UPDATED}
+@author Peter Robinson (@email{pjr@@itee.uq.edu.au})
+@page
+@vskip 0pt plus 1filll
+@insertcopying
+@end titlepage
+
+@contents
+
+@ifnottex
+@node Top
+@top Pedro
+
+@insertcopying
+@end ifnottex
+ 
+@syncodeindex fn cp
+
+@menu
+* Introduction::  
+* Running Pedro::         
+* Syntax::
+* Notifications::
+* Subscriptions::
+* Removing Subscriptions::
+* Registrations::
+* Removing Registrations::
+* Connecting to Pedro::
+* Denial of Service::
+* Library::
+* APIs::
+* Copying This Manual::         
+* Pedro Index::                       
+@end menu
+
+
+@node Introduction
+@chapter Introduction
+
+@pindex introduction
+
+Pedro is a subscription/notification system based on Prolog technology.
+The main component of the system is the Pedro server that is responsible for
+managing subscriptions from clients and for forwarding client notifications
+to clients with matching subscriptions.
+
+From the clients point of view subscriptions and notifications are strings
+that represent Prolog terms. The server parses these strings into Prolog terms
+and treats subscriptions in a similar way to Prolog clauses and notifications
+in a similar way to Prolog queries to be matched against subscriptions.
+
+Readers unfamiliar with Prolog are referred to the following books.
+
+@itemize @bullet
+@item
+@i{Prolog Programming for Artificial Intelligence}, Bratko
+@item
+@i{The Art of Prolog}, Sterling and Shapiro
+@item
+@i{Programming in Prolog}, Clocksin and Mellish
+@item
+@i{Techniques of Prolog Programming},  Van Lee
+@end itemize
+
+@node Running Pedro
+@chapter Running Pedro
+
+@pindex Running Pedro
+
+Pedro is a daemon and is started using the following command.
+
+@code{pedro [OPTIONS..]}
+
+Using the help option @code{-?} produces the following output.
+
+@verbatim
+Usage:
+  pedro [OPTION...] 
+
+Help Options:
+  -?, --help                Show help options
+
+Application Options:
+  --version                 Show version
+  -P, --Port=p              Use port p for connecting (default 4550)
+  -S, --Size                The size for various areas (default 1024)
+  -L, --Logfile=logfile     Use logfile for logging
+  -A, --Admin=admin_machine Use admin_machine for receiving all messages
+@end verbatim
+
+If no log file is supplied then @code{/dev/null} is used.
+If @code{stdout} is used for the log file then Pedro will not be a daemon
+and the log information will be written to standard output.
+
+If an admin machine is supplied then a process registering 
+the name 'admin' on that
+machine will receive all message including peer-to-peer messages between 
+other processes.
+
+Otherwise the supplied log file must be writable by the caller.
+@node Syntax
+@chapter Syntax
+
+In this section we describe the syntax of the Prolog terms that are used for 
+both subscriptions and notifications. The syntax we use is standard Prolog
+syntax with a cut-down set of the built-in prefix and infix operators.
+
+@menu
+* Numbers ::
+* Atoms ::
+* Strings ::
+* Variables ::
+* Compound Terms ::
+* Lists ::
+* Operators ::
+@end menu
+
+@node Numbers
+@section Numbers
+@cindex Syntax, numbers
+@cindex Number syntax
+
+Pedro numbers are 32 bit integers in decimal notation and floating point 
+numbers in decimal and scientific notation.
+
+Examples:
+@example
+Integers: @code{42}, @code{-100}
+Doubles: @code{3.14}, @code{-1.3e-5}
+@end example
+
+@node Atoms
+@section Atoms
+@cindex Syntax, atoms
+@cindex Atom syntax
+
+The syntax of Pedro atoms fall into four categories:
+@enumerate
+@item
+A lower case letter followed by any sequence consisting of ``_'' and alphanumeric characters.
+
+Examples:
+@example
+@code{fred}, @code{a12}, @code{this_is_an_ATOM}
+@end example
+
+@item
+Any combination of the following set of graphic characters.
+@example
+@code{-/+*<=>#@@$\^&~`:.?}
+@end example
+Examples:
+@example
+@code{==>}, @code{:?}, @code{-:-}
+@end example
+
+@item
+Any sequence of characters enclosed by single quotes.
+The character ``\'' indicates an escape sequence.
+
+Examples:
+@example
+@code{'Fred'}, @code{'it\'s'}, @code{'\n'}
+@end example
+
+@item
+@code{;} @code{[]} and the open-close parenthesis pair
+
+@end enumerate
+
+@node Strings
+@section Strings
+@cindex Syntax, strings
+@cindex String syntax
+
+Pedro strings are sequences of characters enclosed by double quotes. 
+As with quoted atoms, the character ``\'' indicates an escape sequence.
+
+Examples:
+@example
+@code{"This is a string"}, @code{"A string with a ', a \" and a newline \n"}
+@end example
+
+
+@node Variables
+@section Variables
+@cindex Syntax, variables
+@cindex Variable syntax
+
+The syntax of Pedro variables fall into two categories.
+@enumerate
+@item
+An upper case letter or ``_'' followed by any sequence consisting of ``_'' and alphanumeric characters.
+
+Examples:
+@example
+@code{X}, @code{X_23}, @code{_fred_12}
+@end example
+@item
+The ``anonymous'' variable ``_''
+@end enumerate
+
+Note that repeated occurrences of a variable token of the first 
+category in a string representing a Pedro term represent the same variable. 
+This is not the case for anonymous variables: each occurrence represents a
+different variable.
+
+
+@node Compound Terms
+@section Compound Terms
+@cindex Syntax, compound terms
+@cindex Compound term syntax
+The syntax of a compound Pedro term consists of an atom token 
+(@i{the functor}) followed by an 
+opening bracket
+followed by a comma separated list of syntax representing Pedro 
+terms (@i{the arguments})
+followed by a closing bracket. 
+
+A compound term must have at least one argument. 
+The @i{arity} of a compound term is the number of arguments.
+
+Examples:
+@example
+@code{f(a)}, @code{g(Var, "string", 42, h(a, g(b)))}
+@end example
+
+@node Lists
+@section Lists
+@cindex Syntax, lists
+@cindex List syntax
+The atom @code{[]} represents the empty list.
+
+The syntax of a non-empty Pedro list consists of an opening square bracket
+followed by a comma separated list of syntax representing Pedro 
+terms (optionally followed by a ``|'' followed by syntax representing Pedro 
+term) followed by a closing square bracket.
+
+Examples:
+@example
+@code{[]}, @code{[V, a, f(2), [a,b,c], "string']}, @code{[H1, H2|T]}
+@end example
+
+The list syntax involving ``|'' is typically used to describe list 
+patterns. For example, the third example above might be used to match against
+lists with at least two elements (@code{H1} and @code{H2}) and whose tail is 
+@code{T}.
+ 
+@node Operators
+@section Operators
+@cindex Syntax, operators
+@cindex Operator syntax
+Below is the table of operators used in Pedro. The table lists the declarations
+of the operators as used in Prolog. In Prolog, the declaration @code{op(Prec, Assoc, Ops)}
+declares the list of operators @code{Ops} to have precedence @code{Pred} and
+associativity @code{Assoc}. The smaller the precedence, the more tightly the 
+operator binds. For the associativity argument @code{xfy} describes a 
+right-associative infix operator,  @code{xfx} describes a non-associative
+infix operator,  @code{yfx} describes a left-associative infix operator, and
+ @code{fy} describes an associative prefix operator.
+
+@example
+@verbatim
+op(1100, xfy, [ ; ]).
+op(1050, xfy, [ -> ]).
+op(1000, xfy, [ ',' ]).
+op(700, xfx, [ = , is, < , =< , > , >= ]).
+op(500, yfx, [ + , - , /\ , \/ ]).
+op(400, yfx, [ * , / , // , rem , mod , << , >> ]).
+op(200, xfx, [ ** ]).
+op(200, fy, [ + , - ]).
+op(100, xfx, [ @ ]).
+op(50, xfx, [ : ]). 
+@end verbatim 
+@end example
+
+Examples:
+@example
+The string @code{"X is A + - B + C*D"} parses to the term @code{is(X, +(+(A, -(B)), *(C, D)))}
+The string @code{"G1 -> G2 ; G3"} parses to the term @code{;(->(G1, G2), G3)}
+@end example
+
+Note that comma is used both as an argument separator and as an infix operator.
+Each operator used at the top-level of an argument of a list or compound term
+has to have precedence less
+than 1000. If an argument has an operator of higher precedence then the
+argument needs to be enclosed in brackets.
+
+Examples:
+@example
+The string @code{"f((G1, G2))"} parses to the compound term @code{f(','(G1, G2))}
+The string @code{"[G, (G1;G2)]"} parses to the list @code{[G, ;(G1, G2)]}
+@end example
+
+@node Notifications
+@chapter Notifications
+
+Notifications are newline terminated strings sent from clients to the 
+Pedro server. A valid notification is a string that represents an atom, 
+a list or a compound
+Pedro term (with a following newline). The Pedro server reads characters
+from a client until it gets a newline. The server will then attempt to
+parse the characters up to (but not including) the newline as a 
+compound Pedro term.
+If this succeeds then the server processes the notification term; otherwise 
+the string is ignored.
+
+Examples (trailing newline removed):
+@example
+Valid:
+@code{info(fred, 42, "some string")}
+ 
+Invalid (not compound, atom or list):
+@code{"bad"}
+@code{X}
+
+Invalid (does not parse):
+@code{f(a;b)}
+@code{f([a,b))}
+@end example
+
+The server will acknowledge the client with a 1 if the notification is
+valid and a 0 otherwise.
+
+@node Subscriptions
+@chapter Subscriptions
+Like notifications, subscriptions are newline terminated strings that parse
+as compound Pedro terms. The functor of each subscription term is always 
+@code{subscribe} and has arity 3. In other words, each subscription term
+is of the form 
+@code{subscribe(}@i{Head}@code{, }@i{Body}@code{, }@i{Rock}@code{)}.
+Following the similarity between subscriptions and Prolog clauses we refer
+to the first argument as the @i{head} of the subscription and the second 
+argument as the @i{body} of the subscription.
+
+The third argument is commonly referred to as a @i{rock}. This is an integer
+and its meaning is determined by each client. 
+When the Pedro server matches a notification against the subscription, 
+the server sends the notification string together with the rock to the 
+subscribing client.
+A given client
+can use the rock to, for example, refer to a message queue or a thread 
+and thereby determine how to process the notification.
+
+The Pedro server will match a notification against a subscription if
+the notification term unifies with the head of the subscription and, with
+this unifier, the goal in the body of the subscription is satisfied.
+Readers are referred to Prolog references for descriptions of unification, 
+variable binding, dereferencing, occurs check, backtracking and
+goal evaluation.
+
+When the server matches a notification against a subscription it will send
+the string consisting of the subscribers rock followed by a space followed
+by the notification string (including the newline).
+
+The server will acknowledge an attempt by a client to subscribe with a string
+consisting of an integer (an ID) followed by a newline. The ID will be 0 if
+the subscription attempt fails (the string is too long, it doesn't parse,
+or does not represent a valid subscription term). If the subscription attempt
+succeeds then the ID will be a unique (for that client) positive integer.
+This ID is used when the client chooses to unsubscribe.
+
+
+The following table lists the ``basic'' valid subscription goals and their 
+semantics that can be used in the body
+of subscriptions. As with Prolog, whenever a unification is carried out, the
+variable bindings implied by the unifier are applied.
+
+Note that, unlike most Prologs, unification in Pedro uses the occurs check.
+
+@ftable @code
+@item true
+Always succeeds
+
+@item fail
+Always fails
+
+@item T1 = T2
+Succeeds if and only if the terms @code{T1} and @code{T2} unify. 
+
+@item T1 is T2
+Succeeds if and only if @code{T1} unifies with the evaluation of the the
+arithmetic expression @code{T2}. The goal produces a type error if
+@code{T2} does not represent an arithmetic expression that can be fully
+evaluated (to a number). The valid arithmetic expressions are described later.
+
+@item T1 < T2
+Succeeds if and only if the arithmetic expression @code{T1} evaluates to a 
+number that is less than the evaluation of the arithmetic expression @code{T2}.
+The goal produces a type error  if either term does not represent an 
+arithmetic expression that can be fully
+evaluated (to a number).
+
+@item T1 =< T2
+The same as above, except that a less-or-equal test is applied.
+
+@item T1 > T2
+The same as above, except that a greater-than test is applied.
+
+@item T1 >= T2
+The same as above, except that a greater-or-equal test is applied.
+
+@item member(X, L)
+Succeeds if and only if @code{L} is a ``cons'' pair and @code{X} unifies with 
+the head element of @code{L} or @code{X} is a member of the tail of @code{L}.
+
+@item split(L1, L2, L3)
+Succeeds if and only if the concatenation of the lists @code{L2} and @code{L3} 
+unifies with @code{L1}. The list @code{L1} must be supplied.
+
+@item splitstring(S1, S2, S3)
+Succeeds if and only if the concatenation of the strings 
+@code{S2} and @code{S3} unifies with @code{S1}. The string @code{S1} must be supplied.
+
+@item number(T)
+Succeeds if and only if @code{T} is a number.
+
+@item atom(T)
+Succeeds if and only if @code{T} is an atom.
+
+@item string(T)
+Succeeds if and only if @code{T} is a string.
+
+@item list(T)
+Succeeds if and only if @code{T} is either the empty list or a ``cons'' pair.
+
+@end ftable
+
+The following table lists the valid meta-level subscription goals -- 
+i.e. goals that take valid goals as arguments.
+
+@ftable @code
+
+@item G1 , G2
+Conjunction: succeeds if and only if first the goal @code{G1} succeeds and
+then the goal @code{G2} succeeds.
+
+@item G1 ; G2
+Disjunction: succeeds if and only if either the goal @code{G1} succeed or
+the goal @code{G2} succeeds.
+
+@item G1 -> G2 ; G3
+If-then-else: If @code{G1} succeeds then alternative solutions for
+@code{G1} are removed and the goal succeeds if and only if
+@code{G2} succeeds. Otherwise, the goal succeeds if and only if
+@code{G3} succeeds. 
+
+@item not(G)
+Negation: succeeds if and only if @code{G} fails. In Prolog this form of
+negations is called ``unsafe negation''.
+
+@item once(G)
+Succeeds if and only if @code{G} succeeds. Alternative solutions are
+removed.
+
+@end ftable
+
+The following are valid arithmetic expressions. Numbers are valid arithmetic
+expressions and in the table below, @code{E1}
+and @code{E2} are valid arithmetic expressions.
+
+@ftable @code
+@item pi
+Pi
+@item e
+E
+@item - E1
+Negation
+@item E1 + E2
+Addition
+@item E1 - E2
+Subtraction
+@item E1 * E2
+Multiplication
+@item E1 / E2
+Division
+@item E1 // E2
+Integer division
+@item E1 ** E2
+Exponentiation
+@item E1 rem E2
+Remainder (@code{E1} and @code{E2} are integer expressions)
+@item E1 mod E2
+Modulo (@code{E1} and @code{E2} are integer expressions)
+@item E1 /\ E2
+Bitwise And (@code{E1} and @code{E2} are integer expressions) 
+@item E1 \/ E2 
+Bitwise Or  (@code{E1} and @code{E2} are integer expressions)
+@item \E1
+Bitwise Negation (@code{E1} is an integer expression)
+@item E1 << E2
+Shift Left (@code{E1} and @code{E2} are integer expressions)
+@item E1 >> E2
+Shift Right (@code{E1} and @code{E2} are integer expressions)
+@item abs(E1)
+Absolute Value
+@item round(E1)
+Round 
+@item floor(E1)
+Floor
+@item ceiling(E1)
+Ceiling
+@item sqrt(E1)
+Square Root
+@item sin(E1)
+Sin
+@item cos(E1)
+Cos
+@item tan(E1)
+Tan
+@item asin(E1)
+Arcsin
+@item acos(E1)
+Arccos
+@item atan(E1)
+Arctan
+@item log(E1)
+Log (base e)
+
+@end ftable
+
+The following are examples of valid subscriptions. In all these examples, 
+the rock is zero but can be any integer (e.g. thread ID).
+
+@itemize
+@item
+@code{subscribe(info(fred, X), true, 0)} : 
+in this example, the goal is @code{true} and will always succeed. Hence, this
+subscription will match against any notification the unifies with the head 
+term -- i.e. any compound term whose functor is @code{info}, has arity 2 and
+has first argument @code{fred}
+
+@item 
+@code{subscribe(data(L), (member(height = H, L), H > 1000), 0)} :
+the head of this subscription matches against any notification with functor
+@code{data} and arity 1. The subscription will match a notification if
+the notifications argument is a list that contains a term of the form
+@code{height = H} and @code{H} is a number greater than 1000. 
+Note that, as with 
+Prolog, operators can be used to build terms (even when the operator semantics
+is not being used). In this case the operator @code{=} is just a convenient
+infix operator used to construct an arity 2 compound term.
+
+@item  
+@code{subscribe(foo(X, X), (X < 10; X > 20), 0)} : the head matches against
+any notification with functor @code{foo}, has arity 2, and whose arguments
+are unifiable. The body succeeds if @code{X} is either less than 10 or greater 
+then 20.
+
+@item
+@code{subscribe(str(S), (splitstring(S, _, S2), splitstring(S2, "hello", _)), 0)}:
+this subscription matches any notification with functor @code{str} and arity 1
+and whose argument is a string containing @code{"hello"} as a substring.
+
+@item
+@code{subscribe(foo(X, Y), (atom(X) -> number(Y), Y > 0 ; atom(Y)), 0)}: 
+this subscription matches any notification with functor @code{foo}, 
+has arity 2, and if its first argument (@code{X}) is an atom then @code{Y}
+is a number greater then 0, else @code{Y} is an atom.
+
+@end itemize
+
+The following example illustrates what happens when type errors occur in 
+an attempted match of a subscription and a notification.
+
+Consider the subscription
+
+@code{subscribe(foo(X, Y), (X < 0 ->  Y > 10 ; Y < 10), 0)}
+
+and the notification
+
+@code{foo(bar, 0)}
+
+In this case the head of the subscription matches the notification but
+@code{X} is not a number and so the test @code{X < 0} produces a type
+error which causes the attempted match to fail.
+
+If the intention of the subscription was to test if X is a number less than 0
+then it should be written as follows.
+
+@code{subscribe(foo(X, Y), (number(X), X < 0 ->  Y > 10 ; Y < 10), 0)}
+
+In this case the notification above will match.
+
+@node Removing Subscriptions
+@chapter Removing Subscriptions
+A client can remove a subscription by sending the newline terminated string
+@code{unsubscribe(ID)} to the server, where @code{ID} is the ID of the 
+subscription to be removed. Recall the when a client makes a subscription,
+the server returns a client-unique ID for the subscription. It is this ID
+that is used to remove the subscription.
+
+It is the clients responsibility to keep track of the mapping between
+subscriptions and IDs.
+
+The server will acknowledge the client with a 1 if the unsubscription succeeds
+and a 0 otherwise.
+
+@node Registrations
+@chapter Registrations
+
+A client can register a name with the Pedro server. This name can be used 
+by other registered clients to provide peer-to-peer communication.
+This is done by sending the following string (with a newline termination)
+ to the Pedro server (where
+@code{name} is the name being registered).
+
+@code{register(name)}
+
+The registered name must be an atom not containing the 
+characters '@code{,}', '@code{:}' and '@code{@@}'. 
+
+The server will acknowledge the client with a 1 if the registration succeeds
+and a 0 otherwise.
+
+Semantically, a registration is the same as a restricted form of subscription.
+Specifically, a registration can be thought of as
+a subscription of the following form.
+
+@code{subscribe(p2pmsg(_:name@@machine, _, _), true, 0)}
+
+where @code{name} is the name being registered (the name of this process) and
+@code{machine} is the name of the machine on which the process is running.
+The restriction is that at most one process on any given machine can register a
+given name.
+
+The idea is that a notification of the form
+
+@code{p2pmsg(ToAddr, MyAddr, Msg)}
+
+where @code{ToAddr} and @code{MyAddr} are addresses of the form
+@code{ID:Name@@Machine} will match a registration subscription if the @code{ToAddr} of the notification unifies with the first argument of the subscription.
+
+The  @code{ID} part of an address is optional and is ignored by the Pedro 
+server. It is up to the clients to determine how this argument is used. 
+This might be, for example, used as the name of a thread or message queue. 
+The rock used when sending such
+notifications to clients is always set to @code{0}.
+
+The ID part of an address can be elided from the notification if it is not required. It is up to the clients to determine what to do if no ID is supplied.
+
+The @code{Name} and @code{Machine} parts of  @code{ToAddr} are either atoms
+or variables. The characters '@code{,}', '@code{:}' and '@code{@@}' are not
+allowed to appear in @code{Name} or @code{Machine}. It is also possible
+for @code{ToAddr} to be a variable in which case the semantics is the same as
+having an address with both  @code{Name} and @code{Machine} variables.
+
+If @code{Name} is a variable then the notification will be sent to all registered processes on that machine. If @code{Machine} is a variable then the notification will be sent to all processes with that registered name. If both are variables then the notification will be sent to all registered processes on all machines
+that have registered processes.
+
+Note that @code{MyAddr} can be any valid address, but in practice the client
+should make sure that this is its address. It will typically be used by
+the receiving client when responding to a message.
+ 
+Example:
+
+The notification @code{p2pmsg(foo@@'foo.com.au', bar@@'bar.com.au', info(fred, [1,2,3]))} is intended for the process with registered name @code{foo} on 
+@code{'foo.com.au'} (note that the process name and machine name must both
+be atoms).
+This client is registered with the name @code{bar}.
+
+@node Removing Registrations
+@chapter Removing Registrations
+
+Registrations are removed by sending a newline terminated string of the form
+
+@code{deregister(name)}
+
+where @code{name} is the registered name of the process. 
+
+The server will acknowledge the client with a 1 if the deregistration succeeds
+and a 0 otherwise.
+
+
+@node Connecting to Pedro
+@chapter Connecting to Pedro
+The communication between each client and the Pedro server is via a pair of 
+sockets. One is used for two-way data transfer 
+(e.g. notifications, subscriptions), the other is used for the server
+to acknowledge messages from the client. This will be a @code{0} for invalid
+data from the client and non-zero for valid data.
+
+The creation of the two sockets is done as follows. Examples are given in the
+code for the Python and Java APIs.
+
+@enumerate
+
+@item
+Create a socket in the client (this will be used to obtain information from the server)
+
+@item
+Use @code{connect} to connect the socket to the Pedro server. Pedro will be 
+listening for the connection on a given port. The default port is 4550.
+
+@item
+Read an IP address and two ports (sent by the server as a newline terminated 
+string). 
+The IP address is to be used for the connection to the server. The two ports are
+for connecting two sockets (for acknowledgements and for data).
+
+@item
+Close the socket.
+
+@item
+Create a socket in the client (this will be used for acknowledgements).
+
+@item
+Use @code{connect} to connect the socket to the Pedro server for
+acknowledgements. Pedro will be 
+listening for the connection on the first of the two ports send by the server.
+
+@item
+Read the client ID on this socket (sent by the server as a newline terminated
+string).
+
+@item
+Create another socket in the client (this will be used for data).
+
+@item
+Use @code{connect} to connect the socket to the Pedro server for
+data. Pedro will be 
+listening for the connection on the second of the two ports send by the server.
+
+@item 
+Send the client the client ID on the data socket (the same string the server
+sent above).
+
+@item
+Read the status on the data socket. If the connection succeeds the status
+will be the string @code{"ok\n"}.
+
+@end enumerate
+
+
+
+
+@node Denial of Service
+@chapter Denial of Service
+
+Pedro's was designed as a message transport for communicating agents, typically
+in a local area network. It was not designed to deal with security issues
+relating to open networks. Even so, Pedro needs to take into account
+various DOS issues because client programs can have bugs and may block in
+ways that might cause problems for the Pedro server.
+
+Consequently, the Pedro server is designed to overcome various problems
+caused by badly behaving clients.
+
+Firstly, the length of any newline terminated string sent to the server
+has to be less than a bound that can be set using the @code{-S} switch at startup. The default is 1024. If the server does not
+find a newline (from a given client) before it reaches the bound then that
+string will be ignored.
+
+Secondly, in Prolog, there are many ways to create infinite computation,
+either by constructing infinite (cyclic) terms and then processing 
+them or by calling other
+non-terminating goals. Because Pedro uses occurs checking within unification
+then infinite terms cannot be constructed. Also, the valid goals
+used in subscriptions cannot produce infinite computation. 
+
+Thirdly, when a client disconnects, all its subscriptions are automatically
+removed. 
+
+Finally, there is the issue of blocking in the Pedro server. Because Pedro
+was designed to support communicating agents then we need to guarantee 
+that messages from a given client will be processed in the order sent and
+that no messages will be dropped.
+
+Consider a client that has subscribed but does not read notifications
+sent to it. Eventually, the Pedro server will not be able to send any more
+notifications to this client and so will have to block on any notifications
+that this client should receive. This may then cause notifying clients to
+block. To avoid this problem the Pedro server attaches a timeout to clients
+that causes the Pedro server to block. When the timeout expires (without
+the client consuming more notifications), the client
+is disconnected and all its subscriptions removed. 
+The timeout is currently set to 1 second. 
+
+Consequently, when writing a client program, it would be best to consume
+notifications as soon as they arrive.
+
+This timeout is also used when
+a client is trying to connect. If the handshake is not completed within
+this time, the client will be disconnected.
+
+Note that, although dealing with open networks was not a design concern for
+Pedro, we believe the above defenses against DOS would allow Pedro to
+work in such environments.
+
+
+@node Library
+@chapter Library
+The Pedro C-library provides support for writing Pedro clients. It is built
+on top of the glib library.
+
+@code{Client} is an opaque datatype used to store information about a Pedro 
+client. The intention is to use @code{g_main_loop_run} with the callback
+declared in the creation of the client called each time data is sent to the
+client from the Pedro server. The program @code{consumer.c} in the examples 
+directory is a simple example using this approach. 
+
+The following functions define the client interface.
+
+@ftable @code
+@item Client* client_new(void (*cb) (char*, gpointer, gpointer), gpointer user_data);
+This function returns a pointer to a new client object connected to the Pedro
+server on this machine using the default port (4550). The callback @code{cb}
+(user defined) takes the data from the server, the rock specified in the 
+matching subscription
+and a pointer to user data and is called each time data arrives from 
+the server. The last argument, @code{user_data}, is  a pointer to the user data
+used as the third agument to the callback.
+
+@item Client* client_new_full(int port, char* hostname, void (*cb) (char*, gpointer, gpointer), gpointer user_data);
+This function is the same as the previous one except the port and machine name of the Pedro server are also supplied.
+
+@item void client_destroy(Client* client);
+Shut down the connection with the Pedro server and free
+the client object data.
+
+@item int subscribe(Client* client, char* term, char* goal, gpointer rock);
+Make a subscription for the given client and return the ID
+of the subscription (0 if the subscription is unsuccessful).
+
+@item gboolean unsubscribe(Client* client, guint id);
+Remove the subscription with the supplied ID. It returns true
+iff the operation was successful.
+
+@item gboolean notify(Client* client, char* term);
+Send a notification to the server. It returns true
+iff the operation was successful.
+
+@item gboolean register_name(Client* client, char* name);
+Register the supplied name with the server. It returns true
+iff the operation was successful.
+
+@item gboolean deregister_name(Client* client);
+Deregister the current name with the server. It returns true
+iff the operation was successful.
+
+@item gboolean p2p(Client* client, char* toaddr, char* msg);
+Send a peer-to-peer message to the supplied address. It returns true
+iff the operation was successful.
+
+@end ftable
+
+@node APIs
+@chapter APIs
+
+The directories @code{src/c_api}, @code{src/python_api} and @code{src/java_api} contain APIs for C, Python and Java.
+
+@menu
+* C API::
+* Python API::
+* Java API::
+@end menu
+
+@node C API
+@section C API
+
+The directory @code{src/c_api} contains a C-level API for Pedro clients 
+(not using glib) in the files @code{c_api.c}, @code{c_api.h}, 
+@code{pedro_token.c} and @code{pedro_token.h}. 
+
+The directory also contains four example programs in two
+pairs. The program @code{producer.c} sends notifications entered by the user.
+The program @code{consumer.c} subscribes based on information entered by the 
+user and displays received notifications. 
+
+The programs @code{ping.c} and 
+@code{pong.c} respectively registers the names @code{ping} and  @code{pong}.
+The program @code{ping.c} repeatedly asks for a term from the user, sends it
+as a peer-to-peer message to  @code{pong} and waits for a reply message and
+displays it.
+The program @code{pong.c} repeatedly waits for a peer-to-peer message,
+and replies with the same message wrapped in a structured term whose
+functor is @code{echo}.
+
+The file @code{c_api.h} contains comments describing the API.srsrc
+
+@node Python API
+@section Python API
+
+The directory @code{src/python_api} contains a definition for a Pedro client class in the file @code{pedroclient.py}. 
+This directory also contains a program @code{pedro_gui.py} that uses this API
+and provides an interface to subscriptions and notifications.
+
+Below is a simple example using this 
+class withing the python interpreter.
+
+@verbatim
+>>> from pedroclient import *
+>>> me = PedroClient()
+>>> me.subscribe('f(X)')
+1
+>>> me.notify('f(a)')
+1
+>>> me.get_notification()
+('f(a)', 0)
+>>> me.notify('f(g(12, "hi"))')
+1
+>>> print me.get_term()[0]
+f(g(12, "hi"))
+>>> 
+@end verbatim
+
+
+@ftable @code
+@item PedroClient(machine='localhost', port=4550, async = True)
+Create a Pedro client object connected to the Pedro server on @code{hostname}
+using the port @code{port}. If @code{async} is true a thread is created to
+process Pedro messages. If not, a call to @code{notification_ready} will
+process any Pedro messages. If the main program has its own event loop (e.g. in pygame) then the program runs faster setting  @code{async} to @code{False} and
+adding @code{notification_ready} to the loop.
+
+
+@item disconnect()
+A method that disconnects the client.
+
+@item connect()
+A method that (re)connects the client.
+
+@item notify(term)
+A method that sends @code{term} as a notification to the Pedro server.
+
+@item subscribe(term, goal = 'true', rock = 0)
+A method that subscribes with the supplied term, goal and rock. This method, if
+successful, returns the ID of the subscription.
+
+@item unsubscribe(ID)
+A method that unsubscribes to the subscription with the given ID.
+
+@item register(name)
+A method that registers the supplied name with the Pedro server.
+
+@item deregister()
+A method that deregisters its name.
+
+@item p2p(toaddr, term)
+A method that sends @code{term} to the address @code{toaddr} using the peer-to-peer support. The machine part of the address can be elided if it is to a
+process on the same machine. Do not use @code{localhost} as the
+name of the machine.
+
+@item get_notification()
+A method that returns the next notification received by the client as 
+a pair consiting of the notification string
+together with the rock supplied in the corresponding subscription.
+This method blocks until a message is available if @code{async == True} and
+returns @code{None} if  @code{async == false} .
+
+@item get_term()
+This has the same behaviour as @code{get_notification} except that the
+notification is parsed into a Prolog term.
+
+@item parse_string(string)
+Parse @code{string} into a Prolog term.
+
+@item notification_ready()
+A method that tests if a notification is ready to get.
+
+@item PedroParser()
+Create a Prolog parser object. The only method, @code{parse(string)},
+parses @code{string} to a Prolog term. If a parse error occurs, a @code{ParserError} exception is thrown that contains the position of the error.
+
+@end ftable
+
+@node Java API
+@section Java API
+The directory @code{src/java_api} contains a definition for a Pedro client 
+class and support for Prolog terms (including a Prolog  parser).
+
+The file @code{Client.java} contains a very simple program that connects to the
+Pedro server, makes a subscription based on the runtime arguments, and enters 
+a loop that parses the received notification into Prolog terms then 
+pretty prints them.
+
+The Pedro client object creation and methods are the same as in the Python
+case from the previous section except there is no @code{get_term} method.
+This is replaced by the use of a parser that converts strings (from a
+call to @code{get_notification()}) to a Prolog term.
+
+The files @code{PedroEvent.java} and @code{PedroListener.java} provide support
+for data events from the Pedro server. Clients can add listeners to data events
+using the @code{addPedroListener} method. The file @code{PedroGUI.java} 
+is similar to @code{pedro_gui.py} and contains
+an example of using this method. 
+
+@node Copying This Manual
+@appendix Copying This Manual
+
+@menu
+* GNU Free Documentation License::  License for copying this manual.
+@end menu
+
+@include fdl.texi
+
+
+@node Pedro Index
+@unnumbered Pedro Index
+
+@printindex cp
+
+@bye

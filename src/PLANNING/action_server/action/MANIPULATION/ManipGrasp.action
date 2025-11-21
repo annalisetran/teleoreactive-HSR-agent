@@ -1,0 +1,12 @@
+# Define the goal
+float64 forward_distance
+
+---
+# Define the result
+bool action_success
+
+---
+# Define a feedback message. 0 for not started, 1 for ongoing, 2 for failure.
+uint32 feedback
+
+

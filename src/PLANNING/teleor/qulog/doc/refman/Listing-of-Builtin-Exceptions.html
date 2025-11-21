@@ -1,0 +1,200 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Listing of Builtin Exceptions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Listing of Builtin Exceptions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Listing of Builtin Exceptions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="EBNF-Grammar-for-QuLog_002fTeleoR.html" rel="next" title="EBNF Grammar for QuLog/TeleoR">
+<link href="Listing-of-Builtin-Types.html" rel="prev" title="Listing of Builtin Types">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="appendix" id="Listing-of-Builtin-Exceptions">
+<div class="header">
+<p>
+Next: <a href="EBNF-Grammar-for-QuLog_002fTeleoR.html" accesskey="n" rel="next">EBNF Grammar for QuLog/TeleoR</a>, Previous: <a href="Listing-of-Builtin-Types.html" accesskey="p" rel="prev">Listing of Builtin Types</a>, Up: <a href="index.html" accesskey="u" rel="up">QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Listing-of-Builtin-Exceptions-1"></span><h2 class="appendix">Appendix B Listing of Builtin Exceptions</h2>
+
+<p>Qulog comes with a builtin declaration for the exception type and a default type for the user exceptions that will be overwritten by a user definition:
+</p><div class="example">
+<pre class="example">  def exception == builtin_exception || user_exception
+  def user_exception ::= default_exception_()
+</pre></div>
+
+<p>The <code>builtin_exception</code> type is an enumeration of constructors. Below we
+list the constructors describing how each exception is raised.
+</p>
+<p><code>read_term_syntax_error()</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when there is a syntax error in reading a term via <code>read_term</code>
+</p></blockquote>
+<p><code>input_term_type_error(atom, string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when any input is parsed but the resulting &rsquo;term&rsquo; is not a valid Qulog term. This can happen in a read, a message receive or when calling <code>string2term</code>.
+</p></blockquote>
+<p><code>read_op_term_syntax_error(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when there is a syntax error in reading a term via <code>read_op_term</code>
+</p></blockquote>
+<p><code>input_term_error(atom, string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is similar to <code>input_term_type_error</code> except it is raised
+  if the read in term has an unevaluated function call.
+</p></blockquote>
+<p><code>string2term_syntax_error(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when there is a syntax error in reading a term via <code>read_term</code>
+</p></blockquote>
+<p><code>stream_not_writeable(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when attempting to write to a stream that is not in write mode
+</p></blockquote>
+<p><code>stream_not_readable(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when attempting to read from a stream that is not in read mode
+</p></blockquote>
+<p><code>stream_not_open(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when attempting to read from or write to a stream that is not open
+</p></blockquote>
+<p><code>action_failure(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when an called action fails in the body of the chosen
+  rule
+</p></blockquote>
+<p><code>no_matching_action_rule(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when an call to an action does not match any rule head and guard
+</p></blockquote>
+<p><code>no_matching_function_rule(string)</code>:
+</p><blockquote class="indentedblock">
+<p>The same as above for function calls
+</p></blockquote>
+<p><code>no_matching_tr_rule(tel_term)</code>:
+</p><blockquote class="indentedblock">
+<p>The same as above for teleo procedure calls
+</p></blockquote>
+<p><code>arithmetic_function_domain_error(term)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when the arguments to an arithmetic function are not
+  in the domain of the function such as when dividing by zero
+</p></blockquote>
+<p><code>remote_query_ontology_mismatch(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised on the client side when some term within a remote query from a client
+is not of type term within the server. Since the term is a valid term on the client side then this must be because there is a mismatch in the type declarations in the server
+</p></blockquote>
+<p><code>remote_query_exception(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised on the client side when an exception is raised on
+  the server side - the server side exception is turned into a string and that
+  becomes the argument of the client side exception.
+</p></blockquote>
+<p><code>pedro_not_connected(atom)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when we attempt to interact with Pedro but we have not connected to Pedro
+</p></blockquote>
+<p><code>pedro_name_already_registered(atom)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when we attempt to register with Pedro using a name that has already been registered
+</p></blockquote>
+<p><code>fork_thread_name_exists(atom)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when we attempt to fork a thread with a name that is already the name of a already forked thread
+</p></blockquote>
+<p><code>qp_exception(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when some code raises an exception at the QuProlog level.
+  The QuProlog exception is converted to a stringas the argument of the exception
+</p></blockquote>
+<p><code>qulog2qp_type_exception(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when output arguments of interface code are not of the required type (see the next section)
+</p></blockquote>
+<p><code>no_agent_to_kill()</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when the argument to <code>kill_agent</code> is not the name of a current agent
+</p></blockquote>
+<p><code>no_matching_task_to_kill(atom)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when the argument to <code>kill_task</code> is not the name of a current task
+</p></blockquote>
+<p><code>not_start_task_TR_procedure(string)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when we try to start a task that has not been declared as a start teleo procedure
+</p></blockquote>
+<p><code>task_name_in_use(atom)</code>:
+</p><blockquote class="indentedblock">
+<p>This exception is raised when we try to start a task using the name of current task
+</p></blockquote>
+
+
+
+
+
+
+
+
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="EBNF-Grammar-for-QuLog_002fTeleoR.html">EBNF Grammar for QuLog/TeleoR</a>, Previous: <a href="Listing-of-Builtin-Types.html">Listing of Builtin Types</a>, Up: <a href="index.html">QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

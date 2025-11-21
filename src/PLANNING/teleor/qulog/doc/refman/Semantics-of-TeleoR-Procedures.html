@@ -1,0 +1,245 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Semantics of TeleoR Procedures (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Semantics of TeleoR Procedures (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Semantics of TeleoR Procedures (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Semantics.html" rel="up" title="Semantics">
+<link href="Semantics-of-Actions.html" rel="prev" title="Semantics of Actions">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Semantics-of-TeleoR-Procedures">
+<div class="header">
+<p>
+Previous: <a href="Semantics-of-Actions.html" accesskey="p" rel="prev">Actions</a>, Up: <a href="Semantics.html" accesskey="u" rel="up">Semantics</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Semantics-of-TeleoR-Procedures-1"></span><h3 class="section">6.4 Semantics of TeleoR Procedures</h3>
+<span id="index-Semantics-of-TeleoR-Procedures"></span>
+
+<p>When a TeleoR procedure is executed, the guards are checked in order 
+until a guard is found that is true (with a given instantiation of variables).
+The corresponding <i>TeleoR Action</i> is then executed. This action may be a TeleoR
+procedure and in which case its rules are checked in the same way.
+We say that a chosen rule is <i>fired</i>.
+</p>
+<p>As with actions, if there are no matching guards, an exception is thrown.
+</p>
+<p>Semantically, each TeleoR procedure is continually being checked to see which rule to choose. In practice, we only check when either the <i>Belief Store</i> has changed or a timeout has occurred. The timeouts of interest are those produced by a rule with a  <code> min_time </code> being fired or because the rules action is a timed sequence.
+</p>
+<p>We can think of a <code> min_time </code> to be the same as a test that is true if <i>Duration</i> time has not yet expired since the rule was first fired.
+</p>
+<p>If, on rechecking, the same rule with the same instantiation of variables is chosen we say the rule is <i>continued</i>. If the same rule but with a different instantiation of variables is chosen we say that the rule is <i>refired</i>.
+</p>
+<p>In the case where the fired rule contains an <code>or_while</code> then this rule will be continued if either <i>Guard</i> or <i>Or</i> remains true (with the same instantiation of variables) unless an earlier rule is fired.
+</p>
+<p>In the case where the fired rule contains a <code>commit_while</code> then this rule will be continued  if  <i>Commit</i> remains true (with the same instantiation of variables) even if an  earlier guard becomes true.
+</p>
+
+<p>When a timed sequence like <code>[turn(left):5, move(4):7]</code> is
+called, the first action is called and then after that duration is up, the
+second action is called and so on until the last action in the sequence is 
+called. After its duration has expired then the sequence is repeated from 
+the start. This repetitive action continues whilst the rule with the timed sequence remains a fired rule. 
+If the last 
+duration is missing, that action persists whilst the rule with the timed sequence remains a fired rule. The sequence is execututed just once. 
+</p>
+
+
+
+
+
+<ul class="section-toc">
+<li><a href="#Example-TeleoR-program" accesskey="1">Example TeleoR program</a></li>
+<li><a href="#Reactive-TeleoR-Rules" accesskey="2">Reactive TeleoR Rules</a></li>
+</ul>
+<div class="subsection" id="Example-TeleoR-program">
+<h4 class="subsection">6.4.1 Example TeleoR program</h4>
+<span id="index-Example-TeleoR-program"></span>
+
+<p>As an example of TeleoR Programs, consider the following TeleoR program (from the <code>examples/introduction</code> directory of the release) controlling a robot whose objective is to find, approach, and pick up an object using grippers.
+</p>
+
+<div class="example">
+<pre class="example">
+
+def dir ::= left | right | centre | dead_centre
+
+tel_percept see(num, dir), holding()
+tel_action move(num), turn(dir), grab(), release()     
+
+%% We interpret holding true and see(0, centre) not true to mean that
+%% the grippers are closed but not actually holding an object
+
+tel get_object()
+get_object() {
+    holding() &amp; see(0, dead_centre)       
+            ~&gt; ()
+    holding() &amp; see(0, centre)       
+            ~&gt; ()
+    not holding()  &amp; see(0, dead_centre)  
+            ~&gt; grab()
+    not holding()  &amp; see(0, centre)  
+            ~&gt; grab()
+    not holding()                    
+            ~&gt; get_to()
+    true                           
+        ~&gt; release() 
+    }
+
+fun op_dir(dir) -&gt; dir
+op_dir(left) -&gt; right
+op_dir(right) -&gt; left
+op_dir(_) -&gt; centre
+
+rel not_dead_centre_yet(dir)
+not_dead_centre_yet(Dir) &lt;=
+    see(_, D) &amp; D \= dead_centre &amp; D \= op_dir(Dir)
+
+
+tel get_to()
+get_to() {
+    see(0, dead_centre)  ~&gt; ()
+    see(0, centre)       ~&gt; ()
+    see(0, Dir)          ~&gt; turn(Dir)
+    see(_, dead_centre)  ~&gt; move(6)
+    see(_, centre)       ~&gt; move(6)
+    see(_, Dir) commit_while not_dead_centre_yet(Dir)
+                         ~&gt; move(4) , turn(Dir)
+    true                 ~&gt; [turn(left):5, move(4):7]
+    }
+
+</pre></div>
+
+
+
+<p>Consider an initial state where no objects are seen and holding is false.
+When <code>get_object</code> is executed then the fifth rule is fired causing
+<code>get_to</code> to be executed. The last of rules of <code>get_to</code> will
+be chosen (a timed sequence). This will first cause the robot to start turning
+for 5 seconds and then start moving for 7 seconds. This will be repeated until
+an object is spotted.
+</p>
+
+<p>At some point, say <code>see(10, left)</code> becomes true. This causes the 
+sixth rule of <code>get_to</code> to fire (with <code>Dir</code> instantiated to
+<code>10</code>). Assuming this object is not moved by the environment, then
+eventually, say <code>see(8, centre)</code> becomes true. It might seem
+that the fifth rule should now fire because its guard becomes true. However,
+the  <code>commit_while</code> condition prevents higher rules from firing.
+Once, say, 
+<code>see(8, dead_centre)</code> becomes true then rule four will fire.
+By over-achieving the guard of the sixth rule the &quot;fluttering&quot; between
+the fifth and sixth rule (without the <code>commit_while</code> condition) is eliminated.
+</p>
+<p>Note that we have to be careful when using a <code>commit_while</code> in a rule as it causes this rule to take over. What happens if we simply use <code>not see(_, dead_centre)</code> as the <code>commit_while</code> test? If this test eventually becomes true then we don&rsquo;t have a problem but what if the environment removes the bottle or moves it from left to right? In this case the test is still true but we  shouldn&rsquo;t continue with this rule. By using the more complicated test <code>not_dead_centre_yet</code> the test fails for one of three reasons: the bottle is no longer seen, the bottle is dead centre, or the direction has changed. We want to stop commiting to this rule when any of these conditions become true.
+</p>
+
+<p>For example, if, before <code>see(8, dead_centre)</code> becomes true,
+the environment moves the object so that <code>see(8, right)</code> becomes
+true then there would be a refiring of rule six and the robot will start 
+turning to the right.
+</p>
+<p>Note that, if before the object is seen dead centre, 
+<code>see(0, centre)</code> becomes true then rule four of <code>get_object</code>
+will fire. The commit only has a local effect - affecting rule choices within its own TeleoR program.   
+</p>
+
+<p>Eventually, without interference from the environment, either
+<code>see(0, dead_centre)</code> or <code>see(0, centre)</code> will become true. The third or fourth rule of <code>get_object</code> will now fire (stopping the execution of <code>get_to</code>), causing the
+robot to grip the object. Under normal circumstances holding will become
+true and then the first or second rule will fire causing the robot to stop.
+</p>
+
+<p>It may seem that the robot&rsquo;s job is done now that it has achieved its goal.
+However, the TeleoR program is still monitoring the state and say the environment
+now removes the object from the robot&rsquo;s grip. Rule six will fire, opening
+the grippers, and then, once holding is no longer true, rule five will fire
+and the robot will go back to searching for an object.
+</p>
+</div>
+<div class="subsection" id="Reactive-TeleoR-Rules">
+<h4 class="subsection">6.4.2 Reactive TeleoR Rules</h4>
+<span id="index-Reactive-TeleoR-Rules"></span>
+
+<p>In many situations, like the two robot bottle collectors in <code>examples/bottle_collector</code>, the robot has both a goal directed part (e.g. collecting and delivering bottles) and a reactive part (e.g. avoiding other robots).
+It is clear that the reactive part should dominate over the goal directed part and probably the simplest way to implement this within TeleoR procedures is to add, in the top-level TeleoR procedure, reactive rules before goal directed rules so that the guards of the reactive rules will be checked before the guards of the goal directed rules.
+</p>
+<p>In order to highlight this to the reader of the program we can surround the reactive part with chevrons as below.
+</p>
+<div class="example">
+<pre class="example">communicating_collect_bottles(Total,OthrAg){ 
+    &gt;&gt;&gt;
+        near(robot, _) or_while min_time 4 ~&gt; avoid_robot(OthrAg)       
+    &lt;&lt;&lt;
+    $collected + $other_collected &gt;= Total ~&gt; ()
+    %% ....
+</pre></div>
+<p>The guard of the rule below <code>&lt;&lt;&lt;</code> is the overall goal of the TeleoR procedure
+and it comes immediately after the reactive rule(s). In this case, if another robot is detected too close, the guard of the first rule becomes true and the TeleoR procedure will react by attempting to avoid the other robot. Once the other robot is no longer near, the TeleoR procedure will get back to its goal directed behaviour.
+</p>
+<p>The chevrons are purely syntactic and have no effect on the semantics - if the chevrons were removed the procedure would behave exactly the same.
+</p>
+
+
+</div>
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="Semantics-of-Actions.html">Actions</a>, Up: <a href="Semantics.html">Semantics</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,8 @@
+Embedded agents are designed to be used in situations where the sensors
+and controls are more easily managed directly by the running process.
+This is the case for the EV3, for example. In the ev3 subdirectory we provide
+an interface to the ev3 sensors and motor controls and use that to code a
+simple TR program that reacts to its touch sensors being touched.
+
+In this directory we provide a simplifed version of the ev3 TR program that
+simply responds to belief store updates by the user by displaying the controls.

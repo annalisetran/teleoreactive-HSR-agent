@@ -1,0 +1,108 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Unique operational semantics of a TeleoR procedure call (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Unique operational semantics of a TeleoR procedure call (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Unique operational semantics of a TeleoR procedure call (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Overview-of-QuLog_002fTeleoR.html" rel="up" title="Overview of QuLog/TeleoR">
+<link href="What-is-TeleoR_003f.html" rel="prev" title="What is TeleoR?">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Unique-operational-semantics-of-a-TeleoR-procedure-call">
+<div class="header">
+<p>
+Previous: <a href="What-is-TeleoR_003f.html" accesskey="p" rel="prev">What is TeleoR?</a>, Up: <a href="Overview-of-QuLog_002fTeleoR.html" accesskey="u" rel="up">Overview of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Unique-operational-semantics-of-a-TeleoR-procedure-call-1"></span><h3 class="section">1.3 Unique operational semantics of a TeleoR procedure call</h3>
+
+<p>The two example TeleoR  procedures of <a href="What-is-TeleoR_003f.html">What is TeleoR?</a> have the form:
+</p>
+
+
+<div class="example">
+<pre class="example">p(X1,..Xm) {
+    Guard1 ~&gt; RAct1 ++ QAct1
+    Guard2 ~&gt; RAct2 ++ QAct2
+    ....
+    Guardn ~&gt; RActn ++ QActn
+    }
+</pre></div>
+
+<p>A robotic device control task <code>T</code> may be started with a call <code>p(a1,..,am)</code> to such a procedure.  The given arguments  <code>a1,...,am</code>, which must all be ground, replace the occurrences of the corresponding parameter variables <code>X1,...,Xm</code> throughout the rules of the TeleoR procedure <code>p</code>. The partially instantiated guards are then evaluated in order, starting with the guard of the first rule, against the current state <code>BS</code> of the agent&rsquo;s <i>Belief Store</i>.  The static relation and function rules are used as required. The first rule of the called procedure, say rule <code>i</code>, with a guard that has an inferable instantiation <code>Guardi'</code>, determines the first action for task <code>T</code>.  It is the <i>fired</i> rule  of the task call <code>p(a1,..,am)</code>  for <i>Belief Store</i> state <code>BS</code>.  The  action is the now fully instantitaed instantiated <code>RActi' ++ QActi'</code>
+of the i&rsquo;th rule,  corresponding to the inferred instantiation <code>Guardi'</code> of the rule&rsquo;s guard. The action will always be fully instantiated and correctly typed. Compile time moded type checking of the procedure will ensure this.  
+</p>
+<p>If <code>RActi'</code> is a TeleoR procedure call, its rule guards  are similarly evaluated against the same <i>Belief Store</i> state <code>BS</code> to determine the next rule firing.  This continues until a rule is fired with a robotic action that is <i>not</i> a TeleoR procedure call.  This robotic action is dispatched to an interface process for the external robotic devices.  The QuLog actions of the fired rules of the nested sequence of TeleoR procedure calls are executed one by one, ending with the action for the last fired rule.
+</p>
+
+<p>Often the determined robotic actions are durative actions such as <code>move(r1,2.4)</code>, a forward move action for a mobile robot <code>r1</code>. This will continue until the agent task <code>T</code> that determined the action chooses another  action for <code>r1</code>.  
+It does this by re-evaluating the task&rsquo;s initial TeleoR procedure call <code>p(a1,..,am)</code> after an update of the agent&rsquo;s <i>Belief Store</i>, and not before. This re-evaluation could still determine the same action for <code>r1</code>, perhaps by firing exactly the same sequence of TeleoR  rules. 
+Or it 
+could determine a tuple of  actions  <code>(move(r1,2.0),turn(r1,left,1.0))</code>, causing <code>r1</code> to  slow down its 
+forward motion and to simultaneously start turning to the left.  This will cause <code>r1</code> to move in an arc. If the new determined action is the empty tuple <code>()</code>, this will will cause  <code>r1</code> to be sent a message to terminate its  <code>move(r1,2.4)</code> action, in effect to stop. 
+</p> 
+<p>This does not mean  task <code>T</code> has terminated. On the next <i>Belief Store</i> update <code>T</code>&rsquo;s initial TeleoR procedure call will be re-evaluated against its updated state and might result in a fresh robotic action such as <code>move(r1,-1.2)</code> being determined,  perhaps to move <code>r1</code> out of the path of an approaching robot or person. Each task&rsquo;s TeleoR procedure call remains active, being re-evaluated each time the <i>Belief Store</i> is updated,  until the task is explicitly killed by a separate task supervisor thread within the agent. 
+</p>
+<p>Typically, the  call instantiated guard of the first rule of each TeleoR procedure  is the  goal to be achieved by that call, expressed as a declarative query to the agent&rsquo;s <i>Belief Store</i>.  It is the <i>call&rsquo;s goal</i> - a state of the environment of the controlled robotic devices that can be detected by sensor readings mapped into percept facts.   For procedures that are  called to start tasks, this is also the logically expressed goal of the task. Call instantiated guards of lower rules are typically declaratively expressed sub-goals of the call goal, and  often lie on a sub-goal tree routed at the call goal.  The action of such a lower rule should make progress towards the call goal by changing the environment using robotic actions.  Progress is made if eventually percept facts are received by the agent from which that the guard of a higher rule of the procedure can be inferred. 
+TeleoR procedures are an extension of QuLog with an operation semantics well suited to programming reactive  goal directed robotic control tasks.
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="What-is-TeleoR_003f.html">What is TeleoR?</a>, Up: <a href="Overview-of-QuLog_002fTeleoR.html">Overview of QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

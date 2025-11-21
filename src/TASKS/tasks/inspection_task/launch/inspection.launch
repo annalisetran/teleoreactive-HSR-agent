@@ -1,0 +1,15 @@
+<launch>
+    <!-- launch nodes -->
+    <!-- <include file="$(find hsrb_rosnav_config)/launch/hsrb_nav.launch"/> -->
+    
+    <include file="$(find speech_to_text)/launch/speech_to_text.launch"/>
+    
+    <node name="DoorChecker" pkg="utility" type="DummyDoorCheck.py" output="screen"/>
+    <node name="wrist_press" pkg="utility" type="wrist_press.py" output="screen"/>
+    
+    <node name="inspection_controller" pkg="inspection_task" type="inspection_smach.py" output="screen">
+        <!-- parameters -->
+        <param name="start_topic" type="str" value="/start_task"/>
+        <param name="speech_topic" type="str" value="speech_recognition/vosk_result"/>
+    </node>
+</launch>

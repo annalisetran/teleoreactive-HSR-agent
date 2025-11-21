@@ -1,0 +1,139 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Atoms (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Atoms (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Atoms (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Data-constants.html" rel="up" title="Data constants">
+<link href="Numbers.html" rel="next" title="Numbers">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="Atoms">
+<div class="header">
+<p>
+Next: <a href="Numbers.html" accesskey="n" rel="next">Numbers</a>, Up: <a href="Data-constants.html" accesskey="u" rel="up">Data constants - the atomic term values</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Atoms-1"></span><h4 class="subsection">4.2.1 Atoms</h4>
+<span id="index-Atoms"></span>
+
+
+<p>There are four syntactic forms for atoms. The reserved words are not atoms and if you accidentally use a reserved word as an atom the parser will produce a syntax error.
+</p>
+<ol>
+<li> A lower case letter followed by any sequence consisting of &quot;<code>_</code>&quot; and alphanumeric characters.
+<br>
+For example:
+<div class="example">
+<pre class="example">percy_smith_2
+semester_1
+</pre></div>
+
+
+  
+</li><li> Any combination of the following set of graphic characters.
+
+<div class="example">
+<pre class="example">|-/+*&lt;=&gt;#@$\^&amp;~:.?
+</pre></div>
+
+<p>For example:
+</p>
+<div class="example">
+<pre class="example">@&lt;=
+</pre></div>
+
+
+
+</li><li> Any sequence of characters enclosed by &quot;<code>'</code>&quot; (single quote).  
+Single quote can be included in the sequence by writing the quote twice. 
+&quot;<code>\</code>&quot; indicates an escape sequence, 
+where the escape characters are case insensitive. 
+The possible escape characters are:
+
+<blockquote class="indentedblock">
+<table>
+<tr><td width="20%"><code>newline</code></td><td width="60%">Meaning: Continuation</td></tr>
+<tr><td width="20%"><code>^</code></td><td width="60%">Meaning: Same as <code>d</code>.</td></tr>
+<tr><td width="20%"><code>^character</code></td><td width="60%">Meaning: Control character.</td></tr>
+<tr><td width="20%"><code>dd</code></td><td width="60%">Meaning: A two digit octal number.</td></tr>
+<tr><td width="20%"><code>a</code></td><td width="60%">Meaning: Alarm (<code>ASCII = 7</code>).</td></tr>
+<tr><td width="20%"><code>b</code></td><td width="60%">Meaning: Backspace (<code>ASCII = 8</code>).</td></tr>
+<tr><td width="20%"><code>c</code></td><td width="60%">Meaning: Continuation.</td></tr>
+<tr><td width="20%"><code>d</code></td><td width="60%">Meaning: Delete (<code>ASCII = 127</code>).</td></tr>
+<tr><td width="20%"><code>e</code></td><td width="60%">Meaning: Escape (<code>ASCII = 27</code>).</td></tr>
+<tr><td width="20%"><code>f</code></td><td width="60%">Meaning: Formfeed (<code>ASCII = 12</code>).</td></tr>
+<tr><td width="20%"><code>n</code></td><td width="60%">Meaning: Newline (<code>ASCII = 10</code>).</td></tr>
+<tr><td width="20%"><code>odd</code></td><td width="60%">Meaning: A two digits octal number.</td></tr>
+<tr><td width="20%"><code>r</code></td><td width="60%">Meaning: Return (<code>ASCII = 13</code>)</td></tr>
+<tr><td width="20%"><code>s</code></td><td width="60%">Meaning: Space (<code>ASCII = 32</code>).</td></tr>
+<tr><td width="20%"><code>t</code></td><td width="60%">Meaning: Horizontal tab (<code>ASCII = 9</code>).</td></tr>
+<tr><td width="20%"><code>v</code></td><td width="60%">Meaning: Vertical tab (<code>ASCII = 11</code>).</td></tr>
+<tr><td width="20%"><code>xdd</code></td><td width="60%">Meaning: A two digit hexadecimal number.</td></tr>
+</table>
+</blockquote>
+
+<p>Here are a few examples of quoted atoms.
+</p><div class="example">
+<pre class="example">'hi!'
+'they''re'
+'\n'
+</pre></div>
+
+</li></ol>
+
+</div>
+
+
+
+</body>
+</html>

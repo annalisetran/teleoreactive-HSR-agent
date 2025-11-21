@@ -1,0 +1,15 @@
+<launch>
+    <include file="$(find speech_to_text)/launch/speech_to_text.launch"/>
+    <include file="$(find unsw_vision_utils)/launch/serve_breakfast_vision.launch"/>
+    
+    <node name="wrist_press" pkg="utility" type="wrist_press.py"/>
+    <node name="DoorChecker" pkg="utility" type="DummyDoorCheck.py" output="screen"/>
+    
+    <node name="serve_breakfast_controller" pkg="serve_breakfast" type="serve_breakfast_controller.py" output="screen">
+        <param name="vision_topic" type="str" value="/unsw_vision/detections/objects/positions"/>
+        <param name="start_topic" type="str" value="/start_task"/>
+        <param name='tts_topic' type="str" value="/tts/phrase" />
+    </node>
+    
+    <!-- <node name="manip_control" pkg="object_grasper" type="manip_control.py"/> -->
+</launch>

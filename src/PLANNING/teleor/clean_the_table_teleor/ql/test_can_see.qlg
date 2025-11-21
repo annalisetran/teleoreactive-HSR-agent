@@ -1,0 +1,79 @@
+?- pconsult(clean_the_table_interface)
+?- consult(world_knowledge)
+
+def object_term ::= object(int, int, position_term, atom)
+def position_term ::= position(num, num, num)
+
+tel_percept
+	robot_base_x(num),
+	robot_base_y(num),
+	robot_base_z(num),
+	robot_base_r(num),
+	robot_base_p(num),
+	robot_base_yw(num),
+	driveable_state(atom),
+	holding_object_id(int),
+	region_id(int),
+	scene_objects(list(object_term))
+
+tel_action
+    log_output(list(term))
+
+act start_node_thread(list(tel_percept_term), tel_percept_term)
+
+rel get_percepts(?list(tel_percept_term))
+
+rel can_see(??atom)
+can_see(ClassName) <=
+	scene_objects(Objects) &
+	member(object(_, _, _, ClassName), Objects)
+
+init_percept_handler() ~>
+    start_node_thread([
+        robot_base_x(0.0),
+        robot_base_y(0.0),
+        robot_base_z(0.0),
+        robot_base_r(0.0),
+        robot_base_p(0.0),
+        robot_base_yw(0.0),
+        driveable_state(true),
+        holding_object_id(-1),
+        region_id(-1)
+    ], scene_objects([]));
+    thread_sleep(1)
+
+poll_sensors(P) ::
+	get_percepts(P) ~> write_list(["[PERCEPTS] ", P, nl_])
+
+% Map log_output to write_list
+control_device(_OldActions, [log_output(Message)]) ~>
+    write_list(Message)
+
+control_device(_OldActions, []) ~> {}
+
+tel test_can_see()
+test_can_see() {
+    can_see(bowl) ~> 
+        log_output(["PASS: can_see(bowl)", nl_])
+    can_see(cup) ~>
+        log_output(["PASS: can_see(cup)", nl_])
+    can_see(utensil) ~>
+        log_output(["PASS: can_see(utensil)", nl_])
+    can_see(drink_can) ~>
+        log_output(["PASS: can_see(drink_can)", nl_])
+    can_see(drink_bottled) ~>
+        log_output(["PASS: can_see(drink_bottled)", nl_])
+    true ~> 
+        log_output(["FAIL: cannot see any objects from world_knowledge", nl_])
+}
+
+tel test_coordinator()
+test_coordinator() {
+    true ~> () ++ start_task(test_can_see(), _)
+}
+
+act go()
+go() ~>
+    write_list(["Testing can_see(ObjectName) guard for world_knowledge objects...", nl_]);
+    start_embedded_agent(1.0);
+    start_task(test_coordinator(), _)

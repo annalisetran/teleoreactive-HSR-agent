@@ -1,0 +1,418 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Using the QuLog Interpreter (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Using the QuLog Interpreter (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Using the QuLog Interpreter (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Getting-Started.html" rel="up" title="Getting Started">
+<link href="Using-the-TeleoR-Interpreter.html" rel="next" title="Using the TeleoR Interpreter">
+<link href="Data-Areas.html" rel="prev" title="Data Areas">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Using-the-QuLog-Interpreter">
+<div class="header">
+<p>
+Next: <a href="Using-the-TeleoR-Interpreter.html" accesskey="n" rel="next">Using the TeleoR Interpreter</a>, Previous: <a href="Data-Areas.html" accesskey="p" rel="prev">Data Areas</a>, Up: <a href="Getting-Started.html" accesskey="u" rel="up">Getting Started</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Using-the-QuLog-Interpreter-1"></span><h3 class="section">3.3 Using the QuLog Interpreter</h3>
+<span id="index-Using-the-QuLog-Interpreter"></span>
+
+
+<p><code>qulog</code> is the name of the QuLog interpreter. From a <code>Unix</code> shell, QuLog is started by typing:
+</p><div class="example">
+<pre class="example">qulog
+</pre></div>
+<p>or
+</p><div class="example">
+<pre class="example">qulog -A name
+</pre></div>
+<p>where <code>name</code> is a name for this QuLog process that will be registered with a Pedro server running on the same host. You need to use this option if you want to be able to receive and/or send messages to other processes that have similarly registered a different name with this Pedro server.
+</p>
+
+<p>If the Pedro server is running on a different host identified by domain or IP address <code>Host</code>,  launch QuLog using
+</p><div class="example">
+<pre class="example">qulog -N Host -A name
+</pre></div>
+<p>For example
+</p><div class="example">
+<pre class="example">qulog -N leo.itee.uq.edu.au  -A keith_agent
+</pre></div>
+
+
+<p>When the interpreter is ready  it will prompt you with
+</p><div class="example">
+<pre class="example">| ??
+</pre></div>
+
+
+<p>At this point, a relation query or an action command followed by a FULLSTOP NEWLINE can be entered. The interpreter will check that the query or command is syntactically and type correct and that modes of use are correct. It will  either display an error
+message or print out a response to  the query or command.
+</p>
+
+<p>A CONTROL-D will exit the interpreter whenever you get the prompt.
+</p>
+
+<p>CONTROL-C will interrupt an evaluation and allow you to abort the interpreter (enter e in response to the interrupt prompt),  or  to terminate the current query and any forked action threads  (enter r in response to the interrupt prompt), giving you the <code>| ??</code> query prompt again. There are other response options, displayed if you enter ? in response to the interrupt prompt.
+</p>
+
+
+<p>If you enter a relation query then either &rsquo;no&rsquo; will be displayed to indicate there
+are no solutions to the query or  bindings for variables of the query with their minimal types will be displayed separated by  lines of fullstops. If you entered a command (action) any output from the command will be displayed followed by &rsquo;success&rsquo;. Unlike relation queries, commands cannot fail or produce multiple solutions, but they can raise exceptions.
+</p>
+
+<p>When there are multiple solutions to a relation query the first five (if there are that many) 
+are displayed separated by
+lines containing <code>...</code>
+</p>
+
+<p>Example:
+<br>
+</p><div class="example">
+<pre class="example">| ?? X in [4,0,3,4].
+
+X = 4 : nat
+...
+X = 0 : nat
+...
+X = 3 : nat
+...
+X = 4 : nat
+
+| ??  % New prompt indicates all solutions have been given
+</pre></div>
+<br>
+<p>If there are five or more solutions the interpreter waits for input from the user before displaying more. The two usual responses are:
+</p>
+
+<p>NEWLINE - no more solutions are required; or
+</p>
+
+<p><code>..</code>NEWLINE - asking for up to 5 more solutions.
+</p>
+
+<p>Example, showing a second use of &rsquo;in&rsquo;:
+<br>
+</p><div class="example">
+<pre class="example">| ?? S in &quot;Apple&quot;.
+
+S = &quot;A&quot; : string
+...
+S = &quot;p&quot; : string
+...
+S = &quot;p&quot; : string
+...
+S = &quot;l&quot; : string
+...
+S = &quot;e&quot; : string
+..      % Request for more answers if there are any
+no more solutions 
+% Above displayed only after .. input and there are no more answers
+
+| ?? X in {6,2,3,0,3,7,4}.
+
+% {6,2,3,0,3,7,4} is a set so second 3 ignored, third use of 'in'
+
+X = 0 : nat    % Answers displayed in value order 
+...
+X = 2 : nat
+...
+X = 3 : nat
+...
+X = 4 : nat
+...
+X = 6 : nat
+..        % Request to display up to 5 more answers
+X = 7 : nat
+
+| ??      % Prompt for next query indicating no more answers
+</pre></div>
+<br>
+<p>If you feel that the interpreter is giving back too many, or too few answers for a particular problem you can control this in two ways. The first is to prefix
+the query by the number of solutions you would like displayed at a time, followed by a <code>of</code>, followed by the query. Also, instead of simply using a <code>..</code> to ask for more solutions you can change the number of solutions to be displayed for this query to positive integer <code>k</code> by entering <code>..k</code>.
+</p>
+
+<p>Example:
+<br>
+</p><div class="example">
+<pre class="example">| ?? 1 of X in [1,2,1,4,2].  % Answers 1 at a time
+
+X = 1 : nat
+.. 2                % Switch to sols 2 at a time
+X = 2 : nat
+...
+X = 1 : nat
+..                  % Request for the next 2 sols
+X = 4 : nat
+...
+X = 2 : nat
+..                  % Request for the next 2 sols
+no more solutions
+| ?
+</pre></div>
+<br>
+<p>You can also change the default number of solutions that are displayed for any query to a positive number <code>n</code>, say 3,  using the command:
+<br>
+</p><div class="example">
+<pre class="example">| ?? set_num_answers(3).
+
+success
+</pre></div>
+<br>
+<p>Sometimes you might have a relation query that contains many variables but you might only be interested in the bindings for some of the variables. This can be accomplished by listing the variables for which you want to see the answer bindings,  separated from the query by a <code>?</code>.
+</p>
+
+<p>Example:
+<br>
+</p><div class="example">
+<pre class="example">| ?? L1, L2 :: append(L1, L3, [1,2,3,4,5,6]) &amp; append(L4, L2, L3)
+     &amp; 2 = #L4.
+     % Expressions such as  #L4, length of L4, can be used in = tests
+L1 = [] : list(_)
+     % A type variable _ (don't care) as [] is empty list of any type
+L2 = [3, 4, 5, 6] : list(nat)
+     % (nat) is type expression for a list of nats (non-neg ints)
+...
+L1 = [1] : list(nat)
+L2 = [4, 5, 6] : list(nat)
+...
+L1 = [1, 2] : list(nat)
+L2 = [5, 6] : list(nat)
+...
+L1 = [1, 2, 3] : list(nat)
+L2 = [6] : list(nat)
+...
+L1 = [1, 2, 3, 4] : list(nat)
+L2 = [] : list(Ty1)
+</pre></div>
+<br>
+<p>The two ideas above can be combined as in the following example.
+<br>
+</p><div class="example">
+<pre class="example">| ?? 2 of L1, L2 :: append(L1, L3, [1,2,3,4,5,6]) &amp; append(L4, L2, L3) &amp; 
+     2 = #L4.
+
+L1 = [] : list(Ty1)     
+L2 = [3, 4, 5, 6] : list(nat)
+...
+L1 = [1] : [nat]
+L2 = [4, 5, 6] : list(nat)
+</pre></div>
+<br>
+<p>Equivalently you can express the above query using an existential quantification on <code>L3, L3</code>.
+<br>
+</p><div class="example">
+<pre class="example">| ?? 2 of exists L3, L4 append(L1, L3, [1,2,3,4,5,6]) &amp;
+        append(L4, L2, L3) &amp; 2 = #L4.
+</pre></div>
+<p>If you want to evaluate an expression in the interpreter, one way of doing this
+is to simply create a unification involving a variable and the expression of interest. Remember that expressions are evaluated before unification.
+</p>
+<p>Example:
+<br>
+</p><div class="example">
+<pre class="example">| ?? X = 2+sin(pi()/4).
+
+X = 2.70711 : num
+
+| ?? X = cos.
+
+X = cos : atom_naming(fun(num) -&gt; num)
+
+</pre></div>
+<br>
+<p>The second expression is just the name of a primitive function and the value is that function. Note that <code>cos</code> is an atom that names a function. 
+</p>
+<p>Instead of getting each solution of a query displayed (as in the previous append example) you can use a list comprehension expression with unwanted variables
+existentially quantified as below.
+</p>
+<div class="example">
+<pre class="example">| ?? Lst = [(L1,L2) :: exists L3, L4 (append(L1, L3, [1,2,3,4,5,6]) &amp;
+            append(L4, L2, L3) &amp; 2 = #L4)].
+
+Lst = [([], [3, 4, 5, 6]), ([1], [4, 5, 6]), ([1, 2], [5, 6]),
+       ([1, 2, 3], [6]),
+       ([1, 2, 3, 4], [])] : list((list(nat), list(nat)))
+
+
+% The value type is a list of pairs of lists of nats
+</pre></div>
+<br>
+<p>We can re-express the last list expression query more succinctly using the list concatenation operator  <code>&lt;&gt;</code> for splitting of a list using the special non-deterministic  match operator <code>=?</code>  that requires its left hand side to be,  or to evaluate to, a ground term. 
+<br>
+</p><div class="example">
+<pre class="example">| ?? Lst = [(L1,L2) :: exists L4 [1,2,3,4,5,6] =?
+                                 L1 &lt;&gt; L4 :: (2 = #L4) &lt;&gt; L2].
+</pre></div>
+<br>
+<p>Using this non-deterministic list  pattern matching we do not need the <code>L3</code> variable, and the constraint that <code>L4</code> must contain two elements becomes a constraint
+<br>
+</p><div class="example">
+<pre class="example">2=#L4
+</pre></div>
+<br>
+<p>expressed inside the <code>&lt;&gt;</code> pattern expression attached to the variable <code>L4</code>, preceded by a <code>::</code>.
+</p>
+
+<p>If you have constructed a program file <code>prog1.qlg</code> of QuLog type definitions, type declarations for relations, function and actions and their rules, you can bring all those into the interpreter using either the Prolog consult
+<br>
+</p><div class="example">
+<pre class="example">
+
+| ?? [prog1].
+
+Consulting prog1...
+... prog1 consulted 
+success
+</pre></div>
+<br>
+
+
+<p>or the command
+<br>
+</p><div class="example">
+<pre class="example">
+
+| ?? consult prog1.
+
+Consulting prog1...
+... prog1 consulted 
+success
+</pre></div>
+<br>
+
+<p>You may get syntax and mode errors signalled in which case none of the program file is consulted. There will be at least one QuLog examples file with the QuLog distribution that you installed. You can consult and query one of these files. For example, there may be a file <code>qlexamples.qlg</code> in <code>qulog/examples/introduction</code>. If you launch QuLog from inside this directory you can load all its definitions using:
+<br>
+</p><div class="example">
+<pre class="example">| ?? [qlexamples].
+</pre></div>
+<br>
+<p>You can see all the relation and function rules you currently have in the interpreter using:
+<br>
+</p><div class="example">
+<pre class="example">| ?? show.
+</pre></div>
+<br>
+<p>or specific ones using:
+<br>
+</p><div class="example">
+<pre class="example">| ?? show child_of, person, fact, new_child.
+</pre></div>
+<br>
+<p>You may use any sub-names and show will match any names containing the given sub-names.
+Notice the variable names  of the consulted file will be used.
+</p>
+
+<p>You can see all the type definitions and declarations using:
+<br>
+</p><div class="example">
+<pre class="example">| ?? types.
+</pre></div>
+<br>
+<p>You can see all the system type definitions and the type declarations for the primitive relations, functions and actions using:
+<br>
+</p><div class="example">
+<pre class="example">| ?? stypes.
+</pre></div>
+<br>
+<p>A displayed type declaration may be accompanied by a brief description of the primitive.
+You can also show the type declarations for specific relations by giving their names, separated by commas, after either the <code>types</code> or <code>stypes</code> command.
+</p>
+
+<p>It&rsquo;s also possible to consult files from within a program (as in Prolog) using
+a line in the program like
+</p>
+<div class="example">
+<pre class="example">?- [prog1]
+?- [prog2]
+</pre></div>
+
+<p><b>Constraints on using consult</b>
+</p>
+<p>For this discussion we say the file consulted at the interpreter level is the <i>primary</i> file and any files consulted in the primary file or any file consulted from within those programs are <i>secondary</i> files.
+</p>
+<p>Whenever programs are consulted, type and mode checking is applied and if, at the interpreter level, a file is re-consulted then we need to check that changes to programs have not introduced type and mode errors. In principle, this means we should remove all user definitions and declarations (both from the primary and secondary files) and do a fresh consult of the primary file. 
+</p>
+<p>Typically, when a user is debugging a program, only the primary
+file will be edited by the user and so it would be inefficient to remove 
+all definitions and declarations from the secondary files and start again. 
+In order to make this process more efficient we constrain the use of consult in two ways in order to make this easier.
+The first is that, in any interpreter session, the user can only consult one file with re-consulting that file allowed (i.e. only one primary consult). 
+The second is that all consults appearing in a program file are at the start of the file (before declarations and definitions).
+</p>
+<p>When any file is consulted, a fact containing the file name and a timestamp (last update time) is remembered. When the primary file is reconsulted the first step is to check if any secondary files has a more recent last updated time than the remembered fact
+(meaning the file has been updated). In this case we take the conservative 
+approach and clear out all user definitions and declarations and do a &ldquo;fresh consult&rdquo;.
+</p>
+<p>If no secondary files have changed and the primary file has also not changed 
+then
+the consult does nothing as nothing has changed.
+</p>
+<p>Otherwise, all the definitions and declarations of the primary file are removed and the file is re-consulted. If it turns out that one of the changes to the
+primary file is to change what files are consulted (including the order of consults) then this could lead to potential type mode problems and so, again, we take a conservative approach and remove all user definitions and declarations and do a fresh consult.
+</p>
+<p>By doing the above, we believe that there is no significant impact on the way
+users write and debug programs. If fact, the most typical debugging approach of
+editing the definitions and declarations of only the primary file will be quite efficient as only the old definitions and declarations for the primary file
+will be removed and the new code consulted (without re-consulting the secondary files). 
+</p>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Using-the-TeleoR-Interpreter.html">Using the TeleoR Interpreter</a>, Previous: <a href="Data-Areas.html">Data Areas</a>, Up: <a href="Getting-Started.html">Getting Started</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

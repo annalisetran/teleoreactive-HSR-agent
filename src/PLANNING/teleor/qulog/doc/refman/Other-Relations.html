@@ -1,0 +1,209 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Other Relations (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Other Relations (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Other Relations (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Built_002dIns.html" rel="up" title="Built-Ins">
+<link href="Other-Actions.html" rel="next" title="Other Actions">
+<link href="Other-Functions.html" rel="prev" title="Other Functions">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Other-Relations">
+<div class="header">
+<p>
+Next: <a href="Other-Actions.html" accesskey="n" rel="next">Other Actions</a>, Previous: <a href="Other-Functions.html" accesskey="p" rel="prev">Other Functions</a>, Up: <a href="Built_002dIns.html" accesskey="u" rel="up">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Other-Relations-1"></span><h3 class="section">7.6 Other Relations</h3>
+<span id="index-Other-Relations"></span>
+
+<p><code>true()</code>
+<span id="index-true"></span>
+</p><blockquote class="indentedblock">
+
+<p>Always succeeds.
+<br>
+<code>rel true() </code>
+</p></blockquote>
+
+<p><code>false()</code>
+<span id="index-false"></span>
+</p><blockquote class="indentedblock">
+
+<p>Always fails.
+<br>
+<code>rel false() </code>
+</p></blockquote>
+
+<p><code>Term1 = Term2</code>
+<span id="index-_003d"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>Term1</code> and <code>Term2</code> unify.
+</p>
+<p>Any function calls in each argument term are evaluated first using
+strict evaluation
+- expression arguments evaluated first 
+- as with every relation call. 
+<br>
+<code>rel =(??term, ??term) </code>
+</p></blockquote>
+
+<p><code>Term1 =@ Term2</code>
+<span id="index-_003d_0040"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>Term1</code> and <code>Term2</code> unify without instantiating variables
+in Term2 (one-sided unification).
+<br>
+<code>rel =@(??term, @term) </code>
+</p></blockquote>
+
+<p><code> N1 &gt; N2</code>
+<span id="index-_003e"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if  <code>N1</code> is numberically greater than <code>N2</code>.
+<br>
+<code>rel &gt;(!num, !num)</code>
+</p></blockquote>
+
+<p><code> N1 &gt;= N2</code>
+<span id="index-_003e_003d"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>N1</code> is numberically greater than or equal to <code>N2</code>.
+<br>
+<code>rel &gt;=(!num, !num)</code>
+</p></blockquote>
+
+
+<p><code>N1 &lt; N2</code>
+<span id="index-_003c"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>N1</code> is numberically less than <code>N2</code>.
+<br>
+<code>rel &lt;(!num, !num)</code>
+</p></blockquote>
+
+
+<p><code>N1 =&lt; N2</code>
+<span id="index-_003d_003c"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>N1</code> is numberically less than or equal to <code>N2</code>.
+<br>
+<code>rel =&lt;(!num, !num)</code>
+</p></blockquote>
+
+
+<p><code>X in T</code>
+<span id="index-in-1"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>X</code> is a term and <code>T</code> is a list, tuple, or set of terms and <code>X</code> is an element of <code>T</code> or if <code>X</code> and <code>T</code> are both strings and <code>X</code> is a single character string occurring in <code>T</code>.  
+</p></blockquote>
+<div class="example">
+<pre class="example">rel ?T in !list(T),
+    ??T in !list(??T),
+    ?T in !set(T),
+    ?string in !string
+</pre></div>
+
+
+
+<p><code>string2term(S, T)</code>
+<span id="index-string2term"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>T</code> is the term obtained by parsing the string <code>S</code> as a QuLog term.
+<br>
+<code>rel string2term(!string, ??term)</code>
+</p>
+<p>This can raise exceptions for the same reasons as <code>read_term</code>. For example
+</p><div class="example">
+<pre class="example">| ?? string2term(&quot;f(a)&quot;, X).
+
+QuLog exception - exception term: string2term_type_error()
+</pre></div>
+</blockquote>
+<p><code>this_thread_name(Name)</code>
+<span id="index-this_005fthread_005fname"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>Name</code> is the name of this thread 
+<br>
+<code>this_thread_name : rel(?atom)  </code>
+</p></blockquote>
+
+<p><code>is_thread(Name)</code>
+<span id="index-is_005fthread"></span>
+</p><blockquote class="indentedblock">
+
+<p>Succeeds if <code>Name</code> is the name of an existing thread 
+<br>
+<code>is_thread : rel(atom)  </code>
+</p></blockquote>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Other-Actions.html">Other Actions</a>, Previous: <a href="Other-Functions.html">Other Functions</a>, Up: <a href="Built_002dIns.html">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

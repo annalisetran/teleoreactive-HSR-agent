@@ -1,0 +1,18 @@
+15/08/2024
+PositionGenerator.cpp
+- Read pixel value from skeleton2d
+14/08/2024
+PositionGenerator.cpp
+- change face_position to head_position
+
+ObjectFeatureExtractor
+- class for extracting features from objects, can be used for adding to the world model to help identify instances of an object
+
+TestApi.py
+- used to test the object feature extractor
+
+17/07/2024
+ObjectFeatureExtraction.py
+- methods to extract features from an image with bounding box
+  and to compare with known features of objects
+  - currently using VGG19 cnn to perform feature extraction

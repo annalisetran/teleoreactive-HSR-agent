@@ -1,0 +1,854 @@
+
+/*
+
+Example proof
+
+| ?? [prover].
+| ?? do_proof()
+
+all x (ent(x) => gs(x) or ex y (mem(y) and acc(y, x)))
+ex x all y (fior(x) and ent(x) and (acc(y, x) => fior(y)))
+all x (fior(x) => ~gs(x))
+
+ex x (fior(x) and mem(x))
+
+
+and the proof below that follows KLCs informal proof - the spaces separate the
+parts of the informal proof
+
+%%% One proof using "low-level" rules
+apply(all_e(2))
+
+apply(all_e(3))
+apply(and_e(1))
+apply(and_e(2))
+
+apply(all_e(6))
+
+apply(all_e(6))
+
+apply(imp_e(2))
+apply(match(5,1))
+
+apply(imp_e(6))
+apply(match(4,1))
+apply(or_e(1))
+apply(match(1,2))
+apply(and_e(1))
+
+apply(imp_e(6))
+apply(match(3,1))
+
+apply(or_e(5))
+apply(match(2,1))
+apply(match(3,1))
+
+
+%%% another proof using modus_ponens and variants for or
+
+apply(all_e(2))
+
+apply(all_e(3))
+apply(and_e(1))
+apply(and_e(2))
+
+apply(all_e(6))
+
+apply(all_e(6))
+apply(mp(5,2))
+
+apply(mp(3,6))
+apply(or_mp1(2,1))
+apply(and_e(1))
+
+apply(mp(2,6))
+apply(or_mp1(1,5))
+
+apply(match(3,1))
+
+
+%% And another proof
+
+auto
+
+
+ */
+
+%%%%%%%%%%%%%
+% User declared predicates - problem specific
+
+def predicate ::= gs(formula_term) | ent(formula_term) |
+        mem(formula_term) | acc(formula_term, formula_term) |
+        fior(formula_term)
+
+def formula_objvar ::= x | y
+%%%%%%%%%%%%%%
+
+% formula declaration - true, false and p,q etc are formulas
+% the logical connectives are compound formulas
+
+def formula == compound_formula || predicate || atom
+
+%% Used in all elimination rules 
+def formula_var ::= var(string)
+%% Used in the problem translation to introducr skolem symbols - the
+%% first argument is a unique ID and the second is the list of outer
+%% universally quantified variables
+def skolem ::= sk(int, list(formula_term))
+%% The allowed arguments of predicates
+def formula_term == formula_objvar || formula_var || skolem 
+
+%% Connectives and quantifiers for building compex formulas
+def compound_formula ::=
+        and(formula, formula) |
+        or(formula, formula) |
+        imp(formula, formula) |
+        ~(formula) |
+        all(formula_objvar, formula) |
+        ex(formula_objvar, formula)
+
+%% skolem_id - used to give unique ID to skolem symbols
+int skolem_id := 1
+
+%% The actual proof works on lists of formulas called premises
+def premises == list(formula)
+
+% declaring rules - init_proof is a special name used for the proof start
+def rule_name ==
+        init_proof_name || atomic_rule_name || compound_rule_name
+
+%% init_proof stores the initial sequent as the list 
+%% [~(Conclusion),..Antecedents]
+%% It is used for displaying the completed proof
+def init_proof_name ::= init_proof(list(formula))
+
+%% Used by auto to pick a rule to apply
+def atomic_rule_name ::=
+        match_any |
+        and_e_any |
+        all_e_any |
+        mp_any |
+        or_mp_any |
+        imp_e_any |        
+        or_e_any        
+
+
+def compound_rule_name ::=
+        match(nat, nat) |   % The arguments are the indicies of A and ~A
+        mp(nat, nat) |      % The arguments are the indicies of A and A => B
+        or_mp1(nat, nat) |  % The arguments are the indicies of A and ~A or B
+                            % or of ~A and A or B
+        or_mp2(nat, nat) |  % The arguments are the indicies of A and B or ~A
+                            % or of ~A and B or A
+        and_e(nat) |        % The index of A and B
+        or_e(nat) |         % The index of A or B
+        imp_e(nat) |        % The index of A => B
+        all_e(nat) |        % The index of all X A
+        all_e2(nat)         % same as above but for preserving original all
+
+
+% a proof step is used to encode a step in the proof so that the
+% complete proof can be listed at the completion of the proof
+% the second argument is a list of premises because some rules like or_e
+% split the problem in two
+def proof_step ::= ps(rule_name, list(premises))
+
+
+
+% The encoding of the proof rules - for the comments below we use, for example,
+% (A => B, G) -> [(A, G), (B, G)]
+% to show how premises the contain specific premises generate
+% a set of premises
+rel rule(?rule_name,  !premises, ?list(premises))
+
+%% (A, ~A,.. G) -> []    (finished - we have a contradiction)
+rule(match(N1, N2) , Gamma, []) <=
+    nth_item(N1, A, Gamma) &
+    nth_item(N2, ~(B), Gamma) &
+    unify(A, B)
+%% (A and B,.. G) -> [(A,B,..G)]  
+rule(and_e(N), Gamma, [[A,B|NewGamma]]) <= 
+    nth_and_rest(N, and(A, B), Gamma, NewGamma)
+%% (A => B,.. G) -> [(~A,..G), (B,..G)]  
+rule(imp_e(N), Gamma, [[~(A)|NewGamma], [B|NewGamma]]) <=
+    nth_and_rest(N, imp(A, B), Gamma, NewGamma).
+%% (A or B,.. G) -> [(A,..G), (B,..G)]  
+rule(or_e(N), Gamma, [[A|NewGamma], [B|NewGamma]]) <=        
+    nth_and_rest(N, or(A,B), Gamma, NewGamma)
+%% (all x A,.. G) -> [(A',..G)] where A' is A where x is replaced by a new var
+rule(all_e(N), Gamma, [[AX|NewGamma]]) <=
+    nth_and_rest(N, all(X, A), Gamma, NewGamma) &
+    term2string(_, V) &
+    transform_subterms(obvar_var(X, var(V)), A, AX1) &
+    type(AX1, formula) & AX = AX1
+%% (all x A,.. G) -> [(all x A, A',..G)] i.e. keep all x A
+rule(all_e2(N), Gamma, [[AX|Gamma]]) <=
+    nth_item(N, all(X, A), Gamma) &
+    term2string(_, V) &
+    transform_subterms(obvar_var(X, var(V)), A, AX1) &
+    type(AX1, formula) & AX = AX1
+%% (A, A => B,.. G) -> [(A, B,..G)]         
+rule(mp(N1, N2), Gamma, [[B|NewGamma]]) <=
+    nth_item(N1, A1, Gamma) &
+    nth_and_rest(N2, imp(A2, B), Gamma, NewGamma) &
+    unify(A1, A2)
+%% (A, ~A or B,.. G) -> [(A, B,..G)]         
+%% (~A, A or B,.. G) -> [(A, B,..G)]         
+rule(or_mp1(N1, N2), Gamma, [[B|NewGamma]]) <=
+    nth_item(N1, A1, Gamma) &
+    nth_and_rest(N2, or(A2, B), Gamma, NewGamma) &
+    or_match(A1, A2)
+%% (A, B or ~A,.. G) -> [(A, B,..G)]         
+%% (~A, B or A,.. G) -> [(A, B,..G)]         
+rule(or_mp2(N1, N2), Gamma, [[B|NewGamma]]) <=
+    nth_item(N1, A1, Gamma) &
+    nth_and_rest(N2, or(B, A2), Gamma, NewGamma) &
+    or_match(A1, A2)
+
+%% Unify two formula - note that variables are encoded as var("X")
+%% where X is the name of the variable and so, within each formula,
+%% each var(VarName) is replace by the variable with that name.
+%% Normal unification is then applied to the transformed terms.
+%% Note that occurs checking with unification prevents, for example,
+%% X and sk1(X) from unifying.
+ 
+rel unify(formula, formula)
+unify(A, B) <=
+    transform_subterms(varstr2var, [A, B], [AX, BX]) &
+    AX = BX
+
+%% used in or_mp1 and or_mp2 to deal with the position of negation
+rel or_match(formula, formula)
+or_match(~(A1), A2) ::
+    unify(A1, A2)
+or_match(A1, ~(A2)) ::
+    unify(A1, A2)
+
+
+
+
+% All steps in the proof are done via tactics which typically adds
+% to the list (stack) of proof steps. The first element encodes the current 
+% state of the proof
+def tactic == rel(!list(proof_step), ?list(proof_step))
+
+%% the apply tactic is used by the user to carry out individual proof
+%% steps and is also used to implement the auto tactic
+fun apply(rule_name) -> tactic
+%% Apply the match rule to some pair of premises
+apply(match_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        %% P1 is the first set of premises in the current proof state
+        %% apply the match rule to P1 to generate a new set of premises
+        rule(match(N1, N2), P1, Ps) &
+        %% Update the proof state by pushing the rule applied together
+        %% with the new set of premises
+        Q = [ps(match(N1, N2), Ps <> Rest),..P]
+%% Apply the and_e rule to some premise
+apply(and_e_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(and_e(N), P1, Ps) &
+        Q = [ps(and_e(N), Ps <> Rest),..P]
+%% Apply the or_e rule to some premise
+apply(or_e_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(or_e(N), P1, Ps) &
+        Q = [ps(or_e(N), Ps <> Rest),..P]
+%% Apply the imp_e rule to some premise
+apply(imp_e_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(imp_e(N), P1, Ps) &
+        Q = [ps(imp_e(N), Ps <> Rest),..P]
+%% Apply the all_e rule to some premise
+apply(all_e_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(all_e(N), P1, Ps) &
+        Q = [ps(all_e(N), Ps <> Rest),..P]
+%% Apply the mp rule to some pair of premises
+apply(mp_any)(P, Q) <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(mp(N1, N2), P1, Ps) &
+        Q = [ps(mp(N1, N2), Ps <> Rest),..P]
+%% Apply the or_mp1 rule to some pair of premises
+apply(or_mp_any)(P, Q) <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(or_mp1(N1, N2), P1, Ps) &
+        Q = [ps(or_mp1(N1, N2), Ps <> Rest),..P]
+%% Apply the or_mp2 rule to some pair of premises
+apply(or_mp_any)(P, Q) :: true <=
+        P = [ps(_, [P1,..Rest]),..] &
+        rule(or_mp2(N1, N2), P1, Ps) &
+        Q = [ps(or_mp2(N1, N2), Ps <> Rest),..P]
+%% Default case - all other rule applicationsare for applying rules to
+%% specific premises
+apply(Rule)(P, Q) <=
+    P = [ps(_, [P1,..Rest]),..] &
+    rule(Rule, P1, Ps) &
+    Q = [ps(Rule, Ps <> Rest),..P]
+
+% a special tactic that simply tests if the proof is finished
+rel finished(!list(proof_step), ?list(proof_step))
+finished(Steps, Steps) <= Steps = [ps(_,[]),..]
+
+% the auto tactic attempts to complete a proof automatically
+rel auto(!list(proof_step), ?list(proof_step))
+%% the proof is complete
+auto(P,P) :: finished(P, _)
+%% process conjunctions
+auto(P, Q) :: apply(and_e_any)(P, P1) <=
+        show_tactic_application(P1) &
+        auto(P1, Q)
+%% process all quantifiers
+auto(P, Q) :: apply(all_e_any)(P, P1) <=
+        show_tactic_application(P1) &
+        auto(P1, Q)
+%% apply contradiction
+auto(P, Q) <=
+    apply(match_any)(P, P1) &
+    show_tactic_application(P1) &
+    auto(P1, Q)
+%% apply modus ponens
+auto(P, Q) <= 
+    apply(mp_any)(P, P1) &
+    show_tactic_application(P1) &
+    auto(P1, Q)
+%% apply "or modus ponens"
+auto(P, Q) <= 
+    apply(or_mp_any)(P, P1) &
+    show_tactic_application(P1) &
+    auto(P1, Q)
+
+%% Used in auto to show what auto is doing
+rel show_tactic_application(!list(proof_step))
+show_tactic_application(P) <=
+    P = [ps(Rule, State),..] &    
+    {write_list(["\nApplying ", Rule, nl_, #P, ":", nl_]);
+     display_state(State);
+     write_list([nl_])} &
+    backtracking_message(apply(Rule))
+
+
+
+% nth_item(N, A, Fs) is true if A is the N'th element of Fs
+% We can give N or have the code choose both N and A.
+rel nth_item(?nat, ?formula, !list(formula))
+nth_item(1, A, [A|_])
+nth_item(N, A, [_|T]) <= nth_item(M, A, T) & N = M + 1
+
+% the same as above except the chosen formula is removed from the
+% input list of formula
+rel nth_and_rest(?nat, ?formula, !list(formula), ?list(formula))
+nth_and_rest(1, A, [A|T], T)
+nth_and_rest(N, A, [H|T], [H|NT]) <=
+    nth_and_rest(M, A, T, NT) & N = M + 1
+
+
+% Used to display the outcome of the proof
+% completed : the proof has been successfully completed
+% abandoned : the user entered 'quit' to abandoned the proof
+% failed : no proof was found
+def status ::= completed | abandoned | failed
+
+%% Start a proof
+act do_proof()
+do_proof() ~>
+    %% (re)set the skolem ID "counter"
+    skolem_id := 1;
+    get_antecedents(Ante);
+    repeat { 
+        write_list(["Enter conclusion: "]);
+        flush_output();
+        get_line(Str);
+        write_list([nl_]);
+        ?(string2formula(Str, Formula))
+        } until Formula \= no_formula;  % the formula no_formula used to 
+                                        % signify invalid formula entered
+    ?(start_proof([~(Formula),..Ante], Status));  % do the proof
+    show_status(Status)
+
+%% Enter the antecedents
+act get_antecedents( ?list(formula))
+get_antecedents(Ante) ~>
+    repeat {
+        write_list(["Enter antecedent (RETURN to terminate): "]);
+        flush_output();
+        get_line(Str);
+        ?(string2formula(Str, Formula))
+        } until Formula \= no_formula;
+    case {
+        Formula = empty_formula & Ante = [] ~> {}
+        
+        Ante = [Formula,..Rest] ~> 
+            get_antecedents(Rest)
+        }
+
+        
+    
+act show_status(status)
+show_status(completed) ~> {}
+show_status(Status) ~>
+    write_list(["Proof ", Status, nl_])
+
+
+%% We start with the set of premises which are the antecedents together
+%% with the negation of the conclusion - the objective of the proof
+%% is to get a contradictions.
+%%
+%% Before we start the proof we normalize it by:
+%% pushing negations into sub-formulas :
+%%   e.g.  ~(A or B) becomes ~A and ~ B and
+%%         ~(all x A) becomes ex x ~A
+%%
+%% pulling quantifiers out of sub :
+%% e.g A and ex x B becomes  ex x (A and B).
+%%   NOTE we are assuming each bound variable occurs only once in a
+%%   quantified position
+%%
+%% skolemizing ex quantified formulas :
+%% e.g. all y ex x acc(y, x)  becomes all y acc(y, sk1(x))
+
+rel start_proof(list(formula), ?status)
+start_proof(Formulas, Status) ::
+    SimpFormulas = map(push_neg_in, Formulas) &
+    Normalized = map(pull_quantifiers_out, SimpFormulas) &
+    Skolemized = map(skolemize_formula([]), Normalized) &
+    interact_proof([ps(init_proof(Formulas), [Skolemized])], 1,  Status)
+start_proof(_,  failed)
+
+%% recursively push negations into sub formulas
+fun push_neg_in(formula) -> formula
+push_neg_in(~(~(A))) -> push_neg_in(A)
+push_neg_in(~(and(A, B))) -> or(push_neg_in(~(A)), push_neg_in(~(B)))
+push_neg_in(~(or(A, B)))  -> and(push_neg_in(~(A)), push_neg_in(~(B)))
+push_neg_in(~(imp(A, B))) -> and(push_neg_in(A), push_neg_in(~(B)))
+push_neg_in(~(ex(X, A))) -> all(X, push_neg_in(~(A)))
+push_neg_in(~(all(X, A))) -> ex(X, push_neg_in(~(A)))
+push_neg_in(A) -> A
+            
+            
+%% recursively pull quantifiers out of sub formulas            
+fun pull_quantifiers_out(formula) -> formula
+pull_quantifiers_out(all(X, A)) -> all(X, pull_quantifiers_out(A))
+pull_quantifiers_out(ex(X, A)) -> ex(X, pull_quantifiers_out(A))
+pull_quantifiers_out(and(A, B)) -> 
+    pull_quantifiers_out_and(pull_quantifiers_out(A), pull_quantifiers_out(B))
+pull_quantifiers_out(or(A, B)) -> 
+    pull_quantifiers_out_or(pull_quantifiers_out(A), pull_quantifiers_out(B))
+pull_quantifiers_out(imp(A, B)) -> 
+    pull_quantifiers_out_imp(pull_quantifiers_out(A), pull_quantifiers_out(B))
+pull_quantifiers_out(A) -> A
+
+% Pull quantifiers out through and
+fun pull_quantifiers_out_and(formula, formula) -> formula  
+pull_quantifiers_out_and(all(X, A), B) ->
+    all(X, pull_quantifiers_out_and(A, B))
+pull_quantifiers_out_and(B, all(X, A)) ->
+    all(X, pull_quantifiers_out_and(B, A))
+pull_quantifiers_out_and(ex(X, A), B) ->
+    ex(X, pull_quantifiers_out_and(A, B))
+pull_quantifiers_out_and(B, ex(X, A)) ->
+    ex(X, pull_quantifiers_out_and(B, A))
+pull_quantifiers_out_and(A, B) -> and(A, B)
+
+% Pull quantifiers out through or
+fun pull_quantifiers_out_or(formula, formula) -> formula                     
+pull_quantifiers_out_or(all(X, A), B) ->
+    all(X, pull_quantifiers_out_or(A, B))
+pull_quantifiers_out_or(B, all(X, A)) ->
+    all(X, pull_quantifiers_out_or(B, A))
+pull_quantifiers_out_or(ex(X, A), B) ->
+    ex(X, pull_quantifiers_out_or(A, B))
+pull_quantifiers_out_or(B, ex(X, A)) ->
+    ex(X, pull_quantifiers_out_or(B, A))
+pull_quantifiers_out_or(A, B) -> or(A, B)
+
+% Pull quantifiers out through =>
+fun pull_quantifiers_out_imp(formula, formula) -> formula                     
+pull_quantifiers_out_imp(all(X, A), B) ->
+    all(X, pull_quantifiers_out_imp(A, B))
+pull_quantifiers_out_imp(B, all(X, A)) ->
+    all(X, pull_quantifiers_out_imp(B, A))
+pull_quantifiers_out_imp(ex(X, A), B) ->
+    ex(X, pull_quantifiers_out_imp(A, B))
+pull_quantifiers_out_imp(B, ex(X, A)) ->
+    ex(X, pull_quantifiers_out_imp(B, A))
+pull_quantifiers_out_imp(A, B) -> imp(A, B)
+                     
+
+%% Skolemize a formula - collecting universally bound variables
+%% as we move into a term
+fun skolemize_formula(list(formula_objvar)) -> fun(formula) -> formula
+
+%% Globals is the current set of universally bound variables
+skolemize_formula(Globals)(all(X, A)) ->
+    all(X, skolemize_formula([X,..Globals])(A))
+skolemize_formula(Globals)(ex(X, A)) ->
+    skolemize_pred(X, Globals, A)
+skolemize_formula(Globals)(and(A, B)) ->
+    and(skolemize_formula(Globals)(A), skolemize_formula(Globals)(B))
+skolemize_formula(Globals)(or(A, B)) ->
+    or(skolemize_formula(Globals)(A), skolemize_formula(Globals)(B))
+skolemize_formula(Globals)(imp(A, B)) ->
+    imp(skolemize_formula(Globals)(A), skolemize_formula(Globals)(B))
+skolemize_formula(_Globals)(F) -> F
+
+%% skolemize a predicate
+fun skolemize_pred(formula_objvar, list(formula_objvar), formula) -> formula
+skolemize_pred(X, Globals, Body) ::
+    %% Create the skolem symbol using the current ID and list of glovals
+    Sk = sk($skolem_id, Globals) &
+    %% Increment the skolem ID counter
+    { skolem_id +:= 1 } & 
+    %% replace all occurrences of X by Sk within Body
+    transform_subterms(obvar_var(X, Sk), Body, SkolemizedBody)  &
+    %% As transform_subterms gives back something of type term we need
+    %% to runtime type check this term to satisfy the type checker
+    type(SkolemizedBody, !formula)
+        -> SkolemizedBody
+
+%% Doing the interactive proof
+rel interact_proof(list(proof_step), int, ?status)
+interact_proof(Steps, _, Status) :: 
+    Steps = [ps(_, []),..] &    % the proof has sucessfully completed
+    Status = completed &
+    {write_proof(Steps)}
+interact_proof(Sequents, Level, Status) <=
+    {get_command(Sequents, Level, Cmd)} &  % apply a step
+    interact_proof_step(Cmd, Sequents, Level, Status)
+
+% doing a proof step
+rel interact_proof_step(!term_naming(tactic),list(proof_step), int, ?status)
+% abandon the proof
+interact_proof_step(quit, _, _, Status) :: true <= Status = abandoned
+% undo (fail) the previous step(s)
+interact_proof_step(undo, _, _, _) :: true <= false
+% apply a rule
+interact_proof_step(Tactic, Sequents, Level, Status) <=
+    Tactic(Sequents, NewSequents) &  % apply the user command
+    backtracking_message(Tactic) &   % subsequent failure will display a message
+    interact_proof(NewSequents, Level + 1, Status)
+% the tactic failed or backtracking over previous tactic failed
+interact_proof_step(Tactic, Sequents, Level, Status) <=
+    {write_list([Tactic, " failed ", nl_])} &
+    interact_proof(Sequents, Level, Status)
+
+% succeed when first called and on backtracking display a retry message 
+% then fail
+rel backtracking_message(term_naming(tactic))
+backtracking_message(_)
+backtracking_message(Tactic) <= 
+    {write_list(["Retrying ", Tactic, nl_])} & false
+
+% special tactics
+rel quit(!list(proof_step), ?list(proof_step))
+rel undo(!list(proof_step), ?list(proof_step))
+rel not_a_tactic(!list(proof_step), ?list(proof_step))
+    
+%% Display the current state of the proof
+act display_state(list(premises))
+display_state(PremList) :: premiseslist2string(PremList, Str) ~>
+        put_line(Str)       
+
+
+% get a tactic from the user - keep trying until valid tactic entered
+act get_command(list(proof_step), int, ?term_naming(tactic))
+get_command([ps(_, Sequents),..], Level, Cmd) ~>
+    repeat {
+        write_list([Level, ":", nl_]);
+        display_state(Sequents);
+        write_list([nl_, "Command: "]);
+        flush_output();
+        get_line(CmdStr);
+        case {
+            %% empty line entered - ignore
+            CmdStr = "\n" & Cmd = not_a_tactic ~> {}
+            
+            true ~>
+                try {
+                    string2tactic(CmdStr, Cmd)
+                    } 
+                except {
+                    string2term_syntax_error(_) ~>
+                        write_list(["Syntax error", nl_]);
+                        ?(Cmd = not_a_tactic)
+                    string2term_type_error(_) ~>
+                        write_list(["Type error", nl_]);
+                        ?(Cmd = not_a_tactic)
+                    } 
+            }
+            
+        } until Cmd \= not_a_tactic
+
+%% Attempt to read in a tactic (i.e. a term of type tactic)
+act string2tactic(string, ?term_naming(tactic))
+string2tactic(CmdStr, Cmd) :: 
+    string2term(CmdStr, Cmd1) &
+    type(Cmd1, !term_naming(tactic)) &
+    Cmd = Cmd1 ~> {}
+string2tactic(CmdStr, _) ~> raise(string2term_type_error(CmdStr))
+
+%% Parsing and pretty printing
+
+act write_proof(list(proof_step))
+
+write_proof([ps(init_proof([~(Conclusion),..Ante]), Preds)]) ~>
+    write_list(["Proof Completed\n\nStatement\n\n"]);
+    ?(formula2string(Conclusion, none, ConclusionStr) &
+      formula_list2string(Ante, AnteString));
+    ?(premiseslist2string(Preds, PredString));
+    write_list([AnteString, "\n|-\n ", ConclusionStr, 
+                "\n\nGenerated Premises\n\n",  PredString,
+                "\n\n Proof:"])
+write_proof([ps(Rule, Preds),..Rest]) ~>
+    write_proof(Rest);
+    write_list(["\n\n --- Apply ", Rule, " ---\n\n"]);
+    ?(premiseslist2string(Preds, PredString));
+    write_list([PredString])
+
+rel string2list_formula(string, list(formula))
+
+rel tokenize_formula(string, ?list(string))
+
+tokenize_formula("", []) :: true
+tokenize_formula(Str, Tokens) ::
+    Str =? _Whites/"(\\s+)" ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, []) ::
+    Str =? "." ++ _ 
+tokenize_formula(Str, ["("|Tokens]) ::
+    Str =? "(" ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, [")"|Tokens]) ::
+    Str =? ")" ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, ["=>"|Tokens]) ::
+    Str =? "=>" ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, ["~"|Tokens]) ::
+    Str =? "~" ++ Rest <=
+        tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, [","|Tokens]) ::
+    Str =? "," ++ Rest & tokenize_formula(Rest, Tokens)
+tokenize_formula(Str, [T|Tokens]) <=
+    Str =? T/"\\w*" ++ Rest & tokenize_formula(Rest, Tokens)
+
+rel string2formula(string, ?formula)
+string2formula("\n", empty_formula) :: true
+string2formula(Str, Formula) ::
+    tokenize_formula(Str, Tokens) &
+    parse(Tokens, [], Formula)
+string2formula(_Str, no_formula) <= {put_line("Can't parse formula")} 
+
+rel parse(!list(string), ?list(string), ?formula)
+
+parse(Tokens, Rest, Formula) <=
+    parse_atomic(Tokens, RestTokens, Atomic) &
+    parse_aux(RestTokens, Atomic, Rest, Formula)
+
+rel parse_aux(!list(string), !formula, ?list(string), ?formula)
+
+parse_aux([], F, [], F)
+parse_aux([Op|Tokens], Atomic1, Rest, Formula) <=
+    op(Op) &
+    parse_atomic(Tokens, RestTokens, Atomic2) &
+    parse_rest(RestTokens, Atomic1, Op, Atomic2, Rest, Formula)
+
+rel parse_rest(list(string), formula, string, formula, ?list(string), ?formula)
+        
+
+parse_rest([Op|Tokens], Formula1, PrevOp, Formula2, Rest, Formula) :: 
+    op(Op) &  lower_precedence(Op, PrevOp) <=
+        construct_formula(PrevOp, Formula1, Formula2, Formula3) &
+        parse_atomic(Tokens, RestTokens, Atomic) &
+        parse_rest(RestTokens,  Formula3, Op, Atomic, Rest, Formula)
+parse_rest([Op|Tokens], Formula1, PrevOp, Formula2, Rest, Formula) :: 
+    op(Op) <=
+        parse_atomic(Tokens, RestTokens, Atomic) &
+        parse_rest(RestTokens, Formula2, Op, Atomic, Rest, Formula3) &
+        construct_formula(PrevOp, Formula1, Formula3, Formula)
+parse_rest(Tokens, Formula1, Op, Formula2, Tokens, Formula) <=
+    construct_formula(Op, Formula1, Formula2, Formula)
+
+rel parse_atomic(list(string), ?list(string), ?formula)
+parse_atomic(["("|Tokens], Left, Formula) :: true <=
+        parse(Tokens, LeftTokens, Formula) &
+        LeftTokens = [")"|Left]
+parse_atomic(["~", "("|Tokens], Left, ~(Formula)) :: true <=
+        parse(Tokens, LeftTokens, Formula) &
+        LeftTokens = [")"|Left]
+parse_atomic(["~"|Tokens], Left, ~(P)) :: true <=
+        parse_atomic(Tokens, Left, P)
+parse_atomic(["all", OvToken|Tokens], Left, all(Ov, Body)) :: true <=
+        string2term(OvToken, O) & type(O, formula_objvar) & Ov = O &
+        parse_atomic(Tokens, Left, Body)
+parse_atomic(["ex", OvToken|Tokens], Left, ex(Ov, Body)) :: true <=
+        string2term(OvToken, O) & type(O, formula_objvar) & Ov = O &
+        parse_atomic(Tokens, Left, Body)
+parse_atomic([F, "("|Tokens], Left, Compound) :: 
+    Tokens =? Body <> [")"] <> Left <=
+        string2term( F ++ "(" ++ strlist2str(Body) ++ ")", C) &
+        type(C, formula) & Compound = C
+parse_atomic([T|Tokens], Tokens, P) :: true <=
+        string2term(T, P1) & type(P1, formula) & P = P1
+
+
+fun strlist2str(list(string)) -> string
+strlist2str([]) -> ""
+strlist2str([S|Rest]) -> S ++  strlist2str(Rest)
+
+
+rel construct_formula(string, formula, formula, ?formula)
+construct_formula("=>", F1, F2, imp(F1, F2))
+construct_formula("or", F1, F2, or(F1, F2))
+construct_formula("and", F1, F2, and(F1, F2))
+
+rel op(!string)
+op("and")
+op("or")
+op("=>")
+
+rel lower_precedence(string, string)
+lower_precedence("=>", "and") :: true
+lower_precedence("=>", "or") :: true
+lower_precedence("or", "and") :: true
+
+
+
+rel premiseslist2string(!list(premises), ?string)
+rel premises2string(!premises, ?string)
+
+premiseslist2string([], "")
+premiseslist2string([H], HStr) :: formula_list2string(H, HStr)
+premiseslist2string([H|Premises] , Str) <=
+    formula_list2string(H, HStr) &
+    premiseslist2string(Premises, PremisesStr) &
+    Str = HStr ++ "\n----------\n" ++ PremisesStr ++ "\n"
+
+rel formula_list2string (!list(formula), ?string)
+
+formula_list2string([], "")
+formula_list2string([F], Str) :: true <= 
+        formula2string(F, none, Str1) & Str = " " ++ Str1
+formula_list2string([F|Rest], Str) <=
+    formula2string(F, none, FStr) &
+    formula_list2string(Rest, RestStr) &
+    Str = " " ++ FStr ++ ",\n" ++ RestStr
+
+rel formula2string (!formula,  !atom, ?string)
+formula2string(~(A), _, Str) :: type(A, !atom) <=
+        term2string(A, AS) & Str = "~"++AS
+formula2string(~(A), _, Str)  :: true <=
+    formula2string(A, none, AS) & Str = "~(" ++ AS ++ ")"
+
+formula2string(and(P, Q), Op, Str) :: true <=
+        formula2string(P, and, PStr) &    
+        formula2string(Q, and, QStr) &
+        join_formulas(Op, and, PStr, QStr, Str)
+formula2string(or(P, Q), Op, Str) :: true <=    
+        formula2string(P, or, PStr) &    
+        formula2string(Q, or, QStr) &
+        join_formulas(Op, or, PStr, QStr, Str)
+formula2string(imp(imp(P1, Q1) , Q), Op, Str) :: true <=    
+        formula2string(imp(P1, Q1), imp, PStr) &  
+        formula2string(Q, imp, QStr) &
+        join_formulas(Op, imp, "("++PStr++")", QStr, Str)
+formula2string(imp(P, Q), Op, Str) :: true <=    
+        formula2string(P, imp, PStr) &    
+        formula2string(Q, imp, QStr) &
+        join_formulas(Op, imp, PStr, QStr, Str)
+formula2string(all(X, P), Op, Str) :: true <= 
+        formula2string(P, all, PStr) &  
+        term2string(X, XStr) &
+        join_formulas(Op,  all, XStr, PStr, Str)
+formula2string(ex(X, P), Op, Str) :: true <=
+        formula2string(P, ex, PStr) &  
+        term2string(X, XStr) &
+        join_formulas(Op,  ex, XStr, PStr, Str)
+formula2string(P, _, PredStr) :: type(P, !predicate) <=
+        term2list(P, [F,..Args]) &
+        type(Args, !list(formula_term)) &
+        pred_args2str(Args, ArgsStr) &
+        term2string(F, FStr) &
+        PredStr = FStr ++ "(" ++ ArgsStr ++ ")"
+formula2string(P, _, PStr) <=
+    term2string(P, PStr)
+
+rel join_formulas(atom, atom, string, string, ?string)
+join_formulas(all, and, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " and " ++ QStr ++ ")"
+join_formulas(ex, and, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " and " ++ QStr ++ ")"
+join_formulas(_, and, PStr, QStr, Str) ::
+    Str =  PStr ++ " and " ++ QStr
+join_formulas(all, or, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " or " ++ QStr ++ ")"
+join_formulas(ex, or, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " or " ++ QStr ++ ")"
+join_formulas(and, or, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " or " ++ QStr ++ ")"
+join_formulas(_, or, PStr, QStr, Str) ::
+    Str =  PStr ++ " or " ++ QStr
+join_formulas(all, imp, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " => " ++ QStr ++ ")"
+join_formulas(ex, imp, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " => " ++ QStr ++ ")"
+join_formulas(and, imp, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " => " ++ QStr ++ ")"
+join_formulas(or, imp, PStr, QStr, Str) ::
+    Str =  "(" ++ PStr ++ " => " ++ QStr ++ ")"
+join_formulas(_, imp, PStr, QStr, Str) ::
+    Str =  PStr ++ " => " ++ QStr
+join_formulas(_, all, XStr, PStr, Str) ::
+    Str =  "all "++  XStr ++ " " ++ PStr
+join_formulas(_, ex, XStr, PStr, Str) ::
+    Str =  "ex "++  XStr ++ " " ++ PStr
+
+%% used in transform_subterms to convert a bound variable X to a variable term
+%% for example  var("A")
+fun obvar_var(term, term) -> rel(??term, ??term)
+obvar_var(X, V)(X, V) :: true
+obvar_var(_, _)(A, A)
+
+% used in transform_subterms to convert terms like var("A") to A
+rel varstr2var(??term, ??term)
+varstr2var(var(S), V) :: 
+    type(S, string) & string2term(S, V)
+varstr2var(X, X)
+
+
+%% Convert the arguments of a predicate into a string
+rel pred_args2str(!list(formula_term), ?string)
+pred_args2str([A], AStr) ::
+    parg2str(A, AStr)
+pred_args2str([A,..Rest], Str) ::
+    parg2str(A, AStr) &
+    pred_args2str(Rest, RestStr) &
+    Str = AStr ++ ", " ++ RestStr
+
+%% Convert an argument of a predicate into a string
+rel parg2str(!formula_term, ?string)
+% an argument such as sk(1, []) is converted to sk1
+parg2str(sk(N, []), Str) ::
+    type(N, nat) & 
+    term2string(N, SN) &
+    Str = "sk" ++ SN  
+% an argument like sk(1, [X,Y]) is converted to sk1(X', Y') where
+% X and Y are also converted to X' and Y'
+parg2str(sk(N, Vars), Str) ::
+    type(N, nat) & 
+    sort(Vars, SVars, @<) &   % duplicates removed
+    type(SVars, !list(formula_term)) &
+    pred_args2str(SVars, VarsStr) &
+    term2string(N, SN) &
+    %skolem_vars2str(SVars, VarsStr) &
+    Str = "sk" ++ SN ++ "(" ++ VarsStr ++ ")"  
+% a term like var(sk(1)) is converted to sk(1)
+parg2str(var(X), S) :: string2term(X, V) & type(V, !formula_term)<= parg2str(V, S)
+% a term like var("A) is converted to "A"
+parg2str(var(X), X) ::true
+% all other terms are simply converted to strings using the builtin term2string
+parg2str(A, AStr) <= term2string(A, AStr)
+
+
+
+    

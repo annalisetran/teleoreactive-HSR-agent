@@ -1,0 +1,9 @@
+This directory contains documentation.
+
+
+refman.pdf : The Qulog/Teleor reference manual
+refman: contains a html version of the reference manual (index.html)
+
+qulog_user_guide.pdf: A user guide for Qulog
+eleor_user_guide.pdf: A user guide for Teleor
+

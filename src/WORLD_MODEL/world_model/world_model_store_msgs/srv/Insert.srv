@@ -1,0 +1,10 @@
+# Request
+Details insert
+---
+# Response
+string SUCCESS = "success"
+string FAIL = "fail"
+string status
+
+# set to -1 on failure
+int32 inserted_id

@@ -1,0 +1,63 @@
+
+
+?- [broker_ontology]
+
+% info_source type is declared in broker_ontology file
+% these facts tell the broker which information servers may 
+% contain facts for relation calls in queries that the broker
+% will receive
+info_source(temperature, sensor_server1)
+info_source(person_location, sensor_server1)
+info_source(temperature, sensor_server2)
+info_source(door, sensor_server2)
+
+% The following rules redirect calls on the shared ontology relations 
+% to information servers that contain dynamic facts recording raw sense
+% data.  The redirection uses the broker's  info_source facts.  
+% The call redirection is done just as the rel call needs to be 
+% evaluated in the broker as part of the eval of a remote query 
+% it has received.
+temperature(Loc, Temp) <=
+    info_source(temperature, Server) &
+    temperature(Loc, Temp) query_at Server
+
+door(Loc, Status) <=
+    info_source(door, Server) &
+    door(Loc, Status) query_at Server
+
+person_location(Person, Loc) <=
+    info_source(person_location, Server) &
+    person_location(Person, Loc) query_at Server
+
+act start_broker()
+start_broker() ~> 
+    fork(handle_message(), Name, messages);
+    set_default_message_thread(Name)
+
+% broker_message type declared in broker_ontology
+act handle_message()
+handle_message() ~>
+    repeat {
+        receive {
+            add_info_source(Name) from  InfoSourceHandle :: 
+                nonvar(Name)  ~>
+                    remember([info_source(Name,InfoSourceHandle)])
+            
+            remove_info_source(Name) from InfoSourceHandle :: 
+                nonvar(Name) ~>
+                    forget([info_source(Name,InfoSourceHandle)])
+            
+            %% Normal response for a remote query
+            %% Fork a thread to handle the query
+            remote_query(QueryStr)  from_thread Client ::
+                nonvar(QueryStr) ~> 
+                    write_list(["Agent ", Client," asked:", nl_,
+                                QueryStr, nl_]);
+                    fork(respond_remote_query(QueryStr, Client), _)
+            
+            M from_thread Addr ~>
+                write_list(["Unprocessed ", M , " from ", Addr,nl_])
+            
+            }
+        }
+

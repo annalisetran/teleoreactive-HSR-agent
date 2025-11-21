@@ -1,0 +1,121 @@
+%% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+%%% This is a single bottle collector agent program.
+%%% To run
+%%% Make sure pedro is running on your host
+%%% Start the Python simulator in one terminal:
+%%% python bottles_centre_env.py one
+%%% Start the Teleor interpreter in another terminal:
+%%% teleor -Abottle_collector
+%%% Then, in the interpreter:
+%%% [bottleCollector].
+%%% go().
+
+%% See README for how to interact with simulator
+
+
+def dir::= left | centre | dead_centre | right % Definition of enumerated type
+def thing::= bottle | drop          
+
+tel_percept holding(), gripper_open(), see_at(thing, int, dir), over_drop()
+
+tel_action  open_gripper(), close_gripper(), move(num), turn(dir,num)  
+
+rel see(?thing,?dir)
+rel next_to(?thing,?dir)
+rel close_to(?thing,?dir)
+rel near(?thing,?dir)
+
+next_to(Thing, Dir) <= see_at(Thing, Dist, Dir) & Dist < 1
+close_to(Thing, Dir) <= see_at(Thing, Dist, Dir) & Dist < 17
+near(Thing, Dir) <= see_at(Thing, Dist, Dir) & Dist < 33
+see(Thing, Dir) <= see_at(Thing, _Dist, Dir)
+
+rel next_to_centre(thing)
+next_to_centre(Thing) <= next_to(Thing, dead_centre)
+next_to_centre(Thing) <= next_to(Thing, centre)
+
+rel delivered()
+delivered() <= next_to(drop,_) & next_to(bottle,_) & gripper_open() 
+
+rel centre_dir(?dir)
+centre_dir(centre)
+centre_dir(dead_centre)
+
+  
+tel collect_bottle()
+collect_bottle(){                              
+    delivered() ~> ()
+    % Task goal is a defined relation call
+    next_to_centre(drop) & holding() ~> open_gripper()
+    % Facing centre or dead centre of drop holding a bottle
+    % Deliver bottle to drop by opening gripper   
+    holding() ~> get_next_to(drop)
+    % get robot next to the drop but only while holding a bottle
+    next_to_centre(bottle) & gripper_open() ~> 
+        close_gripper() 
+    % Facing a bottle with gripper open. Try to grasp bottle
+    % by closing the gripper.
+    gripper_open() ~> 
+        get_next_to(bottle) 
+    % Get robot next to and facing a bottle
+    true ~> 
+        open_gripper()  % Open gripper if need be
+    }
+
+tel get_next_to(thing)
+get_next_to(Th){  % To be used when Th is bottle or drop
+    next_to_centre(Th) ~> ()
+    % next to and facing Th
+    next_to(Th,Dir) ~> turn(Dir,0.3)
+    % Next to Th but not facing its centre area
+    close_to(Th,_) ~> approach(Th,0.5,0.7) 
+    % Now close to Th, slow forward speed
+    % but turn more quickly if need be
+    near(Th,_) ~> approach(Th,1.5,0.5) 
+    % approach more slowly to achieve close_to(Th,_)   
+    see(Th,_) ~> approach(Th,2.5,0.3)    
+    % approach Th quickly to achieve  near(Th,_)    
+    true ~>  [turn(left,0.5):7,move(2):2] 
+    % Th not in sight, wander hoping to see it 
+    }
+
+fun op_dir(dir) -> dir
+op_dir(left) -> right
+op_dir(right) -> left
+op_dir(_) -> centre
+
+rel not_dead_centre_yet(thing,dir)
+not_dead_centre_yet(Th, Dir) <=
+    see(Th, D) & D \= dead_centre & D \= op_dir(Dir)
+
+tel approach(thing,num,num) 
+approach(Th,Fs,Ts){    
+    % Only active whilst see(Th,_) holds
+    see(Th,Dir) & centre_dir(Dir) ~> move(Fs)    
+    % Th seen at centre or dead_centre of camera image                       
+    see(Th,Dir) commit_while not_dead_centre_yet(Th, Dir) ~>
+            move(Fs),turn(Dir,Ts)        
+    % Dir is left or right. Turn to Dir as well as moving forward.
+    % Commit to this rule firing until Th is seen dead_centre.
+    % This is to ensure first rule will not be re-fired if turn action
+    % has only just brought Th back into centre view. 
+    }                             
+
+act go()
+go() ~>
+    start_agent(env@localhost, updates) ;
+    start_task(collect_bottle(), _, bottles)
+

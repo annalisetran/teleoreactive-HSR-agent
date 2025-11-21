@@ -1,0 +1,5 @@
+<launch>
+    <node pkg="world_model_kb" type="regions_viewer.py" name="region_viewer" output="screen">
+        <param name="database_config_path" value="$(env HOME)/.ros/world_model_kb/database.ini" />
+    </node>
+</launch>

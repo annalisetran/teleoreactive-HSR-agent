@@ -1,0 +1,136 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Standard Operators (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Standard Operators (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Standard Operators (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="Listing-of-Builtin-Types.html" rel="next" title="Listing of Builtin Types">
+<link href="Built_002dIns.html" rel="prev" title="Built-Ins">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="chapter" id="Standard-Operators">
+<div class="header">
+<p>
+Next: <a href="Listing-of-Builtin-Types.html" accesskey="n" rel="next">Listing of Builtin Types</a>, Previous: <a href="Built_002dIns.html" accesskey="p" rel="prev">Built-Ins</a>, Up: <a href="index.html" accesskey="u" rel="up">QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Standard-Operators-1"></span><h2 class="chapter">8 Standard Operators</h2>
+<span id="index-Standard-Operators"></span>
+
+<p>We use the Prolog notation for operator declarations even though, unlike Prolog, QuLog&rsquo;s syntax cannot be extended by adding application specific operators and the QuLog parser is not an operator precedence parser. <code>op</code> is not a system predicate of QuLog. Using  Prolog <code>op</code> statements gives us a succint way of summarising the precedence
+relationship between the operators that is implicit in the formal syntax rules. 
+</p>
+
+<p>In each <code>op</code> statement the number is the &rsquo;binding&rsquo; power of the operator, called the <i>precedece</i> of the operator. The higher the precedence, the higher up the parse tree, so the less binding the operator. For example, <code>+</code>  has higher precedence than <code>*</code> , so <code>X+Y*Z</code> is really <code>X+(Y*Z)</code> and we have to use brackets if we want to have the expression <code>(X+Y)*Z</code>.
+</p>
+
+<p><code>fx</code> means the operator is prefix and cannot be followed immediately by an expression with top operator of the same precedence unless that expression is bracketed. 
+</p>
+
+<p><code>xfx</code> means that the operator is an infix non-associative operator and must have expression arguments for which the top operator has lower precedence,  or the expressions arguments are bracketed. So, <code>(X**Y)**Z</code> needs the brackets.
+</p>
+
+<p><code>xfy</code> means that the operator is an infix right associative operator, and <code>yfx</code> means that the operator is an infix left associative operator. More specically, a <code>xfy</code> operator can have an expression to the right with a  top operator of equal or lower precedence and that expression being implicitly bracketed. For a <code>yfx</code> this implicit bracketing applies to the expression on the left hand side. So, <code>X*5 mod 6</code> is implicitly <code>(X*5) mod 6</code>.
+</p>
+
+<p>Note that <code>?</code> has two precedences as an infix operator. One is for its use in an interpreter query after the required initial number of solutions and/or variable bindings have been given. For this use it must have higher precedence than <code>&amp;</code>. The second use is in <code>&lt;&gt;</code> and <code>++</code> patterns when giving a single condition constraint on a sub-string or sub-list. For this use it must have lower precedence than <code>&lt;&gt;</code> and <code>++</code>.
+</p>
+
+<p>The mode annotations are not in the table as prefix or infix operators as they will always be inside a bracketed sequence of annotated types.
+</p>
+
+<p>We have  not included <code>forall</code> or <code>exists</code>  as they are both  prefix operators taking two arguments, the sequence of variables that immediately follows and then  some operator expression. This is an
+<code>=&gt;</code> or <code>~&gt;&gt;</code> implication in the case of <code>forall</code> and possibly an <code>&amp;</code> conjunction in the case of <code>exists</code>.
+</p>
+
+<p><code>start_task</code> and <code>start_agent</code> are just reserved words and are never followed  by an operator expression.
+</p>
+<p>In QuLog comma is not treated as an operator. It is just an expression separator. 
+</p><div class="example">
+<pre class="example">
+
+op(1100, xfx, [ &lt;=, ~&gt;&gt;, -&gt;, ~&gt;, =&gt;])
+op(1050, xfx, [ ::= ])
+op(1030, xfx, [ |, || ])
+op(1030, xfx, [ .. ])
+op(1020, xfx, [ ::, ? ])
+op(1020, xfy, [ or_while, commit_while ])
+op(1000, xfy, [ &amp;, ; ])
+op(900,  fx,  [not , once,  watch , unwatch, show, 
+               types, stypes, remember, forget, wait]) 
+op(800, xfx, [ ? ])
+op(700,  xfx, [= , \= , :=, +:=, -:=, =? , == , \== , @&lt; ,   @=&lt; ,
+               @&gt; , @&gt;= , @.. , in , =:= , =\= , &lt; , =&lt; , &gt; , &gt;= ])
+op(600, xfy, [ ++, &lt;&gt; ])
+op(550, xfx, [ ? ])
+op(500, yfx, [ + , - , /\ , \/, union, diff ])
+op(450, yfx, [ to, from ])
+op(400, yfx, [ * , / , // , mrel , mod , inter, &lt;&lt; , &gt;&gt; ])
+op(200, xfx, [ ** ])
+op(200, fy,  [ + , - , \ ])
+op(100, xfx, [ .. ])
+op(50, xfx, [ : ])
+op(50, fx, [ $, # ])
+</pre></div>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Listing-of-Builtin-Types.html">Listing of Builtin Types</a>, Previous: <a href="Built_002dIns.html">Built-Ins</a>, Up: <a href="index.html">QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

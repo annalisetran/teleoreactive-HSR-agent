@@ -1,0 +1,306 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Other Actions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Other Actions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Other Actions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Built_002dIns.html" rel="up" title="Built-Ins">
+<link href="TeleoR-Specific-Actions.html" rel="next" title="TeleoR Specific Actions">
+<link href="Other-Relations.html" rel="prev" title="Other Relations">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Other-Actions">
+<div class="header">
+<p>
+Next: <a href="TeleoR-Specific-Actions.html" accesskey="n" rel="next">TeleoR Specific Actions</a>, Previous: <a href="Other-Relations.html" accesskey="p" rel="prev">Other Relations</a>, Up: <a href="Built_002dIns.html" accesskey="u" rel="up">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Other-Actions-1"></span><h3 class="section">7.7 Other Actions</h3>
+<span id="index-Other-Actions"></span>
+
+<p><code>fork(Action, Name, Sizes)</code>
+<span id="index-fork"></span>
+</p><blockquote class="indentedblock">
+
+<p>Fork a new QuLog thread, give it the name <code>Name</code>, and start the thread
+executing <code>Action</code>. If <code>Name</code> is given it must not be the name of an existing thread. If <code>Name</code> is a variable it will be
+instantiated to a name given by the system. The sizes of the various memory areas determined by the content of the <code>Sizes</code> list. If <code>Sizes</code> is not given it defaults to <code>[]</code>.
+</p>
+<p>Example: the following sets sizes for the environment stack and the heap.
+</p>
+<p><code>fork(<i>Act</i>, Name, [env_size(1), heap_size(5)])</code>
+</p>
+<p>See the Qu-Prolog manual under <code>thread_fork</code> for more detailed description of the various sizes.
+</p>
+</blockquote>
+
+<p><code>fork_light(Action, Name)</code>
+<span id="index-fork_005flight"></span>
+</p><blockquote class="indentedblock">
+
+<p>Fork a new QuLog thread with the sizes of the various memory areas set to be very small. This produces a very light weight thread and is useful for threads that do minimal computation - for example a simple message handling thread.
+</p>
+<p><code>Name</code> is the same as for fork.
+</p>
+</blockquote>
+
+
+
+<p><code>from(Term, Handle)</code>
+<span id="index-from-1"></span>
+</p><blockquote class="indentedblock">
+
+<p>This is the agent message receive action. It will succeed it there is a message
+term in that threads message buffer whose message term unifies with <code>Term</code> and whose agent handle unifies with <code>Handle</code>. If not the call
+will suspend and be repeatedly retried as new messages arrive until it succeeds.
+When it does succeed, the matched message will be removed from the message buffer.
+<br>
+<code>act from(??term, ?agent_handle) </code>
+</p>
+
+<p>Alternative syntax: <code>Term from Handle</code>
+</p></blockquote>
+
+
+<p><code>to(Term, Handle)</code>
+<span id="index-to-1"></span>
+</p><blockquote class="indentedblock">
+
+<p>This is the agent message send action. It sends <code>Term</code> as a message to the
+agent (of possibly a process on another machine) whose agent address
+is <code>Handle</code>.
+<br>
+<code>act to(@term, !agent_handle)</code>
+</p>
+
+<p>Alternative syntax: <code>Term to Handle</code>
+</p></blockquote>
+
+<p><code>from_thread(Term, Handle)</code>
+<span id="index-from_005fthread-1"></span>
+</p><blockquote class="indentedblock">
+
+<p>This is the message receive action. It will succeed it there is a message
+term in that threads message buffer whose message term unifies with <code>Term</code> and whose handle unifies with <code>Handle</code>. If not the call
+will suspend and be repeatedly retried as new messages arrive until it succeeds.
+When it does succeed, the matched message will be removed from the message buffer.
+<br>
+<code>act from_thread(??term, ?handle) </code>
+</p>
+
+<p>Alternative syntax: <code>Term from_thread Handle</code>
+</p></blockquote>
+
+
+<p><code>to_thread(Term, Handle)</code>
+<span id="index-to_005fthread-1"></span>
+</p><blockquote class="indentedblock">
+
+<p>This is the message send action. It sends <code>Term</code> as a message to the
+thread (of possibly another process on another machine) whose address
+is <code>Handle</code>.
+<br>
+<code>act to_thread(@term, !agent_handle)</code>
+</p>
+
+<p>Alternative syntax: <code>Term to_thread Handle</code>
+</p></blockquote>
+
+
+<p><code>thread_sleep(Secs)</code>
+<span id="index-thread_005fsleep"></span>
+</p><blockquote class="indentedblock">
+
+<p>Causes the executing thread to suspend for 
+<code>Secs</code> seconds.
+<br>
+<code>act thread_sleep(!num)</code>
+</p>
+</blockquote>
+
+<p>Dynamic facts (that make up the <i>Belief Store</i>) can be remembered and forgotten using the actions below. Each such action atomically modifies the collection of dynamic facts. If the <i>Belief Store</i> changes then the <i>Belief Store</i> timestamp is updated and the timestamp can be accessed using the <code>time_</code> relation.
+</p>
+<p><code>forget(DynPatterns)</code>
+<span id="index-forget"></span>
+</p><blockquote class="indentedblock">
+
+<p>Remove the first dynamic fact matching each entry of the list <code>DynPatterns</code>. Note that <code>DynPatterns</code> may contain variables within the arguments of each entry. <code>forget</code> always succeeds even if there are no matching facts.
+</p>
+</blockquote>
+
+<p><code>remember(DynTerms)</code>
+<span id="index-remember"></span>
+</p><blockquote class="indentedblock">
+
+<p>Adds each new <code>dyn_term</code> in the list (<code>DynTerms</code>) as a new last dynamic 
+fact. If the fact is already present then there is no change.
+</p>
+</blockquote>
+
+
+<p><code>forget_remember(DynPatterns, DynTerms)</code>
+<span id="index-forget_005fremember"></span>
+</p><blockquote class="indentedblock">
+<p>This is the combination of the above two actions. The forgets are done first followed by the remembers. If a fact that is to be forgotten is to be immediately remembered then no change occurs.
+</p>
+</blockquote>
+
+
+
+<p><code>remember_for(DynTerms, Secs)</code>
+<span id="index-remember_005ffor"></span>
+</p><blockquote class="indentedblock">
+
+<p>The same as <code>remember</code> except that <code>DynTerms</code> are forgotten after
+<code>Secs</code> seconds. 
+</p>
+</blockquote>
+
+
+
+<p><code>Name := Expression</code>
+<span id="index-_003a_003d"></span>
+</p><blockquote class="indentedblock">
+
+<p>Here <code>Name</code> is an atom that must have been initialised with a statement
+</p>
+<p><code>int Name:=Integer</code>, e.g. <code>int count:=0</code> or
+</p>
+<p><code>num Name:=Number</code>, e.g. <code>num savings:=678.50</code>
+</p>
+<p>in the program. These statements are shorthand for <code>dyn</code> declarations and a definition using one fact of a unary relation called <code>Name</code>. They are respectively expanded into:
+</p><div class="example">
+<pre class="example">dyn Name(int)
+Name(Integer) 
+
+dyn Name(num) 
+Name(Number) 
+</pre></div>
+<p>The action <code>Name := Expression</code> is the same as
+</p><div class="example">
+<pre class="example">forget_remember([Name(_)], [Name(Expression)]). 
+</pre></div>
+
+
+<p><code>Name</code> can be used as though it were a global variable. To access its value the operator <code>$</code> is applied.  The expression  <code>$Name</code> evaluates to the current <code>int</code> or <code>num</code> value stored in <code>Name</code>, i.e. in the current <code>Name</code> belief.
+</p>
+<p><code>act :=(!rel(?num), !num), :=(!rel(?int), !int)</code>
+</p>
+
+</blockquote>
+
+<p><code>Name +:= Expression</code>
+<span id="index-_002b_003a_003d"></span>
+</p><blockquote class="indentedblock">
+
+<p>As above, <code>Name</code> is an atom that must have been initialised with a statement
+</p><blockquote class="indentedblock">
+<p><code>int Name:=Integer</code> or <code>num Name:=Number</code>
+</p></blockquote>
+<p>in the program. 
+</p>
+
+<p>The action <code>Name +:= Expression</code> is the same as
+</p><blockquote class="indentedblock">
+<p><code>forget_remember([Name(Val)], [Name(Val+Expression)])</code>. 
+</p></blockquote>
+
+<p><code> act +:=(!rel(?num), !num), +:=(!rel(?int), !int)</code>
+</p>
+
+<p>Example use 
+</p><blockquote class="indentedblock">
+<p><code>count +:= 1</code> 
+</p></blockquote>
+<p>for increasing value held in <code>count</code> by 1. 
+</p>
+</blockquote>
+
+<p><code>Name -:= Expression</code>
+<span id="index-_002d_003a_003d"></span>
+</p><blockquote class="indentedblock">
+
+<p>As above, <code>Name</code> is an atom that must have been initialised with a statement
+</p>
+<blockquote class="indentedblock">
+<p><code>int Name:=Integer</code> or <code>num Name:=Number</code>
+</p></blockquote>
+<p>in the program. 
+</p>
+
+<p>The action <code>Name -:= Expression</code> is the same as
+</p>
+<blockquote class="indentedblock">
+<p><code>forget_remember([Name(Val)], [Name(Val-Expression)])</code>. 
+</p></blockquote>
+
+<p><code> act -:=(!rel(?num), !num), -:=(!rel(?int), !int)</code>
+</p>
+<p>Example use 
+</p><blockquote class="indentedblock">
+<p><code>savings -:= 67.90</code>
+</p></blockquote>
+<p>for decreasing the value held in <code>savings</code> by <code>67.90</code>. 
+</p></blockquote>
+
+
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="TeleoR-Specific-Actions.html">TeleoR Specific Actions</a>, Previous: <a href="Other-Relations.html">Other Relations</a>, Up: <a href="Built_002dIns.html">Built-Ins</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

@@ -1,0 +1,17 @@
+<launch>
+    <node pkg="world_model_kb" type="scene_manager_node.py" name="scene_manager_node" respawn="False" output="screen" >
+        <param name="input_topic" value="/unsw_vision/detections/objects/positions" />        
+        <param name="frame_id" value="map" />    
+        <param name="db_ini" value="/home/robocupathome/workspace/vision_ws/src/world_model/world_model_kb/scripts/database.ini"/>
+        <param name="cost_threshold" value="5" />
+        <param name="step_size" value="0.2" />
+        <param name="show_plots" value="False" />
+    </node> 
+
+    <node pkg="world_model_kb" type="wm_timer_node.py" name="wm_timer_node" respawn="False" output="screen" >      
+        <param name="db_ini" value="/home/robocupathome/workspace/vision_ws/src/world_model/world_model_kb/scripts/database.ini"/>
+        <param name="decay_cycle" value="1200" />
+        <param name="decay_timer_interval" value="20.0" />
+    </node>
+
+</launch>

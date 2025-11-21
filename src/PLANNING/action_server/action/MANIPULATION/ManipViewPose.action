@@ -1,0 +1,12 @@
+# Define the goal
+float32 arm_lift_joint
+float32 arm_flex_joint
+float32 head_tilt_joint
+float32 head_pan_joint
+---
+# Define the result
+bool action_success
+---
+# Define a feedback message. 0 for not started, 1 for ongoing, 2 for failure.
+uint32 feedback
+

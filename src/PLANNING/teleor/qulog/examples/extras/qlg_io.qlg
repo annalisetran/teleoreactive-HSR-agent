@@ -1,0 +1,137 @@
+
+%% read in simple terms based on user-defined operator precedence
+%% table - does not deal with built-in prefix/infix/distfix operators
+%%
+def associativity ::= fx | fy | xfy | yfx | xfx | yfy
+
+def precedence ::= 0..1200
+
+rel op(precedence, associativity, atom)
+act read(??term)
+
+
+def s ::= and(term, term) | or(term, term)
+
+act qlg_read(??term, stream_type default stdin)
+act qlg_write(@term, stream_type default stdout)
+
+qlg_read(Term, Stream) ~>
+    get_line(Str, Stream);
+    qlg_read_term(Str, Stream, TermStr);
+    ?(qlg_tokenize(TermStr, TermList) & Term = TermList)
+    
+
+act qlg_read_term(string, stream_type, ?string)
+qlg_read_term(Str, _Stream, TermStr) ::
+    Str =? Str1 ++ ".\n" &
+    TermStr = Str1 ~> {}
+qlg_read_term(Str, Stream, TermStr) ~>
+    get_line(Str1, Stream);
+    qlg_read_term(Str++Str1, Stream, TermStr)
+
+rel qlg_tokenize(string, ?list(string))
+% End of string
+qlg_tokenize("", []) :: true
+% strip  white spaces on left
+qlg_tokenize(Str, Tokens) ::
+    Str =? _Whites/"(\\s+)" ++ Rest <=
+        qlg_tokenize(Rest, Tokens)
+% "("
+qlg_tokenize(Str, ["("|Tokens]) ::
+    Str =? "(" ++ Rest <=
+        qlg_tokenize(Rest, Tokens)
+% ")"
+qlg_tokenize(Str, [")"|Tokens]) ::
+    Str =? ")" ++ Rest <=
+        qlg_tokenize(Rest, Tokens)
+% "["
+qlg_tokenize(Str, ["["|Tokens]) ::
+    Str =? "[" ++ Rest <=
+        qlg_tokenize(Rest, Tokens)
+% "]"
+qlg_tokenize(Str, ["]"|Tokens]) ::
+    Str =? "]" ++ Rest <=
+        qlg_tokenize(Rest, Tokens)
+% "{"
+qlg_tokenize(Str, ["{"|Tokens]) ::
+    Str =? "{" ++ Rest <=
+        qlg_tokenize(Rest, Tokens)
+% "}"
+qlg_tokenize(Str, ["}"|Tokens]) ::
+    Str =? "}" ++ Rest <=
+        qlg_tokenize(Rest, Tokens)
+% ","
+qlg_tokenize(Str, [","|Tokens]) ::
+    Str =? "," ++ Rest <=
+        qlg_tokenize(Rest, Tokens)
+% string starts with a 'word'
+qlg_tokenize(Str, [T|Tokens]) ::
+    Str =? T/"\\w*" ++ Rest <=
+        qlg_tokenize(Rest, Tokens)
+   
+
+rel parse_qlg_term(list(string), precedence, ??term, ?list(string))
+rel parse_qlg_start_term(string, list(string), precedence, ??term, 
+                         ?list(string))
+rel parse_qlg_after_term(list(string), @term, precedence, precedence, ??term, 
+                         ?list(string))
+rel parse_qlg_list_args(list(string), ?list(??term), ?list(string))
+
+parse_qlg_term([], _, _, _) ::
+    {write_list(["No tokens to parse", nl_])} &
+    false
+parse_qlg_term([Token|RestTokens], Precedence, Term, LeftOver) <=
+    parse_qlg_start_term(Token, RestTokens, Precedence, Term, LeftOver)
+
+rel check_qlg_leftover(list(string))
+check_qlg_leftover([]) :: true
+check_qlg_leftover(Left) <= 
+    {write_list(["Unprocessed tokens: ", Left, nl_])} &
+    false
+
+rel parse_qlg_expect(string, list(string), ?list(string))
+parse_qlg_expect(T, [T|Rest], Rest) :: true
+parse_qlg_expect(T, _, _) <=
+    {write_list(["Expecting ", T, nl_])} &
+    false
+    
+parse_qlg_start_term(",", _RestTokens, _Precedence, _Term, _LeftOver) ::
+    {write_list(["Unexpected ','", nl_])} &
+    false
+parse_qlg_start_term("(", [")"|_RestTokens], _Precedence, _Term, _LeftOver) ::
+    {write_list(["Unexpected '()'", nl_])} &
+    false
+parse_qlg_start_term("(", RestTokens, Precedence, Term, LeftOver) ::
+    parse_qlg_term(RestTokens, 999, Arg1, Left1) &
+    parse_qlg_list_args(Left1, RestArgs, Left2) &
+    parse_qlg_expect(")", Left2, Left3) &
+    term2list(Tuple, ['$tuple', Arg1|RestArgs]) &
+    parse_qlg_after_term(Left3, Tuple, 0, Precedence, Term, LeftOver)
+parse_qlg_start_term("[", ["]"|RestTokens], Precedence, Term, LeftOver) ::
+    parse_qlg_after_term(RestTokens,[], 0, Precedence, Term, LeftOver)
+parse_qlg_start_term("[", RestTokens, Precedence, Term, LeftOver) ::
+    parse_qlg_term(RestTokens, 999, Arg1, Left1) &
+    parse_qlg_list_args(Left1, RestArgs, Left2) &
+    parse_qlg_expect("]", Left2, Left3) &
+    parse_qlg_after_term(Left3, [Arg1|RestArgs], 0, Precedence, Term, LeftOver)
+parse_qlg_start_term("{", ["}"|RestTokens], Precedence, Term, LeftOver) ::
+    term2list(Empty, ['$set', []])&
+    parse_qlg_after_term(RestTokens,Empty, 0, Precedence, Term, LeftOver)
+parse_qlg_start_term("{", RestTokens, Precedence, Term, LeftOver) ::
+    parse_qlg_term(RestTokens, 999, Arg1, Left1) &
+    parse_qlg_list_args(Left1, RestArgs, Left2) &
+    parse_qlg_expect("}", Left2, Left3) &
+    term2list(Tuple, ['$set', Arg1|RestArgs]) &
+    parse_qlg_after_term(Left3, Tuple, 0, Precedence, Term, LeftOver)
+%% default
+parse_qlg_start_term(T, Tokens, Precedence, Term, LeftOver) ::
+    string2term(T, Term1) &
+    parse_qlg_after_term(Tokens, Term1, 0, Precedence, Term, LeftOver)
+
+    
+parse_qlg_list_args([","|Tokens], [Arg1|RestArgs],  LeftOver) ::
+    parse_qlg_term(Tokens, 999, Arg1, Left1) &
+    parse_qlg_list_args(Left1, RestArgs, LeftOver)
+parse_qlg_list_args(Tokens, [], Tokens) ::
+    Tokens = ["]"|_]
+

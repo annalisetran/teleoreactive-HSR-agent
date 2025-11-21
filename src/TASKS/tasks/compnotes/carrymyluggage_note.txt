@@ -1,0 +1,6 @@
+Launch slam nav with pcl 
+ - roslaunch hsrb_rosnav_config hsrb_nav_slam_withPCL.launch
+MAKE SURE slam nav is launched first, order matters!!!
+launch carry my luggage controller
+ -roslaunch carry_my_luggage carry_my_luggage.launch
+

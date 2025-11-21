@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="ISO-8859-1"?>
+<launch>
+  <include file="$(find yolov8_ros)/launch/tracker_carry_my_luggage.launch"/>
+  <include file="$(find person_recognition)/launch/person_recognition.launch"/>
+  
+ <node pkg="unsw_vision_utils" type="PositionGenerator" name="PositionGenerator">
+    <param name="input_pcd_topic" type="str" value="/points"/>
+    <param name="input_obj_topic" type="str" value="/unsw_vision/detections/objects_final"/>
+    <param name="target_frame_id" type="str" value="map"/>
+    <param name="source_frame_id" type="str" value="head_rgbd_sensor_rgb_frame"/>
+</node>
+
+  <node pkg="unsw_vision_utils" type="BagHandleDetector.py" name="BagHandleDetector" output = "screen">
+    <param name="in_topic" type="str" value="/unsw_vision/detections/objects"/>
+    <param name="out_topic" type="str" value="/unsw_vision/detections/objects_final"/>
+  </node>
+
+  <node pkg="unsw_vision_utils" type="PersonPointingDetector.py" name="PersonPointingDetector" output="screen">
+    <param name="input_topic" type="str" value="/unsw_vision/detections/positions"/>
+    <param name="output_topic" type="str" value="/unsw_vision/detections/personPointing"/>
+  </node>
+
+  <node pkg="unsw_vision_utils" type="BagScanner.py" name="BagScanner">
+    <param name="in_topic" type="str" value="/unsw_vision/detections/positions"/>
+    <param name="out_topic" type="str" value="/unsw_vision/detections/pointedBag"/>
+    <param name="point_topic" type="str" value="/unsw_vision/detections/personPointing"/>
+    <param name="ready_topic" type="str" value="/bag_scan_ready"/>
+  </node>
+
+
+</launch>

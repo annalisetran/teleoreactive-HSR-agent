@@ -1,0 +1,283 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Type Checking and Inference (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Type Checking and Inference (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Type Checking and Inference (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Types.html" rel="up" title="Types">
+<link href="User-Defined-Types.html" rel="prev" title="User Defined Types">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="section" id="Type-Checking-and-Inference">
+<div class="header">
+<p>
+Previous: <a href="User-Defined-Types.html" accesskey="p" rel="prev">User Defined Types</a>, Up: <a href="Types.html" accesskey="u" rel="up">Types</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Type-Checking-and-Inference-1"></span><h3 class="section">5.4 Type Checking and Inference</h3>
+<span id="index-Type-Checking-and-Inference"></span>
+<p>In this section we give an overview of type checking and inference. We begin by giving rules for subtyping. We use <code>&lt;=</code> as the subtype relation and <code>&lt;</code> for the strict subtype relation - we gave some rules for builtin types earlier in this chapter. 
+</p>
+<p>Note that in the code type rules some of the relations between types flip around. Perhaps an intuition that might help in understanding why this is the case is to think of the subtype relation as a &ldquo;usability&rdquo; relation - i.e. if <i>T1</i> &lt;= <i>T2</i> then a term of type <i>T1</i> can be used anywhere we are expecting a term of type <i>T2</i>.
+</p>
+<p>So for example consider the following two function declarations
+</p><div class="example">
+<pre class="example">fun f1(int) -&gt; int
+fun f2(num) -&gt; nat
+</pre></div>
+<p>The function <code>f2</code> can be used in any situation where we might use <code>f1</code>
+and so
+<br>
+<code>(fun(num) -&gt; nat) &lt;= (fun(int) -&gt; int)</code>
+</p>
+<p>Below we list other subtyping rules where <code>m&lt;=</code> is the moded subtype relation.
+</p><div class="example">
+<pre class="example">
+
+list(<i>T1</i>) &lt;= list(<i>T2</i>) iff <i>T1</i> &lt;= <i>T2</i>
+set(<i>T1</i>) &lt;= set(<i>T2</i>) iff <i>T1</i> &lt;= <i>T2</i>
+
+atom_naming(<i>CodeT1</i>) &lt;= atom_naming(<i>CodeT2</i>) iff <i>CodeT1</i> &lt;= <i>CodeT2</i>
+term_naming(<i>CodeT1</i>) &lt;= term_naming(<i>CodeT2</i>) iff <i>CodeT1</i> &lt;= <i>CodeT2</i>
+
+(<i>T1</i>, ..., <i>Tn</i>) &lt;= (<i>T1&rsquo;</i>, ..., <i>Tn&rsquo;</i>) iff <i>Ti</i> &lt;=  <i>Ti&rsquo;</i> for each i: 1..n
+
+For an enumeration or range type the subtype relation is <i>subset</i>
+Each enumeration and range type is a subtype of the appropriate
+        atomic type (e.g. nat, string, atom)
+
+<i>T1</i> &lt;= <i>T1</i> || <i>T2</i>
+<i>T2</i> &lt;= <i>T1</i> || <i>T2</i>
+
+For an enumerated constructor type
+CT(<i>T1</i>, ..., <i>Tn</i>) &lt;= CT(<i>T1&rsquo;</i>, ..., <i>Tn&rsquo;</i>) iff
+            (<i>T1</i>, ..., <i>Tn</i>) &lt;= (<i>T1&rsquo;</i>, ..., <i>Tn&rsquo;</i>)
+                
+(fun(<i>T1</i>, ..., <i>Tn</i>) -&gt; <i>T</i>) &lt;= (fun(<i>T1&rsquo;</i>, ..., <i>Tn&rsquo;</i>) -&gt; <i>T&rsquo;</i>) iff
+                     (<i>T1&rsquo;</i>, ..., <i>Tn&rsquo;</i>) &lt;= (<i>T1</i>, ..., <i>Tn</i>) and <i>T</i> &lt;= <i>T&rsquo;</i>
+(tel(<i>T1</i>, ..., <i>Tn</i>) &lt;= tel(<i>T1&rsquo;</i>, ..., <i>Tn&rsquo;</i>) iff
+                     (<i>T1&rsquo;</i>, ..., <i>Tn&rsquo;</i>) &lt;= (<i>T1</i>, ..., <i>Tn</i>)
+(rel(<i>MT1</i>, ..., <i>MTn</i>) &lt;= rel(<i>MT1&rsquo;</i>, ..., <i>MTn&rsquo;</i>) iff
+                     <i>MTi</i> m&lt;= <i>MTi&rsquo;</i> for each i: 1..n
+(act(<i>MT1</i>, ..., <i>MTn</i>) &lt;= act(<i>MT1&rsquo;</i>, ..., <i>MTn&rsquo;</i>) iff
+                     <i>MTi</i> m&lt;= <i>MTi&rsquo;</i> for each i: 1..n
+</pre></div>
+
+<p>For moded types we have the following rules. For simplicity we only consider &ldquo;simple&rdquo; moded types - we ignore moded types like <code>!list(?int)</code>.
+</p>
+<div class="example">
+<pre class="example">M(T1) m&lt;= !(T2) if T2 &lt;= T1
+M1(T1) m&lt;= M2(T2) if T1 = T2 and  not (M1 = '??' and M2 = '?')
+</pre></div>
+
+<p>To explain why these rules are so restrictive we consider the following example relations.
+</p>
+<div class="example">
+<pre class="example">rel r1(!int), r2(?int), r3(?num), r4(??int)
+</pre></div>
+<p>Can a call to <code>r1</code> be used in a situation where a call to <code>r2</code>
+is expected? Since a call to <code>r2</code> can take a variable as its
+argument while <code>r1</code> cannot,  the the answer is no.
+</p>
+<p>Can a call to <code>r3</code> be used in a situation where a call to <code>r1</code> is expected? Since <code>r3</code> can take a ground <code>int</code> as its argument then the answer is yes.
+</p>
+<p>Can a call to <code>r4</code> be used in a situation where a call to <code>r3</code> is expected? Since <code>r4</code> is not guranteed to ground its argument while <code>r3</code> is then the answer is no.
+</p>
+<ul class="section-toc">
+<li><a href="#Type-Checking-Examples" accesskey="1">Type Checking Examples</a></li>
+<li><a href="#Type-Inference-Example" accesskey="2">Type Inference Example</a></li>
+</ul>
+<div class="subsection" id="Type-Checking-Examples">
+<h4 class="subsection">5.4.1 Type Checking Examples</h4>
+<span id="index-Type-Checking-Examples"></span>
+
+<p>We now give some examples to show type checking and inference in action. These examples are very simple and so do not do justice to the complexities involved.
+</p>
+<p>Consider
+</p><div class="example">
+<pre class="example">rel r1(!int, ?int), r2(!int, ?nat), r3(!int, ?int)
+r1(X, Z) &lt;= r2(X, Y) &amp; r3(Y, Z) 
+</pre></div>
+<p>For this type checking example we use the notation  <code>X:!int</code> which we call a <i>variable type binding</i> to mean that <code>X</code> is constrained to have
+moded type <code>!int</code>. The type checker maintains a list of variable type bindings (VTB) as it processes the rule.
+</p>
+<p>First the rule head is considered and since we have
+</p><div class="example">
+<pre class="example">rel r1(!int, ?int)
+</pre></div>
+<p>then the type checker generates an inital VTB:
+</p><div class="example">
+<pre class="example">[X:!int, Z:?int]
+</pre></div>
+
+<p>Since Z needs to be ground by the end of the rule body we also produce the VTB
+</p><div class="example">
+<pre class="example">[Z:!int]
+</pre></div>
+<p>for checking when the body processing is finished.
+</p>
+<p>We now consider the first call in the body relative to the initial VTB.
+</p>
+<p>First we require <code>X</code> to be of moded type <code>!int</code>, which is a constraint in the VTB. Since <code>Y</code> is not mentioned in the VTB then this does not need to be checked. We then generate the updated VTB:
+</p><div class="example">
+<pre class="example">[X:!int, Z:?int, Y:!nat]
+</pre></div>
+
+<p>Note that the moded type for <code>Y</code> has changed from <code>?nat</code> to <code>!nat</code> because we know that the call on <code>r2</code> will ground <code>Y</code>.
+</p>
+<p>Now we check the call <code>r3(Y, Z)</code>. Again we compare the required moded types of the variables with the corresponding moded types in the VTB. Since <code>nat &lt;= int</code> then the requirements are again satisfied. The unpdate VTB is:
+</p><div class="example">
+<pre class="example">[X:!int, Z:!int, Y:!nat]
+</pre></div>
+
+<p>This completes the body checking and we just need to check that <code>Z</code> has been ground by the body calls - and it has since <code>Z:!int</code> is in the VTB.
+</p>
+<p>Now consider the same situation but with the calls in the body reversed:
+</p><div class="example">
+<pre class="example">r1(X, Z) &lt;= r3(X, Y) &amp; r2(Y, Z) 
+</pre></div>
+<p>The type checker proceeds in the same way as above and the VTB before the final call is
+</p><div class="example">
+<pre class="example">[X:!int, Z:?int, Y:!int]
+</pre></div>
+
+<p>When checking the final call we require <code>Y:?nat</code> and have the constraint
+<code>Y:?int</code>. Since it is not the case that <code>?int m&lt;= ?nat</code> then we get a type error.
+</p>
+<p>Superficially, it looks like this rule should be OK. Afterall, if we call the rule with the second argument being a variable then the rule will bind that vaiable to something of type <code>nat</code> (which is also of type  <code>int</code> as required).
+</p>
+<p>The problem is we can call this rule with the second argument ground to a negative integer. This will violate the type requirements for <code>r2</code>.
+</p>
+<p>This example partly explains why the constraints on moded types are quite strong.
+</p>
+<p>If the programmer wanted to write a type correct variant of the rule that had essentially the same semantics then there is a simple solution:
+</p><div class="example">
+<pre class="example">r1(X, Z) &lt;= r3(X, Y) &amp; r2(Y, W) &amp; Z = W
+</pre></div>
+<p>In this rule, because we call <code>r2</code> with a new variable, we avoid the type checking error above. The VTB before the unification is
+</p><div class="example">
+<pre class="example">[X:!int, Z:?int, Y:!int, W:!nat]
+</pre></div>
+
+<p>The unification is now comparing something of moded type <code>?int</code> with something of moded type <code>!nat</code> and because these are type compatible then the type checker is happy with this rule.
+</p>
+<p>The following example provides another illustration of why the constraints on moded types is so strong. It is tempting to think we could, for example, ease the restrictions on <code>?</code> moded types in the rule head by allowing the type to increase in the body as long as we use a run time type check to &ldquo;bring the type back down&rdquo; before we get to the end of the rule as in the following.
+</p>
+<div class="example">
+<pre class="example">rel p(?nat, ?nat), q(?int), r(?nat)
+
+p(X, Y) &lt;= q(X) &amp; r(Y) &amp; type(X, !nat)
+</pre></div>
+
+<p>If we run the type checker on this (with the more relaxed view on <code>?</code> moded types) then, just before the type check we get a VTB of
+</p><div class="example">
+<pre class="example">[X:!int, Y:!nat]
+</pre></div>
+<p>and after the type check we get
+</p><div class="example">
+<pre class="example">[X:!nat, Y:!nat]
+</pre></div>
+<p>Now when we check this against the saved VTB for the <code>?</code> moded <code>X</code> in
+the head we see that not only is <code>X</code> ground but it also has the correct type. This means that the type checker will be satisfied that this rule is type correct.
+</p>
+<p>The problem is that we are allowed to make the call <code>p(A, A)</code>, where <code>A</code> is a variable, on this relation. When we make the call, the rule will first call <code>q(A)</code> which might instantiate A to a negative integer and now the call <code>r(A)</code> will be type incorrect.
+</p>
+<p>The problem is that a &ldquo;hidden unification&rdquo; has happened - the unification happens in the caller - not in the rule itself and so it would be virtually impossible for the type checker to deal with this case.
+</p>
+<p>In a similar way to the earlier example, the programmer can write the required code while avoiding the tight constraints on moded types as follows.
+</p>
+<div class="example">
+<pre class="example">p(X, Y) &lt;= q(Z) &amp; r(Y) &amp; type(Z, !nat) &amp; X = Z
+</pre></div>
+
+<p>Note that the type checker assumes each call in the body succeeds. If, for example, the runtime type checks fails in a particular use then the call fails and so there are no implications for the types of the variables in the head.
+</p>
+
+<p>These examples point to a strategy when  dealing with <code>?</code> moded types in the head - occurrences of that variable in the body can be replaced by a new variable with an added unification at the end of the body, possibly preceded by a type check, to link the head variable with its replacement in the body.
+</p>
+</div>
+<div class="subsection" id="Type-Inference-Example">
+<h4 class="subsection">5.4.2 Type Inference Example</h4>
+<span id="index-Type-Inference-Example"></span>
+<p>When the type checker processes arguments with polymorphic types then typically the type checker switches into type inference mode in order to determine types for later checking.
+</p>
+<p>If we consider the body of a rule where the call
+</p><div class="example">
+<pre class="example"><code>append(X, Y, Z)</code>
+</pre></div>
+<p>is made in the context of the VTB
+</p><div class="example">
+<pre class="example"><code>[X:!list(int), Y:!list(nat)]</code>
+</pre></div>
+<p>given the relevant moded type
+</p><div class="example">
+<pre class="example"><code>append(!list(T), !list(T), ?list(T))</code>
+</pre></div>
+<p>then it will infer from the first two argments that <code>int &lt;= T and nat &lt;= T</code>
+which can be satisfied with <code>T = int</code> (the unique minimal type satisfying the requirements). The VTB after the call then becomes
+</p><div class="example">
+<pre class="example"><code>[X:!list(int), Y:!list(nat), Z:!list(int)]</code>
+</pre></div>
+
+
+</div>
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="User-Defined-Types.html">User Defined Types</a>, Up: <a href="Types.html">Types</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

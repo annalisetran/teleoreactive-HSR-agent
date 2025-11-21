@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>Syntax (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="Syntax (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="Syntax (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="index.html" rel="up" title="Top">
+<link href="Types.html" rel="next" title="Types">
+<link href="Getting-Started.html" rel="prev" title="Getting Started">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="chapter" id="Syntax">
+<div class="header">
+<p>
+Next: <a href="Types.html" accesskey="n" rel="next">Types</a>, Previous: <a href="Getting-Started.html" accesskey="p" rel="prev">Getting Started</a>, Up: <a href="index.html" accesskey="u" rel="up">QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="Syntax-1"></span><h2 class="chapter">4 Syntax</h2>
+<span id="index-Syntax"></span>
+
+
+<p>This section informally describes the concrete syntax of QuLog. There is a formal extended BNF syntax in <a href="EBNF-Grammar-for-QuLog_002fTeleoR.html">EBNF Grammar for QuLog/TeleoR</a>.
+</p>
+
+<p>The basic building block is an <i>expression</i>.
+An  expression is a: <i>data constant</i> (aka <i>atomic</i> value),  <i>variable</i>,  <i>compound term</i>, <i>list</i>, <i>set</i>, <i>function call</i>, <i>list comprehension</i>, <i>set comprehension</i>.
+</p>
+
+<p>We define each of these categories below. The last three are evaluable expressions.
+</p>
+
+
+<p>A reader unfamiliar with logic programming might find it odd that a <i>variable</i> is considered a data value. However in both QuLog and Prolog variables are first class values and can be passed between calls and embedded in lists and other compound terms, but not in sets. An answer to a query that contains variables are all the instantiations of that answer where the variable is replaced by any value of its type. The ability to pass around terms that are or which contain variables is a powerful programming feature of QuLog and Prolog. It is not a feature of Datalog or Answer Set Logic Programming. 
+</p>
+
+
+
+<p>A term is a: <i>data constant</i>, <i>variable</i>, a <i>simple compound term</i> (see below) all arguments of which are terms, a <i>list of terms</i>, a <i>set</i> (which can only contain ground terms).
+</p>
+
+<p>A <i>ground term</i> is a: <i>data constant</i>, a list or <i>simple compound term</i> term containing no variables,  a <i>set</i>.
+</p>
+<p>QuLog function call evaluation is strict. A function call argument is completely evaluated just before the function call in which it appears is evaluated. Functions always return ground term values. 
+</p>
+
+
+<p>A <code>ground expression</code> is an
+expression that contains no variables, or is such that all its variables are bound to ground values at the point that the expression is evaluated. All function calls must be ground at the time they are evaluated. 
+</p>
+
+<ul class="section-toc">
+<li><a href="Reserved-words.html" accesskey="1">Reserved words</a></li>
+<li><a href="Data-constants.html" accesskey="2">Data constants - the atomic term values</a></li>
+<li><a href="Variables.html" accesskey="3">Variables</a></li>
+<li><a href="Compound-Terms.html" accesskey="4">Compound Terms</a></li>
+<li><a href="Function-calls.html" accesskey="5">Function calls</a></li>
+<li><a href="Lists.html" accesskey="6">Lists</a></li>
+<li><a href="List-comprehension-expressions.html" accesskey="7">List comprehension expressions</a></li>
+<li><a href="Sets.html" accesskey="8">Sets</a></li>
+<li><a href="Set-comprehension-expressions.html" accesskey="9">Set comprehension expressions</a></li>
+<li><a href="Programs.html">Programs</a></li>
+</ul>
+</div>
+<hr>
+<div class="header">
+<p>
+Next: <a href="Types.html">Types</a>, Previous: <a href="Getting-Started.html">Getting Started</a>, Up: <a href="index.html">QuLog/TeleoR</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

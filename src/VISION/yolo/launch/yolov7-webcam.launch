@@ -1,0 +1,52 @@
+<launch>
+    <node name="usb_cam" pkg="usb_cam" type="usb_cam_node" output="screen" >
+        <param name="video_device" value="/dev/video0" />
+        <param name="image_width" value="640" />
+        <param name="image_height" value="480" />
+        <param name="pixel_format" value="yuyv" />
+        <param name="framerate" value="35" />
+        <param name="color_format" value="yuv422p" />
+        <param name="camera_frame_id" value="usb_cam" />
+        <param name="io_method" value="mmap"/>
+    </node>
+    <!--node name="image_view" pkg="image_view" type="image_view" respawn="false" output="screen">
+        <remap from="image" to="/usb_cam/image_raw"/>
+        <param name="autosize" value="true" />
+    </node-->
+
+
+    <node pkg="yolov7_ros" type="detect_ros.py" name="detect" output="screen" ns="yolov7">
+        <!-- Download the official weights from the original repo -->
+        <param name="weights_path" type="str" value="$(env UNSW_WS)/VISION/yolo/weights/yolov7x.pt"/>        
+        <param name="hpe_weights_path" type="str" value="$(env UNSW_WS)/VISION/yolo/weights/yolov7-w6-pose.pt"/>
+        <param name="classes_path" type="str" value="$(env UNSW_WS)/VISION/yolo/class_labels/coco.txt" />
+        <!-- 
+            Path to a class_labels.txt file containing your desired class labels. The i-th entry corresponds to the i-th class id. For example, in coco class label 0 corresponds to 'person'. 
+            Files for the coco and berkeley deep drive datasets are provided in the 'class_labels/' directory. If you leave it empty then no class labels are visualized.
+        -->        
+        <!-- topic name to subscribe to -->        
+        <param name="input_topic" type="str" value="/camera/rgb/image_raw" /> 
+        <!-- <param name="img_topic" type="str" value="/camera/color/image_raw" /> -->
+        <!-- <param name="input_topic" type="str" value="/unsw_vision/republisher/rgb" /> -->
+        <!-- <param name="input_topic" type="str" value="/hsrb/head_rgbd_sensor/rgb/image_rect_color" /> -->
+        <!-- topic name for the detection publishing output -->
+        <param name="output_topic" type="str" value="/unsw_vision/detections/objects" />
+        <!-- Topic that the visualisation will be published to, i.e. bounding boxes and skeleton -->
+        <param name="vis_topic" type="str" value="/unsw_vision/detections/objects/visualization" />
+        <!-- confidence threshold -->
+        <param name="conf_thresh" type="double" value="0.65" />
+        <!-- intersection over union threshold -->
+        <param name="iou_thresh" type="double" value="0.45" />
+        <!-- queue size for publishing -->
+        <param name="queue_size" type="int" value="1" />
+        <!-- image size to which to resize each input image before feeding into the
+        network (the final output is rescaled to the original image size) -->
+        <param name="img_size" type="int" value="512" />
+        <!-- flag whether to also publish image with the visualized detections -->
+        <param name="visualize" type="bool" value="True" />
+        <!-- Flag to indicate whether to run the Yolov7 Human Pose Estimation -->
+        <param name="use_human_pose" type="bool" value="True" />          
+        <!-- 'cuda' or 'cpu' -->
+        <param name="device" type="str" value="cuda" />    
+    </node>
+</launch>

@@ -1,0 +1,80 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <!-- <arg name="yolo_model" default="$(env UNSW_WS)/VISION/yolov8/models/softdrinks_v1.pt"/> -->
+  <!--arg name="yolo_model" default="yolo11n-seg.pt"/-->
+  <arg name="yolo_model" default="yolo11n-seg.pt"/>
+  <arg name="hpe_model" default="yolov8m-pose.pt"/>
+  <arg name="bp_model" default="$(env UNSW_WS)/VISION/yolov8/models/yolov8-body-part.pt"/>
+  <arg name="output_detection_topic" default="/unsw_vision/detections/objects/positions"/>
+  <!-- <arg name="output_detection_topic" default="/unsw_vision/detections/objects"/> -->
+  <arg name="input_image_topic" default="/hsrb/head_rgbd_sensor/rgb/image_rect_color_throttle"/>
+  <arg name="input_depth_topic" default="/hsrb/head_rgbd_sensor/depth_registered/image_rect_raw"/>
+  <arg name="depth_info_topic" default="/hsrb/head_rgbd_sensor/depth_registered/camera_info"/>
+  <arg name="target_frame" default="map"/>
+  <!-- make sure you also check the track_threshes, if objectDetection.conf does not exceed that it will never be tracked or included in the message -->
+  <arg name="conf_thres" default="0.10"/>
+  <arg name="conf_thres_person" default="0.65"/>
+  <arg name="conf_thres_bp" default="0.7"/>
+  <arg name="iou_thres" default="0.30"/> <!-- original = 0.45 -->  
+  <arg name="max_det" default="300"/>
+  <!-- <arg name="tracker" default="$(env UNSW_WS)/VISION/yolov8/tracker_conf/botsort.yaml"/> -->
+  <arg name="tracker" default="$(env UNSW_WS)/VISION/yolov8/tracker_conf/custom_bytetrack.yaml"/>
+  <arg name="debug" default="true"/>
+  <arg name="debug_cv_window" default="false"/>
+  <arg name="debug_conf" default="true"/>
+  <arg name="debug_line_width" default="1"/>
+  <arg name="debug_font_size" default="1"/>
+  <arg name="debug_font" default="Arial.ttf"/>
+  <arg name="debug_labels" default="true"/>
+  <arg name="debug_boxes" default="true"/>
+  <arg name="generate_3d" default="true"/>
+   <!-- classes to be infered, setting it to empty array means detect everything in the model -->
+  <arg name="inference_object_classes" default = "" />
+  <!-- <arg name="inference_object_classes" default = "42,43,44,45" /> -->
+  <arg name="mask_expansion_pct" default="0.02"/> <!-- percentage of how much the bounding box(person) need to be expand, percentage is in ralation to image width. This is to avoid losing features/detection when operates on the masked image. -->
+
+  <!-- throttle the raw rgb image -->
+  <node name="raw_rgb_throttler" type="throttle" pkg="topic_tools" args="messages /hsrb/head_rgbd_sensor/rgb/image_rect_color 10" />
+  <!-- pointcloud republisher -->
+
+  <!-- Object detection node -->
+  <node name="tracker_node" pkg="yolov8_ros" type="tracker_node.py" respawn="true" output="screen">
+    <param name="target_frame" value="$(arg target_frame)"/>
+    <param name="yolo_model" value="$(arg yolo_model)"/>
+    <!-- <param name="classes" value="$(arg classes)"/>" -->
+    <param name="bp_model" value="$(arg bp_model)" />
+    <param name="hpe_model" value="$(arg hpe_model)"/>
+    <param name="output_detection_topic" value="$(arg output_detection_topic)"/>
+    <param name="input_image_topic" value="$(arg input_image_topic)"/>
+    <param name="input_depth_topic" value="$(arg input_depth_topic)"/>
+    <param name="depth_info_topic" value="$(arg depth_info_topic)"/>
+    <param name="conf_thres" value="$(arg conf_thres)"/>
+    <param name="conf_thres_person" value="$(arg conf_thres_person)"/>
+    <param name="conf_thres_bp" value="$(arg conf_thres_bp)"/>
+    <param name="iou_thres" value="$(arg iou_thres)"/>
+    <param name="max_det" value="$(arg max_det)"/>
+    <param name="tracker" value="$(arg tracker)"/>
+    <param name="debug" value="$(arg debug)"/>
+    <param name="debug_cv_window" value="$(arg debug_cv_window)"/>
+    <param name="debug_conf" value="$(arg debug_conf)"/>
+    <param name="debug_line_width" value="$(arg debug_line_width)"/>
+    <param name="debug_font_size" value="$(arg debug_font_size)"/>
+    <param name="debug_font" value="$(arg debug_font)"/>
+    <param name="debug_labels" value="$(arg debug_labels)"/>
+    <param name="debug_boxes" value="$(arg debug_boxes)"/>
+    <param name="generate_3d" value="$(arg generate_3d)"/>
+    <param name="mask_expansion_pct" value="$(arg mask_expansion_pct)"/>
+    <param name="inference_object_classes" value="$(arg inference_object_classes)"/>
+    <rosparam>
+      <!-- # classes: [0] (person)
+      # classes: [1] (bicycle)
+      # classes: [2] (car)
+      # ...
+      # See also : https://github.com/ultralytics/ultralytics/blob/main/ultralytics/datasets/coco128.yaml -->
+    </rosparam>
+  </node>
+  <!-- Image view -->
+  <!-- <node if="$(arg debug)" name="image_view" pkg="image_view" type="image_view" output="screen">
+    <remap from="image" to="debug_image"/>
+  </node> -->
+</launch>

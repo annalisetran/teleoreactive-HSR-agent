@@ -1,0 +1,4 @@
+float32 arm_lift_joint
+float32 head_tilt_joint
+---
+bool success

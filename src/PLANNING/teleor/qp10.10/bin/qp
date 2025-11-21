@@ -1,0 +1,5 @@
+if [ "`which rlwrap`" != "" ]; then
+exec rlwrap -b ' ' -C qp -f /home/blinky/roboworkspace/src/PLANNING/teleor/qp10.10/bin/rl_commands /home/blinky/roboworkspace/src/PLANNING/teleor/qp10.10/bin/qem  -Q '/home/blinky/roboworkspace/src/PLANNING/teleor/qp10.10/bin/qp.qx' "$@" -- 
+else
+exec /home/blinky/roboworkspace/src/PLANNING/teleor/qp10.10/bin/qem  -Q '/home/blinky/roboworkspace/src/PLANNING/teleor/qp10.10/bin/qp.qx' "$@" -- 
+fi

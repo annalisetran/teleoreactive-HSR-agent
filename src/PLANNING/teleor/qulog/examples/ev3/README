@@ -1,0 +1,47 @@
+This directory contains ev3 interface code and a simple TR program for the EV3.
+
+c_ev3.c is the low-level interface to the ev3. To compile on the ev3 use the
+following:
+
+gcc -c -std=c99 -g -I. -I/usr/local/include -fPIC -lm -lev3dev-c -ldl  c_ev3.c
+
+ev3_interface.cc is the QP interface to the functions in c_ev3.c.
+To compile
+
+qcc ev3_interface.cc       NOTE that's qcc not gcc
+
+
+ev3_interface.ql  is the QP code that links QP predicates to the functions in
+ev3_interface.cc
+
+ev3.qlg is the file that gives type declarations for the QP predicates so that
+the QP predicates that interface with the ev3 can be called from qulog (teleor).
+
+All of the above files together define a qulog (teleor) interface to the ev3.
+
+To test in QP start the interpreter and
+
+?- [ev3_interface].   % load the interface
+
+?- ev3_init.          % initialize the ev3        
+
+?- ev3_run_forever(40, 40).  % move straight forward
+
+?- ev3_stop.                 % stop moving
+
+?- ev3_run_forever(40, 10).  % move forward curving right
+
+?- ev3_stop.
+
+?- ev3_touch(0, 1).  %(try a few times touching the sensors)
+
+?- ev3_touch(1, 1).   %(ditto)
+
+?- ev3_finish.     % finish interacting
+------------------------------------------------
+
+trev3.qlg is a simple TR program for the ev3. Some photos of what the robot looks like are included - two drive wheels and 2 touch sensors at the front.
+
+The idea is the robot doesn't like being touched - if you touch the left (or right) touch sensor it backs up away from the touch. If you touch both at the same time it backs up straight backwards (all for 2 secs unless touched again).
+
+

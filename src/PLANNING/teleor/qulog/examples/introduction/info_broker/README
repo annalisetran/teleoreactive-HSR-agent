@@ -1,0 +1,167 @@
+This directory contains an  example of the use of remote querying where a client
+can either  send a query directly to an info_server,  or send it
+to an info_broker.  The info_broker will forward  calls in the query as
+subsidiary remote queries to the info_servers known to the broker as being an
+info source for the relation of the call.
+
+A fuller overview description of this example application is given towards the
+end of Section 7 of the QuLog User Guide,  under the sub-heading
+"A multi info_server example". 
+
+The files are:
+
+shared_ontology.qlg : Type declarations common to clients, servers and brokers
+
+broker_ontology.qlg: Type declarations of the shared_ontology plus those
+specific to the broker
+
+info_broker.qlg : The code for running the broker
+
+info_server.qlg : The code for running a server
+
+sensor_sim.py : a simple Python simulator for a sensor
+
+To experiment with the system start up 6 terminals and proceed as follows.
+
+--------
+
+In terminal 1,  enter
+
+qulog -Abroker
+
+To load the code for the broker process in the interpreter enter
+
+| ?? [info_broker].
+
+then 
+
+| ?? start_broker().
+
+to start the broker.
+
+-------
+
+In terminal 2  enter
+
+qulog -Asensor_server1
+
+to start the first sensor server process followed by
+
+| ?? [info_server].
+
+| ?? start_server().
+
+In terminal 3 start the python3 sensor simulator linking it to sensor server1
+by giving 1 as its argument value.
+
+python3 sensor_sim.py 1
+
+In terminal 4 start the client and just consult the shared_ontology.
+
+qulog -Aclient
+
+| ?? [shared_ontology].
+
+Finally,  in terminal 5 enter
+
+qulog -Asensor_server2
+
+and start the server as for sensor_server1
+
+and in terminal 6 start its linked sensor simulator
+
+python3 sensor_sim.py 2
+
+
+Example interactions:
+
+
+
+send a kitchen temperature reading to sensor_server1
+via its linked Python sensor simulator by entering
+
+temp_data(kitchen,25)
+
+in response to the input prompt in terminal 3.
+
+send a remote query from the client  to sensor_server1 regarding its temp
+readings by entering into terminal 4 the query:
+
+| ?? temperature(A,B) query_at sensor_server1.
+
+A = kitchen : location
+B = 25 : nat
+
+
+next from client terminal 4 query the broker re all current 
+temp readings 
+
+| ?? temperature(A,B) query_at broker.
+
+A = kitchen : location
+B = 25 : nat
+
+now send a new  kitchen temperature reading to sensor_server1 by entering
+
+temp_data(kitchen,24)
+
+into terminal 3. 
+
+query the broker again re all current recorded  temp readings
+
+| ?? temperature(A,B) query_at broker.
+ 
+A = kitchen : location
+B = 24 : nat
+
+Now send a temperature reading to sensor_server2 by entering
+
+temp_data(lounge,25)
+
+into its linked Python sensor simulator in terminal 6
+
+query sensor_server2 directly about its recorded temp readings
+by entering the following query into the client terminal 4. 
+
+| ?? temperature(A,B) query_at sensor_server2.
+
+A = lounge : location
+B = 25 : nat
+
+now from the client query the broker again re all current server recorded
+temp readings
+
+| ?? temperature(A,B) query_at broker.
+
+A = kitchen : location
+B = 24 : nat
+...
+A = lounge : location
+B = 25 : nat
+
+now in the second  sensor simulator of terminal 7 enter
+
+temp_data(bedroom,20)
+
+finally enter the following 2 queries from the client
+
+| ?? temperature(A,B) query_at broker.
+
+A = kitchen : location
+B = 24 : nat
+...
+A = lounge : location
+B = 25 : nat
+...
+A = bedroom : location
+B = 20 : nat
+
+| ?? temperature(A,B) query_at sensor_server2.
+
+A = lounge : location
+B = 25 : nat
+...
+A = bedroom : location
+B = 20 : nat
+
+

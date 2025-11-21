@@ -1,0 +1,12 @@
+<launch>
+    <!-- <include file="$(find hsrb_rosnav_config)/launch/hsrb_nav.launch"/> -->
+    <include file="$(find speech_to_text)/launch/speech_to_text.launch"/>
+    <include file="$(find unsw_vision_utils)/launch/unsw_vision.launch"/>
+    <!-- <include file="$(find unsw_face_recognition)/launch/unsw_face_recognition_node.launch"/> -->
+    
+    <node name="wrist_press" pkg="utility" type="wrist_press.py"/>
+    <node name="carry_my_luggage_controller" pkg="carry_my_luggage" type="carry_my_luggage_controller_smach.py" output="screen"/>
+    <node name="point_follow" pkg="nav_utils" type="point_follow.py" output="screen"/>
+    <node name="person_follow" pkg="nav_utils" type="person_follow.py" output="screen"/>
+    <node name="manip_control" pkg="object_grasper" type="manip_control.py" output="screen"/>
+</launch>

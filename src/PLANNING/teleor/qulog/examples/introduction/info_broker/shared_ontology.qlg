@@ -1,0 +1,12 @@
+
+
+def location ::= kitchen | lounge | bedroom | front_door | back_door
+
+def door_status ::= open | closed | locked
+
+def person ::= fred | ann | bill | june
+
+
+rel temperature(?location, ?int)
+rel door(?location, ?door_status)
+rel person_location(?person, ?location)

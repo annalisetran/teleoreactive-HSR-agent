@@ -1,0 +1,35 @@
+The file ros_pedro.cc contains a template example of how Teleor agents can
+interact with a ROS robot.
+
+The Teleor agent uses Pedro for receiving percepts from the robot side and it
+sends Pedro messages containing agent actions to the robot.
+
+The ROS-Pedro interface is responsible for:
+1. responding to an initialise_ message by sending back an initial list of
+   percepts using either the 'all' or 'updates' interface
+
+2. converting agent action messages from the agent into controls for driving
+   motor, arms, etc.
+
+3. converting low-level sensor information into high-level percepts that are
+   sent to the agent via Pedro using the  'all' or 'updates' interface.
+
+
+client_api.c comes from the Pedro release and is included for convenience.
+
+To run start up 3 terminals and :
+
+1. In terminal 1
+   ./ros_pedro
+
+2. In terminal 2
+   ros_robot_shell.py
+   
+3. In terminal 3
+   agent_shell.py agent robo
+
+Now in agent_shell enter some action terms - e.g. move(1), turn(left)
+and you should see that displayed in terminal 1 and in ros_robot_shell
+
+In ros_robot_shell enter some percepts  - e.g.
+see(bottle, left, 10), see(depot, centre, 5)

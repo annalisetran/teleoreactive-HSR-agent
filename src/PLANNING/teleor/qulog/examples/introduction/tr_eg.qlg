@@ -1,0 +1,73 @@
+%% Copyright 2014 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permissions and
+%% limitations under the License.
+
+
+%% A simple TR program to experiment with logging and the robot shell
+
+def dir ::= left | right | centre 
+
+tel_percept see_object(num, dir), holding_object()
+
+tel_action  move(num), turn(dir), grasp_object()    
+
+tel get_hold_of_object()
+get_hold_of_object() {
+    holding_object() ~> ()
+    see_object(Dist, centre) & Dist =< 0.5 ~> 
+        grasp_object()
+    % Not holding the object but within grasping distance of it.
+    true ~> get_close_to_object()
+    % Not holding, cannot see or not close enough to the object. Get close to it.
+    }
+
+tel get_close_to_object()
+get_close_to_object() {
+    see_object(Dist, centre) & Dist =< 0.5  ~> ()
+    see_object(Dist, Dir) & Dist =< 0.5  ~> turn(Dir)
+    see_object(_, centre) ~> move(4)
+    see_object(_, Dir) ~> move(4) , turn(Dir)
+    true ~> turn(left)
+    % Default rule. Turn left looking for the object
+    }
+
+
+%% For experimenting with this program using robot_shell
+%% first start the robot shell in one terminal as follows
+%% robot_shell.py robo
+%% In another terminal run the teleor interpreter
+%% teleor -Aagent
+%% and in the interpreter
+%% consult tr_eg.
+%% go().
+%% Now enter percepts in the robot shell 
+
+act go() 
+go() ~>
+    start_agent(robo@localhost, all) ; 
+    start_named_task(get_hold_of_object(),collector)
+               
+
+%% For running the percepts updating version
+%% robot_shell.py -w robo
+%% In another terminal run the teleor interpreter
+%% teleor -Aagent
+%% and in the interpreter
+%% consult tr_eg.
+%% go_updates().
+%% Now enter percepts in the robot shell  
+
+act go_updates() 
+go_updates() ~>
+    start_agent(robo@localhost, updates) ; 
+    start_named_task(get_hold_of_object(), collector)

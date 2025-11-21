@@ -1,0 +1,181 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN" "http://www.w3.org/TR/html4/loose.dtd">
+<html>
+<!-- Created by GNU Texinfo 6.8, https://www.gnu.org/software/texinfo/ -->
+<head>
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+<!-- This manual is for QuLog/TeleoR (version 1.0, 21 February 2024).
+
+Copyright (C) 2015 Peter Robinson, Keith Clark
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at
+
+http://www.apache.org/licenses/LICENSE-2.0
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.
+ -->
+<title>TeleoR Procedure Definitions (The QuLog/TeleoR 1.0 Reference Manual)</title>
+
+<meta name="description" content="TeleoR Procedure Definitions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="keywords" content="TeleoR Procedure Definitions (The QuLog/TeleoR 1.0 Reference Manual)">
+<meta name="resource-type" content="document">
+<meta name="distribution" content="global">
+<meta name="Generator" content="makeinfo">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+
+<link href="index.html" rel="start" title="Top">
+<link href="QuLog-Index.html" rel="index" title="QuLog Index">
+<link href="index.html#SEC_Contents" rel="contents" title="Table of Contents">
+<link href="Programs.html" rel="up" title="Programs">
+<link href="Function-Definitions.html" rel="prev" title="Function Definitions">
+<style type="text/css">
+<!--
+a.copiable-anchor {visibility: hidden; text-decoration: none; line-height: 0em}
+a.summary-letter {text-decoration: none}
+blockquote.indentedblock {margin-right: 0em}
+div.display {margin-left: 3.2em}
+div.example {margin-left: 3.2em}
+kbd {font-style: oblique}
+pre.display {font-family: inherit}
+pre.format {font-family: inherit}
+pre.menu-comment {font-family: serif}
+pre.menu-preformatted {font-family: serif}
+span.nolinebreak {white-space: nowrap}
+span.roman {font-family: initial; font-weight: normal}
+span.sansserif {font-family: sans-serif; font-weight: normal}
+span:hover a.copiable-anchor {visibility: visible}
+ul.no-bullet {list-style: none}
+-->
+</style>
+
+
+</head>
+
+<body lang="en">
+<div class="subsection" id="TeleoR-Procedure-Definitions">
+<div class="header">
+<p>
+Previous: <a href="Function-Definitions.html" accesskey="p" rel="prev">Function Definitions</a>, Up: <a href="Programs.html" accesskey="u" rel="up">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+<hr>
+<span id="TeleoR-Procedure-Definitions-1"></span><h4 class="subsection">4.10.8 TeleoR Procedure Definitions</h4>
+<span id="index-TeleoR-Procedure-Definitions"></span>
+
+<p>A TeleoR-program comprises a collection of TeleoR procedure definitions and two robot related  declarations.  Optionally, but usually, there is a collection of QuLog type declarations and definitions of QuLog relations, functions and actions.  
+</p>
+<p>The two robot related declarations  have the form:
+</p>
+<div class="example">
+<pre class="example">tel_percepts P1, P2, ... , Pm
+tel_actions  A1, A2, ... , An
+</pre></div>
+
+<p>Here each <code>Pi</code> gives the  name and argument types of the percept facts that will be freqently sent from the robots sensor software updating any previously sent percept facts in the agent&rsquo;s <i>Belief Store</i>.   Each <code>Ai</code> gives the  name  and argument types of the  primitive actions that can be used to control the robot. 
+</p>
+<p>Each TeleoR procedure definition has the form:
+</p>
+<blockquote class="indentedblock">
+<p><i>Head</i> <code>{</code>
+</p><blockquote class="indentedblock">
+<p><i>TeleoR Rule</i>
+<br>
+<i>...</i>
+<br>
+<i>TeleoR Rule</i>
+</p></blockquote>
+<p><code>}</code>
+</p></blockquote>
+
+<p>where <i>Head</i> is the same as for relation rules preceded by two declarations. The order of the
+procedure definitions is not significant but the order of the rules
+inside each procedure is significant.  Each <i>TeleoR Rule</i>
+has one of the forms given below.
+</p>
+
+<p>The most simple TeleoR rule has the form
+</p>
+<blockquote class="indentedblock">
+<p><i>Guard</i> <code> ~&gt; </code> <i>TeleoR Action</i>
+</p></blockquote>
+
+<p>Here <i>Guard</i> is a conjunct of QuLog conditions to primitive relations, defined relations or declared robotic percepts.   <i>TeleoR Action</i> is of the form given below.
+</p>
+
+<p>At the other extreme, the two most complete forms of a TeleoR rule are
+</p>
+<blockquote class="indentedblock">
+<p><i>Guard</i><code> or_while </code><i>Or</i><code> min_time </code><i>Duration</i>
+<code> ~&gt; </code><i>TeleoR Action</i>
+</p></blockquote>
+<span id="index-or_005fwhile"></span>
+
+<p>and
+</p>
+<blockquote class="indentedblock">
+<p><i>Guard</i><code> commit_while </code><i>Commit</i><code> min_time </code><i>Duration</i> 
+<code> ~&gt; </code><i>TeleoR Action</i>
+</p></blockquote>
+<span id="index-commit_005fwhile"></span>
+
+<p>where <i>Or</i> and <i>Commit</i> are conjuncts of goals and
+<i>Duration</i> is a number.
+</p>
+
+
+<p>The right hand side of each TeleoR rule most often takes one of the following forms:
+</p><ul>
+<li> A single TeleoR procedure call which may be a recursive call
+</li><li> A comma separated sequence of primitive robotic actions. The special TeleoR action <code>()</code> represents the empty set of primitive actions. The order of the robotic actions is not significant. They are to be executed in parallel. 
+</li><li> A timed sequence of the form
+<blockquote class="indentedblock">
+<p><code>[</code><i>RobotAction</i><code> : </code><i>Duration</i><code>, </code><i>...</i><code>, </code><i>RobotAction</i><code> : </code><i>Duration</i><code>]</code>.
+</p></blockquote>
+<p>where the last action need not have a maximum duration and <i>RobotAction</i>
+is either a TeleoR procedure call or a declared robotic action.
+</p>
+</li></ul>
+
+<p>However any of the above robot actions action can be optionally followed by an agent action as follows.
+</p><blockquote class="indentedblock">
+<p><i>RobotAction</i><code> ++ </code><i>AgentAction</i>
+</p></blockquote>
+<p>Each <i>AgentAction</i> is: 
+</p><ul>
+<li> a modification to the <i>Belief Store</i>
+</li><li> a message send action
+</li><li> a sequence of the above actions separated by <code>;</code>s and enclosed in <code>{</code>, <code>}</code> parentheses
+</li><li> a single call to a QuLog action procedure which only uses <i>Belief Store</i> update and message send builtin QuLog actions. 
+</li></ul>
+
+<p>If the <i>RobotAction</i> action is the empty action <code>()</code> but there is
+an <i>AgentAction</i> the rule form:
+</p><blockquote class="indentedblock">
+<p><code>...</code> <code> ~&gt; </code> <code>()</code><code> ++ </code><i>AgentAction</i>
+</p></blockquote>
+<p>may be abbreviated to:
+</p><blockquote class="indentedblock">
+<p><code>...</code> <code> ~+&gt; </code> <i>AgentAction</i>
+</p></blockquote>
+
+<p>A TeleoR program in which every rule uses the <code> ~+&gt; </code> arrow, and
+which has no <code></code> declaration and no <code>tel_action</code> type
+declaration, is a program for a software agent that communicates with
+other agents, and perhaps hardware devices, purely by messages routed via Pedro.
+</p>
+
+</div>
+<hr>
+<div class="header">
+<p>
+Previous: <a href="Function-Definitions.html">Function Definitions</a>, Up: <a href="Programs.html">Programs</a> &nbsp; [<a href="index.html#SEC_Contents" title="Table of contents" rel="contents">Contents</a>][<a href="QuLog-Index.html" title="Index" rel="index">Index</a>]</p>
+</div>
+
+
+
+</body>
+</html>

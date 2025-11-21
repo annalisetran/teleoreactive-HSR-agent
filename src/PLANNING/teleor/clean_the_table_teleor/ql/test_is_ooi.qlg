@@ -1,0 +1,79 @@
+?- pconsult(clean_the_table_interface)
+?- consult(world_knowledge)
+
+def object_term ::= object(int, int, position_term, atom)
+def position_term ::= position(num, num, num)
+
+tel_percept
+	robot_base_x(num),
+	robot_base_y(num),
+	robot_base_z(num),
+	robot_base_r(num),
+	robot_base_p(num),
+	robot_base_yw(num),
+	driveable_state(atom),
+	holding_object_id(int),
+	region_id(int),
+	scene_objects(list(object_term))
+
+% Declare log_output as a TeleoR action
+tel_action
+    log_output(list(term))
+
+act start_node_thread(list(tel_percept_term), tel_percept_term)
+
+rel get_percepts(?list(tel_percept_term))
+
+rel is_ooi(!atom)
+is_ooi(Item) <=
+	object_category_mapping(Item, _)
+
+init_percept_handler() ~>
+    start_node_thread([
+        robot_base_x(0.0),
+        robot_base_y(0.0),
+        robot_base_z(0.0),
+        robot_base_r(0.0),
+        robot_base_p(0.0),
+        robot_base_yw(0.0),
+        driveable_state(true),
+        holding_object_id(-1),
+        region_id(-1)
+    ], scene_objects([]));
+    thread_sleep(1)
+
+poll_sensors(P) ::
+	get_percepts(P) ~> {}
+
+% Map log_output to write_list
+control_device(_OldActions, [log_output(Message)]) ~>
+    write_list(Message)
+
+control_device(_OldActions, []) ~> {}
+
+tel test_is_ooi()
+test_is_ooi() {
+    is_ooi(bowl) ~> 
+        log_output(["PASS: is_ooi(bowl)", nl_])
+    is_ooi(cup) ~>
+        log_output(["PASS: is_ooi(cup)", nl_])
+    is_ooi(utensil) ~>
+        log_output(["PASS: is_ooi(utensil)", nl_])
+    is_ooi(drink_can) ~>
+        log_output(["PASS: is_ooi(drink_can)", nl_])
+    is_ooi(drink_bottled) ~>
+        log_output(["PASS: is_ooi(drink_bottled)", nl_])
+    true ~> 
+        log_output(["FAIL: no objects of interest defined", nl_])
+}
+
+tel test_coordinator()
+test_coordinator() {
+    true ~> () ++ start_task(test_is_ooi(), _)
+}
+
+act go()
+go() ~>
+    write_list(["Testing is_ooi(Item) guard...", nl_]);
+    start_embedded_agent(1.0);
+    start_task(test_coordinator(), _)

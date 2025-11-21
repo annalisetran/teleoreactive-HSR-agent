@@ -1,0 +1,20 @@
+train: /Users/zhengjeppesen/Desktop/project/vision_can_drinks/dataset/train/images
+val: /Users/zhengjeppesen/Desktop/project/vision_can_drinks/dataset/valid/images
+test: /Users/zhengjeppesen/Desktop/project/vision_can_drinks/dataset/test/images
+
+# nc: 5
+#          0        1           2          3           4
+# names: ['Coke', 'Dr-Pepper', 'Fanta', 'Mocktails', 'Sprite']
+# expected 0 => coke 1->Sprite 2-> Pepsi 3-> Fanta
+# 2->0 0->1 4->3
+
+nc: 4
+# names: ['Coke', 'Sprite', 'Pepsi', 'Fanta']
+names: ['Fanta', 'Coke', 'Pepsi', 'Sprite']
+
+roboflow:
+  workspace: philogun
+  project: can-drink-detection
+  version: 2
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/philogun/can-drink-detection/dataset/2

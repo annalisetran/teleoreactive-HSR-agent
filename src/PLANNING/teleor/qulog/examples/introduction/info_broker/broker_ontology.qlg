@@ -1,0 +1,8 @@
+
+?- [shared_ontology]
+
+dyn info_source(atom, agent_handle)
+
+def broker_message ::= 
+        add_info_source(atom) | 
+        remove_info_source(atom)

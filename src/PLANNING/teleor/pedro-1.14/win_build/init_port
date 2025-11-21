@@ -1,0 +1,33 @@
+if [ $# -ne 1 ]
+then
+    echo 'Usage do_it versionNo'
+    exit
+fi
+rm -r pedro*
+svn export svn+ssh://uqprobin@remote.eait.uq.edu.au/home/users/uqprobin/mysvn/pedro/trunk pedro$1
+
+cd pedro*
+current_dir=`pwd`
+DIR=`pwd | sed s%.*/%%`
+RELEASE=`echo $DIR | sed s%pedro%%`
+sed 's/AC_INIT(\[pedro\],\[.*\])/AC_INIT([pedro],['$1'])/' < configure.ac > tmp
+mv tmp configure.ac
+sed 's/version='\''.*'\'',/version='\'$1\'',/' < src/python_api/setup.py > tmp
+mv tmp src/python_api/setup.py
+
+DIR=`pwd | sed s%.*/%%`
+
+#cp ../libglib-2.0-0.dll src/server
+cp ../intl.dll src/server
+cp ../configure.ac . 
+cp ../prepare_rel .
+cp ../build_pedro.iss .
+
+#mv README README.txt
+
+
+sed -e"s%XXXX%$RELEASE%" build_pedro.iss > tmp
+mv tmp build_pedro.iss
+
+cd ..
+echo -e "robocopy /E $DIR C:\msys64\home\pjr\\$DIR" > cp2win.bat

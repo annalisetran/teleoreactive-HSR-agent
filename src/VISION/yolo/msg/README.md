@@ -1,0 +1,1 @@
+This file is needed for the msg drectory to build

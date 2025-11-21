@@ -1,0 +1,76 @@
+#!/usr/bin/env python3
+
+
+## Copyright 2014 Keith Clark, Peter Robinson
+##
+## Licensed under the Apache License, Version 2.0 (the "License");
+## you may not use this file except in compliance with the License.
+## You may obtain a copy of the License at
+##
+##     http://www.apache.org/licenses/LICENSE-2.0
+##
+## Unless required by applicable law or agreed to in writing, software
+## distributed under the License is distributed on an "AS IS" BASIS,
+## WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+## See the License for the specific language governing permissions and
+## limitations under the License.
+
+# Translator/compiler for converting .qlg files to .ql files and if
+# a runtime system is required compiling the application to a runtime system
+import sys
+import getopt
+import subprocess
+import shutil
+import os
+import stat
+import re
+import argparse
+
+warning_re=r'Warning:.*\n'
+libdir = "/home/blinky/roboworkspace/src/PLANNING/teleor/qulog/src"
+
+libqulog = ['write.qo', 'builtin_decls.qo', 'library.qo',
+            'read.qo', 'consult.qo', 'listings.qo', 'interpreter.qo',
+            'types.qo', 'errors.qo', 'watch.qo']
+
+libteleo = libqulog + ['trSys.qo', 'tr_translator.qo', 'tr_checks.qo']
+
+
+
+libqlogfiles= ' '.join("{0}/{1}".format(libdir, qo) for qo in libqulog)
+libteleorfiles= ' '.join("{0}/{1}".format(libdir, qo) for qo in libteleo)
+
+translator="/home/blinky/roboworkspace/src/PLANNING/teleor/qulog/bin/qlg2ql"
+
+def strip_warnings(errors):
+    return re.sub(warning_re, '', errors)
+
+def shcall(call):
+    print("Calling", call)
+    proc = subprocess.Popen(call, shell=True, stderr=subprocess.PIPE)
+    x,y = proc.communicate()
+    print(strip_warnings(y.decode()))
+    if proc.returncode != 0:
+        print("Error in " + call)
+        sys.exit()  
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("application_name", help='the name of the application program')
+    parser.add_argument("-Q", action='store_true', help="Build as a Qulog runtime as opposed to a Teleor runtime")
+    args = parser.parse_args()
+    app = args.application_name
+    translate_args = ' --'
+    if args.Q:
+        translate_args += ' -Q'
+    print("Consulting, checking and translating...\n")
+    shcall(translator + " " + app + translate_args)
+    print("Compiling...")
+    shcall("qc -s256 -h2000 -c -o {0}.qo {0}.ql".format(app))
+    if args.Q:
+        shcall("qc -d2000 -s256 -o {0} {0}.qo {1}".format(app, libqlogfiles))
+    else:
+        shcall("qc -d2000 -s256 -o {0} {0}.qo {1}".format(app, libteleorfiles))
+
+if __name__ == '__main__': 
+    main()

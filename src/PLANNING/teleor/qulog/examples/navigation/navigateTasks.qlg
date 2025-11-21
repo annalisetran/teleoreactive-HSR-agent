@@ -1,0 +1,1005 @@
+% Copyright 2017 Keith Clark, Peter Robinson
+%%
+%% Licensed under the Apache License, Version 2.0 (the "License");
+%% you may not use this file except in compliance with the License.
+%% You may obtain a copy of the License at
+%%
+%%     http://www.apache.org/licenses/LICENSE-2.0
+%%
+%% Unless required by applicable law or agreed to in writing, software
+%% distributed under the License is distributed on an "AS IS" BASIS,
+%% WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+%% See the License for the specific language governing permisions and
+%% limitations under the License.
+
+% To run (need 4 terminals):
+% In terminal 1:
+%  python rooms.py tasks
+% In terminal 2:
+%  teleor -Anavigator
+%     [navigateTasks].
+%     go().
+
+
+% When the agent starts the simuator asks the user to choose an initial
+% activity room.
+% Click on doors to open/close
+% click on robot in activity room - set battery to low
+% click on robot in charger room - set battery to high
+% SHIFT-CLICK on robot in charger room asks the user to click on a new
+% activity room.
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Program overview
+%
+% The robots start in their activity room and when they detect that their 
+% batteries are low they try to find a path to a free charger room using
+% the map of the rooms and the status of doors. 
+%
+% The goal directed part of the robot agent is to move from one room to the
+% next on its path following the tracks and turning at the centre of each
+% room to point in the required direction in order to get to the next room.
+%
+% When a robot is fully charged it then tries to get to its activity room.
+%
+% The reactive part deals with avoiding conflict.
+%
+% In order to simplify conflict management we maintain the following invariants
+%
+% There is at most 2 robots in any given room
+% There is at most one non-backed up robot in each room
+%
+% A consequence of this requirement is that a robot shouldn't enter a room
+% that contains either 2 robots or a non-backed up robot.
+%
+% The belief store (BS) is updated in three ways:
+%
+% New percepts arrive causing the percept part of the BS to be updated
+%   e.g. a close_doorway percept is remembered or forgotten
+%
+% Post processing of percepts uses the current state of the BS and the
+% updates to deduce extra information that, in this program, notifies
+% all robots of this information
+%  e.g. if close_doorway is forgotten at the same time that through_doorway
+%  is remembered then we deduce the robot has changed rooms and notifies
+%  each robot of this with a new_loc notification
+%
+% Messages (notifications in this case) are used to transfer information
+% between robots (and thus update the BS)
+%  e.g. on receiving a new_loc message the loc fact about that robot will
+%  be updated - note this is how the robot that sends this info also
+%  updates its own loc fact
+
+% When a robot detects that its battery is low it wants to construct a path 
+% to a free charger. However, at the same time, another robot also wants
+% to construct a path to the same free charger. The way we resolve this
+% problem is to have each robot send a path notification. The pedro server
+% forwards these notification in some order to each robot (in the same order).
+% The first notification received will set the path and reserve the charger
+% to that robot. When the second notification is processed the charger
+% is no longer free and so that path is rejected.
+% That robot might now bid for the other charger if it is free and there is a
+% path to that charger.
+%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+?- [graphPath]
+
+
+def door ::= red | green | blue | yellow
+def compass_dir ::= 0..360
+def door_dir ::= 0 | 90 | 180 | 270
+def room ::= 1..16
+def robot ::= robot1 | robot2 | robot3
+def turn_dir ::= left | right
+def door_state ::= open | shut
+def hilo ::= high | low
+def door_path == list(room) % macro type def. 
+
+%% In the visualization the directions are:
+%% 0   - up
+%% 90  - right
+%% 180 - down
+%% 270 - left
+
+percept 
+    at_room_centre(robot), see_centre_ahead(robot), see_centre_close(robot),
+    close_doorway(robot, door), through_doorway(robot, door), 
+    pointing(robot, compass_dir), battery_status(robot, hilo)
+
+
+def robotic_action ::= turn_at_centre(turn_dir) | 
+        follow_line_forwards() | follow_line_backwards() 
+
+def message ::= 
+        door_status(door,room,door_state) | 
+        path(robot,door_path,room) |
+        reserve_room(robot, room) |
+        finished_charging(robot) | new_loc(robot,room) | 
+        backed_up(robot,room,door_dir) |
+        no_path(robot) | 
+        end_backed_up(robot) |
+        joining(agent_handle) | new_activity_room(robot, room)
+
+% All message terms that agent receives must be ground terms of
+% type message. Other terms are discarded but displayed.
+
+dyn following(robot,door_path,room), closed(door, room),
+    has_backed_up(robot,room,door_dir), my_name(robot), 
+    reserved(robot,room)
+% Apart from my_name these are beliefs that will be remembered by the 
+% program defined handle_message_ in response to a received message
+ 
+% Initial locations of the robots. This is declared dynamic so that
+% the program can update this information based on messages from robots
+dyn loc(robot,room)
+
+% Rooms to which they should return when fully charged and backup pointing
+% in the given direction
+dyn activity_room(robot, room)
+
+% The rooms containing chargers and the direction the robot should backup in 
+% to be over the charger
+rel charger_room(?room, ?door_dir)
+charger_room(13, 90)
+charger_room(16, 270)
+
+%% connects(Door, Room1, Room2, Dir) is true if
+%% Door is the colour of the door between Room1 and Room2 and Dir
+%% is the direction of the door from the centre of Room1 in the direction
+%% of Room2
+%% Note that each room has at most one door with a given colour.
+rel connects(?door, ?room, ?room, ?door_dir)
+"Relational map of the room connections in environment"
+connects(blue, 1,2,90)
+connects(blue,3,4,90)
+connects(blue,6,7,90)
+connects(blue,10,11,90)
+connects(blue,13,14,90)
+connects(blue,15,16,90)
+connects(green,2,6,180)
+connects(green,3,7,180)
+connects(green,9,13,180)
+connects(green,11,12,90)
+connects(yellow,5,6,90)
+connects(yellow,9,10,90)
+connects(yellow,7,8,90)
+connects(green,10,14,180)
+connects(yellow,11,15,180)
+connects(red,5,9,180)
+connects(red,4,8,180)
+connects(red,6,10,180)
+connects(red,7,11,180)
+connects(red,12,16,180)
+
+rel connected(?door, ?room,?room, ?door_dir)
+"Symmetric version of connects relations"
+connected(Door,Rm1,Rm2,Dir) <= connects(Door,Rm1,Rm2, Dir)
+connected(Door,Rm1,Rm2,Dir) <= connects(Door,Rm2,Rm1,RevDir) & 
+    Dir = rev_dir(RevDir)
+
+rel open_connected(?room,?room)
+"Same as connected but also requires the door between the rooms to be open"
+open_connected(Rm1,Rm2) <=
+    connected(Door,Rm1,Rm2,_) &
+    not closed(Door,Rm1)
+% Only need to make sure door seen from one room is closed
+% as closed facts for both rooms will have been remembered.
+
+%% We consider a room containing 2 robots neither of which are following paths
+%% to be blocked and so can't be part of a path.
+rel open_connected_not_blocked(?room,?room)
+open_connected_not_blocked(Rm1,Rm2) <=
+    open_connected(Rm1,Rm2) &
+    not two_blocked_robots_in(Rm2)
+
+rel two_blocked_robots_in(room)
+two_blocked_robots_in(Room) ::
+    loc(Robot1, Room) &
+    loc(Robot2, Room) &
+    Robot1 \= Robot2 &
+    not following(Robot1, _, _) &
+    not following(Robot2, _, _)
+
+% The robots have a priority order used to resolve "symetrical" conflicts
+rel higher_priority(?robot, ?robot)
+higher_priority(robot1, robot2)
+higher_priority(robot1, robot3)
+higher_priority(robot2, robot3)
+
+% Used to interate through robots in priority order
+rel priority_order(?list(robot))
+priority_order([robot1, robot2, robot3])
+
+%% directions robots can back up in that will not be in conflict with 
+%% other robots as this is a deadend backup direction
+rel room_deadend_dir(room, ?door_dir)
+room_deadend_dir(1, 0)
+room_deadend_dir(1, 180)
+room_deadend_dir(1, 90)
+room_deadend_dir(2, 180)
+room_deadend_dir(2, 270)
+room_deadend_dir(3, 180)
+room_deadend_dir(3, 90)
+room_deadend_dir(4, 180)
+room_deadend_dir(4, 270)
+room_deadend_dir(5, 180)
+room_deadend_dir(5, 90)
+room_deadend_dir(8, 90)
+room_deadend_dir(8, 0)
+room_deadend_dir(9, 90)
+room_deadend_dir(12, 180)
+room_deadend_dir(12, 270)
+room_deadend_dir(13, 0)
+room_deadend_dir(14, 270)
+room_deadend_dir(14, 0)
+room_deadend_dir(15, 0)
+room_deadend_dir(15, 90)
+room_deadend_dir(16, 0)
+
+%% In order to minimize the amount of turning at the centre to get to a
+%% suitable backup position this function generates the best search order
+%% for backup (door) directions based on the robots current direction
+fun best_dir_order(compass_dir) -> list(door_dir)
+best_dir_order(Compass) :: Compass >= 0 & Compass < 45 ->
+        [0, 90, 270, 180]
+best_dir_order(Compass) :: Compass >= 45 & Compass < 75 ->
+        [90, 0, 180, 270]
+best_dir_order(Compass) :: Compass >= 75 & Compass < 135 ->
+        [90, 180, 0, 270]
+best_dir_order(Compass) :: Compass >= 135 & Compass < 165 ->
+        [180, 90, 270, 0]
+best_dir_order(Compass) :: Compass >= 165 & Compass < 225 ->
+        [180, 270, 90, 0]
+best_dir_order(Compass) :: Compass >= 225 & Compass < 255 ->
+        [270, 180, 0, 90]
+best_dir_order(Compass) :: Compass >= 255 & Compass < 315 ->
+        [270, 0, 180, 90]
+best_dir_order(_Compass) ->
+        [0, 270, 90, 180]
+
+fun best_turn_dir(compass_dir, door_dir) -> turn_dir
+% Only called when a robot must turn at centre to point to exit door.
+best_turn_dir(From, 0) ::  From =< 180 -> left
+best_turn_dir(From, 90) :: From =< 270 & From >= 90 -> left
+best_turn_dir(From, 180) :: From  >= 180 -> left
+best_turn_dir(From, 270) :: From mod 270 =< 90 -> left
+best_turn_dir(_From, _To) -> right
+
+%% Return the best turn direction given the current pointing direction
+%% of the robot and the required direction
+rel is_best_turn_dir(robot, !door_dir, ?turn_dir)
+is_best_turn_dir(Me, MyExitDir, Dir) <=
+        pointing(Me, RobDir) & Dir = best_turn_dir(RobDir, MyExitDir)
+
+
+rel should_resolve_conflict(Me:robot, MyRm:room, Robot:?robot,  
+                            BadDirs:?list(door_dir))
+"Me, in room MyRm, should resolve a conflict with Robot with 
+BadDirs the list of bad directions to not backup in"
+
+%% I am following and in a room with a non-following robot that is backed up
+%% blocking my  exit - I need to backup. This is a situation where the robot
+%% with a path needs to give way to the other robot so that it can backup
+%% in a better direction. Given that we have the invariant that there is at most
+%% 2 robots in a room then Me can backyp in any direction other than the
+%% direction occupied by the other robot
+should_resolve_conflict(Me, MyRm, Robot, [Dir]) ::
+    exit_for(Me, MyRm, MyDir, _) &
+    loc(Robot, MyRm) & Robot \= Me &
+    not following(Robot, _, _) &
+    has_backed_up(Robot, MyRm, Dir) &
+    RevMyDir = rev_dir(MyDir) &
+    not backed_up_in_good_dir(Robot, MyRm, [RevMyDir])
+%% I am in a room with another robot thats backed up and
+%% I'm not following (I wait if in a good direction or re-backup)
+should_resolve_conflict(Me, MyRm, Robot, [Dir1, Dir2]) ::
+    not following(Me, _, _) &
+    loc(Robot, MyRm) & Robot \= Me &
+    has_backed_up(Robot, MyRm, Dir1) &
+    exit_for(Robot, MyRm, RobotDir, _) &
+    Dir2 = rev_dir(RobotDir)
+%% I am in a room with another robot and
+%% we are both following and I am backed up in a good direction - wait
+should_resolve_conflict(Me, MyRm, Robot, [Dir]) ::
+    following(Me, _, _) &
+    loc(Robot, MyRm) & Robot \= Me &
+    exit_for(Robot, MyRm, RobotDir, _) &
+    Dir = rev_dir(RobotDir) &
+    backed_up_in_good_dir(Me, MyRm, [Dir]) 
+%% I am in a room with another robot (backed up) and
+%% we are both following and I have lower prority 
+%% and the other robot is not backed up in a good direction for me
+should_resolve_conflict(Me, MyRm, Robot,[ Dir1, Dir2]) ::    
+    following(Me, _, _) &
+    loc(Robot, MyRm) & Robot \= Me &
+    exit_for(Me, MyRm, MyDir, _) &
+    RevMyDir = rev_dir(MyDir) &
+    not backed_up_in_good_dir(Robot, MyRm, [RevMyDir]) &    
+    has_backed_up(Robot, MyRm, Dir1) &
+    exit_for(Robot, MyRm, RobotDir, _) &
+    higher_priority(Robot, Me) &
+    Dir2 = rev_dir(RobotDir)
+%% I am blocking another robot that wants to come through my room
+should_resolve_conflict(Me, MyRm, Robot, BadDirs) ::
+    blocking_robot_in_adj_room(Me, MyRm, Robot, BadDirs) 
+
+rel blocking_robot_in_adj_room(Me:robot, MyRm:room, Robot:?robot,
+                               BadDirs:?list(door_dir))
+"Me, in room MyRm, is blocking a robot in an adjacent room. BadDirs is
+the list of directions Me should not backup into"
+
+
+%% I am not following and a robot in an adj room has a passage through my room
+%% If 2 robots want to pass through my room from (different) adjacent rooms
+%% then the lowest priority robot will wait in its adjacent room until
+%% the higher priority robot pass through my room so I should back up
+%% to allow passage for that robot first.
+blocking_robot_in_adj_room(Me, MyRm, Robot, [Dir1, Dir2]) :: 
+    not following(Me, _, _) &
+    priority_order(Robots) &       %% needs to backup for highest priority
+    Robot in Robots & Me \= Robot &
+    loc(Robot, RobotRm) & 
+    local_path_info(Robot, RobotRm, MyRm, _OutRm, Dir1, Dir2) 
+%% I am following and Robot in an adj room with another robot 
+%% has a passage through my room 
+blocking_robot_in_adj_room(Me, MyRm, Robot, [Dir1, Dir2]) :: 
+    following(Me, _, _) &
+    loc(Robot, RobotRm) & Me \= Robot &
+    exit_for(Me, MyRm, _, RobotRm) &
+    another_in_room(Robot, RobotRm) &
+    local_path_info(Robot, RobotRm, MyRm, _, Dir1, Dir2)
+%% I am following and Robot in an adj room has higher priority and
+%% has a passage through my room and I want to exit through RobotRm
+%% and there are no other robots in my room
+blocking_robot_in_adj_room(Me, MyRm, Robot, [Dir1, Dir2]) :: 
+    following(Me, _, _) &
+    not another_in_room(Me, MyRm) &
+    loc(Robot, RobotRm) & Me \= Robot &
+    exit_for(Me, MyRm, _, RobotRm) &
+    local_path_info(Robot, RobotRm, MyRm, _, Dir1, Dir2) &
+    higher_priority(Robot, Me)
+
+rel blocked_in_room(Me:robot)
+"Me is being blocked by another robot in its room"
+blocked_in_room(Me) <=
+    following(Me, _, _) &
+    loc(Me, Room) &
+    loc(Robot, Room) & Robot \= Me &
+    should_resolve_conflict(Robot, Room, Me, BadDirs) &
+    not backed_up_in_good_dir(Robot, Room, BadDirs)
+
+rel should_wait_for_conflict_resolution(Me:robot, MyRm:room)
+"Me in MyRm (with no other robot) is being blocked from its path by 
+another robot"
+
+%% If I move I will break the invariants
+should_wait_for_conflict_resolution(Me, _MyRm) ::
+    should_wait_on_invariant(Me)
+%% I am blocked by another robot in my room
+should_wait_for_conflict_resolution(Me, _MyRm) ::
+    blocked_in_room(Me)
+%% There is a robot in the next room on my path and it
+%% is currently avoiding conflict
+should_wait_for_conflict_resolution(Me, MyRm) ::
+    close_doorway(Me, Door) &
+    following(Me, _, _) &
+    loc(Robot, RobotRm) & 
+    exit_for(Me, MyRm, _, RobotRm) &
+    connected(Door, MyRm, RobotRm, _) &
+    blocking_robot_in_adj_room(Robot, RobotRm, Me, BadDirs) &
+    not backed_up_in_good_dir(Robot, RobotRm, BadDirs)
+%% I am following and Robot that is also following and we both want to enter 
+%% the same room and I have lower priority
+should_wait_for_conflict_resolution(Me, MyRm) ::
+    following(Me, _, _) &
+    loc(Robot, RobotRm) & Robot \= Me & 
+    exit_for(Me, MyRm, _, SharedRoom) &
+    exit_for(Robot, RobotRm, _, SharedRoom) &    
+    higher_priority(Robot, Me) 
+
+
+%% I should stay put if moving would break an invariant
+rel should_wait_on_invariant(robot)
+%% I need to stay backed up to preserve the invariant because
+%% there is a non-backed up robot in my room
+should_wait_on_invariant(Me) ::
+    loc(Me, MyRm) & loc(Robot, MyRm) & Robot \= Me &
+    not has_backed_up(Robot, MyRm, _)
+%% I need to stay put in the doorway to stop moving into a room with a
+%% non-backed up robot
+should_wait_on_invariant(Me) ::
+    close_doorway(Me, Door) &
+    loc(Me, MyRm) &   following(Me, _, _) &
+    loc(Robot, RobotRm) & RobotRm \= MyRm &
+    exit_for(Me, MyRm, _, RobotRm) &
+    connected(Door, MyRm, RobotRm, _) &
+    not has_backed_up(Robot, RobotRm, _)
+%% I need to stay put in the doorway to stop moving into a room with two robots
+should_wait_on_invariant(Me) ::
+    close_doorway(Me, Door) &
+    loc(Me, MyRm) &   following(Me, _, _) &
+    loc(Robot1, RobotRm) & RobotRm \= MyRm &
+    loc(Robot2, RobotRm) & Robot1 \= Robot2 &
+    exit_for(Me, MyRm, _, RobotRm) &
+    connected(Door, MyRm, RobotRm, _)
+
+
+
+rel another_in_room(robot, room)
+"There is another robot in my room "
+another_in_room(Me, MyRm) <=
+    loc(Robot, MyRm) & Robot \= Me 
+
+rel another_following_in_room(robot, room)
+"There is another robot in my room that is following"
+another_following_in_room(Me, MyRm) <=
+    loc(Robot, MyRm) & Robot \= Me &
+    following(Robot, _, _)
+
+rel in_required_room(robot, room)
+in_required_room(Me, MyRm) :: following(Me, _Path, MyRm)
+in_required_room(Me, MyRm) :: activity_room(Me, MyRm) <=
+        battery_status(Me, high)
+in_required_room(Me, MyRm) :: reserved(Me, MyRm) <= 
+        battery_status(Me, low)
+
+%% Robot's battery is low and so needs to get to a charger room and
+%% there is no other robot in Room that's following a path.
+rel battery_low_and_free_to_follow(robot, room)
+battery_low_and_free_to_follow(Robot, MyRm) <=
+    battery_status(Robot, low) &
+    not reserved(Robot, _) &
+    not following(Robot, _, _) & 
+    not another_following_in_room(Robot, MyRm)
+
+%% Robot's battery is high and so wants to go to its activity room and
+%% there is no other robot in Room that's following a path.
+rel battery_high_and_free_to_follow(robot, room)
+battery_high_and_free_to_follow(Robot, MyRm) <=
+    battery_status(Robot, high) &
+    not following(Robot, _, _) & 
+    not another_following_in_room(Robot, MyRm)
+
+rel path_closed(robot)
+path_closed(Robot) <=
+    following(Robot, Path, _) & loc(Robot, Room) &
+    Path =? _ <> Rest & Rest = [Room,..] &
+    Rest =? _ <> [Rm1, Rm2,..] &
+    not open_connected_not_blocked(Rm1, Rm2)
+
+act signal_no_path(robot)
+signal_no_path(Me) :: following(Me,_,LastRm) ~>
+        forget([following(Me, _, LastRm)]) ;
+        poss_forget_reserved(Me,LastRm) ;
+        no_path(Me) to pedro
+signal_no_path(Me) ~> no_path(Me) to pedro
+
+%% The top-level TR procedure
+tel activity(robot)
+activity(Me) {
+    
+    >>>
+        loc(Me, MyRm) & should_wait_for_conflict_resolution(Me, MyRm) ~> ()
+        %% I am in conflict with another robot and I wait until the other
+        %% robot resolves the conflict
+        
+        loc(Me, MyRm) & 
+        should_resolve_conflict(Me, MyRm, _Robot, BadDirs) ~>
+            unblock_and_wait(Me, MyRm, BadDirs)
+        %% I am in conflict with Robot in my room: I resolve the conflict
+    <<<
+    
+    %% rule 3
+    loc(Me, MyRm) & activity_room(Me, MyRm) & battery_status(Me, high)  &
+    correctly_positioned_in_activity_room(Me, MyRm) ~>
+            () ++ signal_no_path(Me)
+    % I am in a correct position in my activity room and my battery is high
+        
+    %% rule 4
+    loc(Me, MyRm) & charger_room(MyRm, Dir) & battery_status(Me, low)  & 
+    has_backed_up(Me, MyRm, Dir) ~>
+            () ++ signal_no_path(Me)
+    % I am backed up over the charger in my reserved charger room
+
+    %% rule 5
+    loc(Me, MyRm) & in_required_room(Me, MyRm) ~>
+        move_to_required_room_position(Me, MyRm) 
+    % I am in my required room (activity or reserved charger room)
+    
+    %% rule 6
+    loc(Me, MyRm) & following(Me, Path, _LastRm) & 
+    Path =? _ <> [MyRm, NextRm] <> _Rest &
+    connected(_,MyRm,NextRm,Dir) &
+    not path_closed(Me) ~> move_to_next_room(Me, Dir)
+    % I am following a path that's not closed - move to next room on path
+    
+    %% rule 7
+    loc(Me, MyRm) & battery_low_and_free_to_follow(Me, MyRm) & 
+    free_charger_for(Me)(MyRm) ~>
+        () ++ {
+                reserve_room(Me, MyRm) to pedro ;
+                forget_remember([reserved(Me,_)], [reserved(Me,MyRm)])
+                }
+    %% Battery status is low and I am in a non-reserved charger room
+    %% that does not contain a following robot: bid to reserve room
+        
+    %% rule 8
+    loc(Me, MyRm) & battery_low_and_free_to_follow(Me, MyRm) & 
+    graph_path(MyRm, LastRm, Path, open_connected_not_blocked, 
+               free_charger_for(Me)) ~>
+        () ++ { 
+                path(Me, Path, LastRm) to pedro ;
+                forget_remember([following(Me,_,_), reserved(Me,_)], 
+                                [following(Me,Path,LastRm), 
+                                 reserved(Me,LastRm)])
+                }
+    %% Battery status is low and MyRm does not contain a following
+    %% robot - if there is a path to a free charger room then announce
+    %% the path (which is also a bid to reserve the room)
+    
+    %% rule 9
+    loc(Me, MyRm) & battery_high_and_free_to_follow(Me, MyRm) &
+    graph_path(MyRm, LastRm, Path, open_connected_not_blocked, 
+               activity_room_for(Me)) ~>
+        () ++ {
+                path(Me, Path, LastRm) to pedro;
+                forget_remember([following(Me,_,_)], 
+                                [following(Me,Path,LastRm)])
+                }
+    %% Battery status is high and MyRm does not contain a following
+    %% robot - if there is a path to the activity room announce it
+    
+    %% rule 10
+    loc(Me, MyRm) & pick_a_good_backup_dir(Me, MyRm, Dir) ~> 
+        backup_in_dir(Me, MyRm, Dir) ++ signal_no_path(Me)
+    %% no path or path becomes blocked - signal no_path
+    %% backup in a good direction
+     
+    }
+
+tel recharge_when_needed(robot, room)
+recharge_when_needed(Me, MyRm)  {  
+    %% Only active when Me is not in path conflict with any other other robot
+    %% There are two goals of this activity of rules 1 and 2: 
+    %%     to be in the robot's home activity room with high battery charge
+    %%     to be sitting on a charger when battery is low. 
+    
+    %% rule 1
+    activity_room(Me, MyRm) & battery_status(Me, high)  &
+    correctly_positioned_in_activity_room(Me, MyRm) ~>
+            () ++ signal_no_path(Me)
+    % I am in a correct position in my activity room and my battery is high
+        
+    %% rule 2
+    charger_room(MyRm, Dir) & battery_status(Me, low)  & 
+    has_backed_up(Me, MyRm, Dir) ~>
+            () ++ signal_no_path(Me)
+    % I am backed up over the charger in my reserved charger room
+
+    %% rule 3
+    in_required_room(Me, MyRm) ~>
+        move_to_required_room_position(Me, MyRm) 
+    % I am my required room (activity or reserved charger room)
+    
+    %% rule 4
+    following(Me, Path, _LastRm) & 
+    Path =? _ <> [MyRm, NextRm] <> _Rest &
+    connected(_,MyRm,NextRm,Dir) &
+    not path_closed(Me) ~> move_to_next_room(Me, Dir)
+    % I am following a path that's not closed - move to next room on path
+    
+    %% rule 5
+    battery_low_and_free_to_follow(Me, MyRm) & 
+    free_charger_for(Me)(MyRm) ~>
+        () ++ reserve_room(Me, MyRm) to pedro        
+    %% Battery status is low and I am in a non-reserved charger room
+    %% that does not contain a following robot: bid to reserve room
+        
+    %% rule 6
+    battery_low_and_free_to_follow(Me, MyRm) & 
+    graph_path(MyRm, LastRm, Path, open_connected_not_blocked, 
+               free_charger_for(Me)) ~>
+        () ++ path(Me, Path, LastRm) to pedro
+    %% Battery status is low and MyRm does not contain a following
+    %% robot - if there is a path to a free charger room then announce
+    %% the path (which is also a bid to reserve the room)
+    
+    %% rule 7
+    battery_high_and_free_to_follow(Me, MyRm) &
+    graph_path(MyRm, LastRm, Path, open_connected_not_blocked, 
+               activity_room_for(Me)) ~>
+        () ++ path(Me, Path, LastRm) to pedro
+    %% Battery status is high and MyRm does not contain a following
+    %% robot - if there is a path to the activity room announce it
+    
+    %% rule 8
+    pick_a_good_backup_dir(Me, MyRm, Dir) ~> 
+        backup_in_dir(Me, MyRm, Dir) ++ signal_no_path(Me)
+    %% no path or path becomes blocked - signal no_path
+    %% backup in a good direction
+     
+    }
+
+rel in_path_conflict(robot, room)
+in_path_conflict(Me, MyRm) <=  
+    should_wait_for_conflict_resolution(Me, MyRm)
+in_path_conflict(Me, MyRm) <=
+    should_resolve_conflict(Me, MyRm, _Robot, _BadDirs)
+
+tel move_to_required_room_position(robot, room)
+move_to_required_room_position(Me, MyRm) {
+    activity_room(Me,MyRm) &
+    not another_in_room(Me, MyRm) ~> move_to_centre(Me)
+    
+    correctly_backed_up_in_room(Me, MyRm) ~>  ()
+    
+    pick_a_good_backup_dir(Me, MyRm, Dir) ~> 
+        backup_in_dir(Me, MyRm, Dir)
+    }
+      
+% Function that returns a relation for testing if a room is the
+% activity location for robot Me. Used as an argument for path finding.
+fun activity_room_for(robot) -> rel(?room)
+activity_room_for(Me)(MyRm) <= 
+    activity_room(Me,MyRm)
+
+% Function that returns a relation for testing if a charger room is available
+% for use of robot Rob. It is if no other robot has a current reservation 
+% for it. Used as an argument for path finding.
+fun free_charger_for(robot) -> rel(?room)
+free_charger_for(Rob)(ChgrRm) <=
+    charger_room(ChgrRm, _) &
+    not exists OthrRob (reserved(OthrRob,ChgrRm) & OthrRob\=Rob)
+
+%% If in reserved charger room then backed up over charger else simply 
+%% backed up in some direction.
+rel correctly_positioned_in_activity_room(robot, room)
+correctly_positioned_in_activity_room(Me, Rm) :: not another_in_room(Me, Rm) <=
+    at_room_centre(Me)
+correctly_positioned_in_activity_room(Me, Rm) <=
+    has_backed_up(Me, Rm, _Dir)
+
+%% If in reserved charger room then backed up over charger else simply 
+%% backed up in some direction.
+rel correctly_backed_up_in_room(robot, room)
+correctly_backed_up_in_room(Robot, Rm) <=
+    reserved(Robot, Rm) &
+    has_backed_up(Robot, Rm, Dir) &
+    charger_room(Rm, Dir)
+correctly_backed_up_in_room(Robot, Rm) <=
+    has_backed_up(Robot, Rm, _Dir)
+
+tel move_to_centre(robot)
+move_to_centre(Me) {
+    
+    at_room_centre(Me) ~> ()
+    
+    see_centre_ahead(Me)  ~> follow_line_forwards()
+    
+    true ~> follow_line_backwards()
+    }
+
+%% TR procedure to backup Me in MyRm in backup direction Dir
+tel backup_in_dir(robot, room, door_dir)
+backup_in_dir(Me, MyRm, Dir) {
+    
+    has_backed_up(Me, MyRm, Dir) ~> ()
+    %% already notified all robots it has backed up in the required dir
+    
+    see_centre_ahead(Me) & not see_centre_close(Me) & 
+    facing(Me, Dir) ~> 
+        () ++ {
+                backed_up(Me, MyRm, Dir) to pedro ;
+                forget_remember([has_backed_up(Me,_,_)],
+                                [has_backed_up(Me,MyRm,Dir)])
+                }
+    %% backed up in required direction - notify all robots
+   
+    facing(Me, Dir) ~> follow_line_backwards()
+    %% facing in the right direction - backup to achieve above goal
+    
+    at_room_centre(Me) & is_best_turn_dir(Me, Dir, TurnDir) ~> 
+        turn_at_centre(TurnDir)
+    %% turn at centre in the most efficient direction to point in correct dir
+    
+    see_centre_ahead(Me)  ~> follow_line_forwards()
+    %% see the centre but not pointing in the correct direction 
+    
+    true ~> follow_line_backwards()
+    %% cannot see centre - need to backup to centre
+    }
+
+%% I am either blocking another robot or am waiting for another robot
+%% to complete a manouver
+tel unblock_and_wait(robot, room, list(door_dir))
+unblock_and_wait(Me, MyRm, BadDirs) {
+    
+    reserved(Me, MyRm) & charger_room(MyRm, Dir) ~>
+        backup_in_dir(Me, MyRm, Dir)
+    %% I am in my reserved charger room - backup over charger
+    
+    backed_up_in_good_dir(Me, MyRm, BadDirs) ~> ()
+    %% I am already backed up correctly - wait
+
+    ok_dir_to_backup(Me, Dir, MyRm, BadDirs) ~>
+        backup_in_dir(Me, MyRm, Dir)
+    %% I need to backup in Dir
+
+       
+    }
+
+
+
+%% follow the current path to the destination room
+tel follow(robot, room, door_path)
+follow(Me, MyRm, Path) {
+    
+    not loc(Me,MyRm) & Path =? _ <> [NextRm] <> Rest  ~> 
+        follow(Me, NextRm, Rest)
+    % in next room on path 
+    
+    Path = [NextRm,..] &
+    connected(_,MyRm,NextRm,Dir) ~> 
+       move_to_next_room(Me, Dir)
+    
+    true ~> follow_line_forwards()
+    }
+
+
+tel move_to_next_room(robot, door_dir)
+move_to_next_room(Me, MyExitDir) {
+            
+    facing(Me, MyExitDir)  ~> follow_line_forwards()
+    % facing the exit direction - move through door into next room
+        
+    at_room_centre(Me) & is_best_turn_dir(Me, MyExitDir, TurnDir) ~>
+        turn_at_centre(TurnDir)
+    % turn to exit direction at centre
+    
+    see_centre_ahead(Me) ~> follow_line_forwards()
+    % move to centre
+ 
+    true ~> follow_line_backwards()
+    %% backup to centre
+    
+    }
+                                                           
+    
+%% True if the robot is pointing at a door direction D
+rel facing(robot, ?door_dir)
+facing(Me, D) <= pointing(Me, D1) & type(D1,door_dir) & D = D1
+
+rel local_path_info(Robot:robot, InRm:?room, NextRm:?room, OutRm:?room, 
+                    InDir:?door_dir, OutDir:?door_dir)
+"Robot is following a path and is in InRm and wants to move through NextRm
+in InDir and out into OutRm in OutDir. If NextRm is the last room on the path
+then set OutRm = NextRm and OutDir = InDir"
+local_path_info(Robot, InRm, NextRm, OutRm, InDir, OutDir) ::
+    following(Robot,Path,NextRm) &
+    Path =? _ <> [InRm, NextRm] <=
+        connected(_,InRm,NextRm,InDir) &
+        OutRm = NextRm &
+        OutDir = InDir
+local_path_info(Robot, InRm, NextRm, OutRm, InDir, OpOutDir) ::
+    following(Robot,Path,_) &
+    Path =? _ <> [InRm, NextRm, OutRm] <> _  <=
+        connected(_InDoor,InRm,NextRm,InDir) &
+        connected(_OutDoor,NextRm,OutRm,OutDir) &
+        OpOutDir = rev_dir(OutDir)
+
+rel exit_for(Rob:robot,InRm:?room,ExitDir:?door_dir,OutRm:?room)
+"Rob is in InRm following a path and wants to use ExitDir to enter OutRm"
+exit_for(Rob,InRm,ExitDir,OutRm) ::
+    following(Rob,Path,_) &
+    Path =? _ <> [InRm, OutRm] <> _ &
+    connected(_Door,InRm,OutRm,ExitDir)
+
+%% return the opposite door direction
+fun rev_dir(door_dir) -> door_dir
+%rev_dir(0) -> 180
+rev_dir(Dir):: 
+    RDir = (Dir + 180) mod 360 & type(RDir,door_dir) -> RDir
+
+  
+%% Get a good direction for Me in MyRm to backup into
+rel pick_a_good_backup_dir(robot, room, ?door_dir)
+%% I am in my reserved charger room - backup over charger
+pick_a_good_backup_dir(Me, MyRm, Dir) ::
+    reserved(Me, MyRm) &
+    charger_room(MyRm, Dir)
+%% There is a deadend in my room with no robot backed up in that dir is
+%% the minimal turn from where I am pointing
+pick_a_good_backup_dir(Me, MyRm, Dir) ::
+    pointing(Me, PDir) &
+    Dir in best_dir_order(PDir) & 
+    room_deadend_dir(MyRm, Dir) &
+    not exists Rob (has_backed_up(Rob, MyRm, Dir) & Rob\=Me)
+pick_a_good_backup_dir(Me, MyRm, Dir) ::
+    loc(Robot, MyRm) & Robot \= Me &
+    exit_for(Robot, _, RobotDir, _) &
+    RevDir = rev_dir(RobotDir) &
+    is_ok_dir_to_backup(Me, Dir, MyRm, [RevDir])
+%% There is a backed up robot im my room - backup in a direction other 
+%% than the direction this robot is backed up in
+pick_a_good_backup_dir(Me, MyRm, Dir) ::
+    loc(Robot, MyRm) & Robot \= Me &
+    has_backed_up(Robot, MyRm, RobDir) &
+    is_ok_dir_to_backup(Me, Dir, MyRm, [RobDir])
+%% A robot wants to pass through my room - backup in a direction that does not
+%% block entry or exit
+pick_a_good_backup_dir(Me, MyRm, Dir) ::
+    loc(Robot, _) &
+    local_path_info(Robot, _RobotRm, MyRm, _OutRm, InDir, OutDir) &
+    is_ok_dir_to_backup(Me, Dir, MyRm, [InDir, OutDir])
+%% already backed up - must be in an OK direction because of above rules 
+pick_a_good_backup_dir(Me, MyRm, Dir) ::
+    has_backed_up(Me, MyRm, Dir)
+%% from the above rules there are no constraints on this robot so can
+%% backup in most efficient direction
+pick_a_good_backup_dir(Me, _MyRm, Dir) ::
+    pointing(Me, PDir) &
+    Dir in best_dir_order(PDir)
+
+%% Check or generate a backup Dir that is not in BadDirs - prefer 
+%% current backed up dir (if backed up)
+rel is_ok_dir_to_backup(robot, ?door_dir, room, list(door_dir))
+is_ok_dir_to_backup(Me, Dir, MyRm, BadDirs) ::
+    has_backed_up(Me, MyRm, Dir) <=
+        ok_dir_to_backup(Me, Dir, MyRm, BadDirs)
+is_ok_dir_to_backup(Me, Dir, MyRm, BadDirs) <=
+    ok_dir_to_backup(Me, Dir, MyRm, BadDirs)
+
+%% Check or generate a backup Dir that is not in BadDirs
+rel ok_dir_to_backup(robot, ?door_dir, room, list(door_dir))
+ok_dir_to_backup(Me, Dir, MyRm, BadDirs) <=
+    pointing(Me, PDir) &
+    ok_dir_to_backup_order(Me, best_dir_order(PDir), Dir, MyRm, BadDirs)
+
+%% Check or generate a backup Dir that is not in BadDirs checking
+%% the directions in DirOrder in order (to find most efficient turn)
+rel ok_dir_to_backup_order(robot, list(door_dir), ?door_dir, 
+                           room, list(door_dir))
+%% There is a free deadend dir to backup in
+ok_dir_to_backup_order(Me, DirOrder, Dir, MyRm, _BadDirs) <=
+    Dir in DirOrder & 
+    room_deadend_dir(MyRm, Dir) &
+    not exists Rob (has_backed_up(Rob, MyRm, Dir) & Rob\=Me) 
+ok_dir_to_backup_order(Me, DirOrder, Dir, MyRm, _BadDirs) <=
+    Dir in DirOrder & 
+    connected(Door, MyRm, _,DoorDir) &
+    closed(Door, MyRm) &
+    Dir = rev_dir(DoorDir) &
+    not exists Rob (has_backed_up(Rob, MyRm, Dir) & Rob\=Me) 
+%% Dir is not a bad dir and does not have a backed up robot in it
+ok_dir_to_backup_order(Me, DirOrder, Dir, MyRm, BadDirs) <=
+    Dir in DirOrder & 
+    not exists Rob (has_backed_up(Rob, MyRm, Dir) & Rob\=Me) &
+    not Dir in BadDirs
+  
+%% Rob is already backed up in a direction that avoids BadDirs
+rel backed_up_in_good_dir(robot, room, list(door_dir))
+backed_up_in_good_dir(Rob, Rm, BadDirs) <=
+    has_backed_up(Rob, Rm, Dir) &
+    not Dir in BadDirs
+
+% handle_message has system type decl act handle_message(message,agent_handle)
+% where message is a program defined type and agent_handle is a system type
+handle_message(Mess,Addr) ~>
+    write_list(["Received: ", Mess, nl_]);
+    handle_this_message(Mess,Addr)
+
+handle_invalid_message(Message,_) ~>
+    write_list(["Received: ", Message, " not ground term of type message", nl_])
+% This action will be called by agent shell message handling thread
+% if received message term is not a ground term of type message
+
+act handle_this_message(message,agent_handle)
+%% A notification about a closed door is received - remember the door is closed
+handle_this_message(door_status(Door,Rm,shut),_) :: 
+    connected(Door,Rm,OthrRm, _) ~>
+        remember([closed(Door,Rm), closed(Door,OthrRm)])
+%% A notification about an open door is received - forget the door is closed
+handle_this_message(door_status(Door,Rm,open),pedro) :: 
+    connected(Door,Rm,OthrRm,_) ~>
+        forget([closed(Door,Rm), closed(Door,OthrRm)])
+handle_this_message(new_activity_room(Rob,Rm),pedro)::loc(Rob, _) ~>
+    forget_remember([activity_room(Rob,_)], [activity_room(Rob,Rm)])
+handle_this_message(new_activity_room(Rob,Rm),pedro) ~>
+    forget_remember([activity_room(Rob,_)], [loc(Rob, Rm), activity_room(Rob,Rm)])
+
+%% other messages ignored
+handle_this_message(M,A) ~>
+    write_list(["Message ",M," from ",A," ignored",nl_]) 
+
+act send_path_state(robot, agent_handle)        
+send_path_state(Me, Handle) :: Me \= Handle & following(Me,Path,Room) ~>
+            path(Me,Path,Room) to Handle
+send_path_state(_Me, _Handle) ~> {}
+
+act send_backed_up_state(robot, agent_handle)        
+send_backed_up_state(Me, Handle) :: Me \= Handle & has_backed_up(Me,MyRm,Dir) ~>
+            backed_up(Me,MyRm,Dir) to Handle
+send_backed_up_state(_Me, _Handle) ~> {}
+
+act send_reserved_state(robot, agent_handle)        
+send_reserved_state(Me, Handle) :: Me \= Handle & reserved(Me,Room) ~>
+            reserve_room(Me, Room) to Handle
+send_reserved_state(_Me, _Handle) ~> {}
+
+
+
+% This is called when no_path(Rob) has been received because
+% Rob is either at the end of its path or cannot find a path
+% of open doors to LastRm
+act poss_forget_reserved(robot,room)
+poss_forget_reserved(Rob,LastRm) :: 
+    reserved(Rob,LastRm) & not loc(Rob,LastRm) ~>
+        forget([reserved(Rob,LastRm)])
+poss_forget_reserved(_Rob,_Rm) ~> {}
+
+
+% post_process_percepts has system defined type 
+% act post_process_percepts(!list(percept_term), !list(percept_term)) 
+% If defined in user program this is called by percept handler immediately
+% after it has done the normal percept updates. This allows appl specific 
+% inferred perceptions to be made and possibly communicated to other agents.
+
+post_process_percepts(Forgets, Remembers) ~>
+    check_for_room_change(Forgets, Remembers);
+    check_for_backup_change(Remembers)
+
+act check_for_room_change(!list(percept_term), !list(percept_term))
+%% A robot gets a forgets close_doorway percepts and a remember through_doorway
+%% percept and that signifies that the robot has just moved into a room
+%% It notifies all robots about its new room
+check_for_room_change(Forgets, Remembers) ::
+    my_name(Me) & loc(Me,InRm) & 
+    close_doorway(Me, Door) in Forgets & 
+    through_doorway(Me, Door) in Remembers & 
+    connected(Door,InRm, OutRm, _Dir) ~>
+        forget_remember([loc(Me,_)], [loc(Me,OutRm)]);
+        new_loc(Me,OutRm) to pedro
+% Empty action when robot has not just passed through a door. 
+check_for_room_change(_,_) ~> {}
+
+
+act check_for_backup_change(!list(percept_term))
+%% I was backed up and moves to centre after charging
+check_for_backup_change(Remembers) ::
+    my_name(Me) &
+    see_centre_close(Me) in Remembers &
+    has_backed_up(Me, ChgrRm, _Dir) &
+    reserved(Me, ChgrRm) &
+    correctly_backed_up_in_room(Me, ChgrRm) ~> 
+        end_backed_up(Me) to pedro;
+        forget([has_backed_up(Me,_,_)]) ; 
+        finished_charging(Me) to pedro ;
+        forget([reserved(Me, _)])
+%% I was backed up and moves to centre
+check_for_backup_change(Remembers) ::
+    my_name(Me) & loc(Me,MyRm) & 
+    see_centre_close(Me) in Remembers &
+    has_backed_up(Me, MyRm, _) ~>
+        forget([has_backed_up(Me,_,_)]) ; 
+        end_backed_up(Me) to pedro
+check_for_backup_change(_) ~> {}
+
+
+%% System declared user defined (if required) action to initialize the
+%% message handler thread - in this case subscribing to various notifications
+init_message_handler() ~>
+    subscribe("door_status(D,Rm,S)", _);
+    subscribe("new_activity_room(Rom, Rm)", _);
+    write_list(["All Pedro subscriptions lodged",nl_])
+%% Action to start the agent
+act go()
+go() ~> 
+        start_agent(rooms_env@localhost, updates) ;
+        forall Robot { 
+            isa(Robot,  robot) ~>
+                joining(Robot) to pedro;
+                wait(activity_room(Robot, _));
+                remember([my_name(Robot), battery_status(Robot, high)]);
+                start_named_task(activity(Robot), Robot)
+            }
